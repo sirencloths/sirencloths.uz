@@ -27,7 +27,7 @@ export default function RootLayout({
     <html lang="ru" className={gilroy.variable}>
       <body>
         <LanguageProvider>
-          <FavoriteProvider><SearchProvider><CartProvider>{children}<MobileBottomNav /></CartProvider></SearchProvider></FavoriteProvider>
+          <FavoriteProvider><SearchProvider><CartProvider>{children}<MobileBottomNav /><aside className="site-test-notice" role="status">САЙТ ТЕСТИРУЕТСЯ</aside></CartProvider></SearchProvider></FavoriteProvider>
         </LanguageProvider>
       </body>
     </html>

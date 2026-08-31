@@ -6,15 +6,14 @@ import { useLanguage } from "./LanguageProvider";
 const tickerItems = Array.from({ length: 12 });
 
 const socials = [
-  { label: "TikTok", glyph: "♪" },
-  { label: "X", glyph: "𝕏" },
-  { label: "YouTube", glyph: "▶" },
-  { label: "Facebook", glyph: "f" },
-  { label: "Telegram", glyph: "➤" },
-  { label: "Instagram", glyph: "◎" },
+  { label: "Instagram", icon: "/icons/social/instagram.svg" },
+  { label: "Telegram", icon: "/icons/social/telegram.svg" },
+  { label: "Facebook", icon: "/icons/social/facebook.svg" },
+  { label: "YouTube", icon: "/icons/social/youtube.svg" },
+  { label: "TikTok", icon: "/icons/social/tik%20tok.svg" },
 ];
 
-const payments = ["UZCARD", "HUMO", "VISA", "Mastercard", "Payme"];
+const payments = ["Payme", "Click", "Paynet"];
 
 export default function Footer() {
   const { t } = useLanguage();
@@ -99,7 +98,7 @@ export default function Footer() {
           <div className="social-icons" aria-label="Соцсети">
             {socials.map((social) => (
               <a key={social.label} href="#" aria-label={social.label}>
-                {social.glyph}
+                <Image src={social.icon} alt="" width={22} height={22} />
               </a>
             ))}
           </div>
@@ -111,18 +110,6 @@ export default function Footer() {
           <a className="policy-link" href="#">
             {t("terms")}
           </a>
-
-          <div className="store-buttons">
-            <a href="#">
-              <small>Get it on</small>
-              <b>Google Play</b>
-            </a>
-
-            <a href="#">
-              <small>Download on the</small>
-              <b>App Store</b>
-            </a>
-          </div>
         </div>
 
         <div className="footer-payments">

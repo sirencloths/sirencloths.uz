@@ -1075,11 +1075,16 @@ button {
   .topbar-control span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .header .nav { box-sizing: border-box; min-width: 0; min-height: 48px; height: 48px; padding: 0 clamp(10px, 4.5vw, 20px); overflow: hidden; }
-  .nav-logo, .nav-logo img { width: clamp(70px, 20.9vw, 92px); height: auto; flex: 0 0 clamp(70px, 20.9vw, 92px); }
-  .nav-menu { min-width: 0; margin-left: -5px; gap: clamp(2px, 1.1vw, 5px); }
-  .nav-menu li { min-width: 0; flex: 0 1 auto; }
-  .nav-menu a { overflow: hidden; font-size: clamp(9px, 2.9vw, 14px); letter-spacing: -.35px; text-overflow: ellipsis; }
+  .nav-logo, .nav-logo img { width: clamp(60px, 18vw, 78px); height: auto; flex: 0 0 clamp(60px, 18vw, 78px); }
+  .nav-menu { min-width: 0; margin-left: -3px; gap: 1px; }
+  .nav-menu li { min-width: 0; flex: 0 0 auto; }
+  .nav-menu a { overflow: visible; font-size: clamp(7.5px, 2.55vw, 12px); letter-spacing: -.45px; text-overflow: clip; }
 }
+
+/* Footer uses the supplied original social-media marks and three payment methods. */
+.social-icons a { background: transparent; }
+.social-icons a img { width: 100%; height: 100%; object-fit: contain; }
+.footer-payments div { grid-template-columns: repeat(3, minmax(0, 132px)); }
 
 .fixed-top {
   position: fixed;
@@ -6872,4 +6877,91 @@ body {
   .profile-address-remove { display: none; }
   .profile-address-list small { position: absolute; right: 10px; bottom: 9px; margin: 0; color: #aaa; font-family: var(--font-gilroy), Arial, sans-serif; font-size: 15px; font-weight: 700; line-height: 1; }
   .profile-address-list p { margin: 0 0 5px; font-family: var(--font-gilroy), Arial, sans-serif; font-size: 17px; font-weight: 500; line-height: 1.14; text-transform: none; }
+}
+
+/* Footer social marks are self-contained SVG circles — no secondary background. */
+.social-icons { gap: 12px; }
+.social-icons a {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  background: transparent;
+}
+.social-icons a img {
+  display: block;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  object-fit: contain;
+}
+.social-icons { justify-content: center; }
+
+/* Keep the home page hero compact at the requested visual height. */
+.hero {
+  min-height: 550px;
+  height: 550px;
+  aspect-ratio: auto;
+}
+
+/* The footer follows the same Gilroy type system on every breakpoint. */
+.siren-footer,
+.siren-footer * {
+  font-family: var(--font-gilroy), Arial, sans-serif;
+}
+
+/* A non-interactive status chip keeps the test-site notice visible without blocking UI. */
+.site-test-notice {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 90;
+  padding: 7px 10px;
+  border-radius: 3px;
+  background: #ff140e;
+  color: #fff;
+  font-family: var(--font-gilroy), Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .03em;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (max-width: 760px) {
+  .site-test-notice {
+    right: 8px;
+    bottom: 70px;
+    padding: 6px 8px;
+    font-size: 8px;
+  }
+}
+
+/* Main-page vertical product rails use the same mobile card gutter as Shop. */
+@media (max-width: 760px) {
+  /* Collection already has a 25px outer wrapper; add only the remaining 18px. */
+  .collection-side { padding-right: 18px; padding-left: 18px; }
+  .tactical-products { padding-right: 43px; padding-left: 43px; }
+}
+
+/* Compact mobile header dimensions from the approved reference. */
+@media (max-width: 760px) {
+  .header .nav { min-height: 36px; height: 36px; padding-inline: clamp(10px, 4.5vw, 20px); }
+  .nav-logo, .nav-logo img { width: 70px; height: 15px; flex: 0 0 70px; object-fit: contain; }
+  .nav-menu { flex: 1 1 auto; margin-left: 0; gap: clamp(2px, 1vw, 6px); justify-content: space-between; }
+  .nav-menu a { font-size: clamp(8px, 4vw, 16px); letter-spacing: -.45px; white-space: nowrap; }
+
+  .fixed-top + main { padding-top: 76px !important; }
+  .fixed-top + .shop-page,
+  .fixed-top + .collections-page,
+  .fixed-top + .lookbook-page,
+  .fixed-top + .lookbook-viewer-page,
+  .fixed-top + .blog-page,
+  .fixed-top + .blog-viewer-page,
+  .fixed-top + .favorites-page,
+  .fixed-top + .profile-page,
+  .fixed-top + .cart-page { padding-top: 96px !important; }
 }
