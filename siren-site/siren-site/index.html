@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIREN</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="fixed-top">
+    <div class="topbar">
+      <button class="topbar-control" type="button">
+        <img src="icons/lang.svg" alt="">
+        <span>Русский</span>
+      </button>
+
+      <div class="topbar-marquee" aria-hidden="true">
+        <div class="marquee-track">
+          <span>Новые поступления со скидкой 20%</span>
+          <span>Новые поступления со скидкой 20%</span>
+          <span>Новые поступления со скидкой 20%</span>
+          <span>Новые поступления со скидкой 20%</span>
+          <span>Новые поступления со скидкой 20%</span>
+          <span>Новые поступления со скидкой 20%</span>
+          <span>Новые поступления со скидкой 20%</span>
+          <span>Новые поступления со скидкой 20%</span>
+        </div>
+      </div>
+
+      <button class="topbar-control topbar-control--right" type="button">
+        <img src="icons/location.svg" alt="">
+        <span>Ташкент</span>
+      </button>
+    </div>
+
+    <header class="header">
+      <nav class="nav" aria-label="Главная навигация">
+        <a class="nav-logo" href="#">
+          <img src="icons/logo.svg" alt="SIREN">
+        </a>
+
+        <ul class="nav-menu">
+          <li><a href="#shop">Магазин</a></li>
+          <li><a href="#collections">Коллекции</a></li>
+          <li><a href="#lookbook">Лукбук</a></li>
+          <li><a href="#blog">Блог</a></li>
+        </ul>
+
+        <div class="nav-icons" aria-label="Быстрые действия">
+          <a href="#search" aria-label="Поиск"><img src="icons/search.svg" alt=""></a>
+          <a href="#favorite" aria-label="Избранное"><img src="icons/heart.svg" alt=""></a>
+          <a href="#cart" aria-label="Корзина"><img src="icons/cart.svg" alt=""></a>
+          <a href="#profile" aria-label="Профиль"><img src="icons/user.svg" alt=""></a>
+        </div>
+      </nav>
+    </header>
+  </div>
+
+  <main>
+    <section class="hero" id="home">
+      <div class="hero-content">
+        <h1>Новая<br>коллекция</h1>
+        <a href="#collections">Перейти</a>
+      </div>
+    </section>
+
+    <section class="products" id="shop" aria-label="Популярные товары">
+      <button class="slider-btn slider-btn--left" type="button" aria-label="Назад">
+        <img src="icons/arrow-right.svg" alt="">
+      </button>
+      <div class="products-grid">
+        <article class="product-card">
+          <div class="product-image">
+            <img src="images/p1.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+
+        <article class="product-card">
+          <div class="product-image">
+            <img src="images/p2.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+
+        <article class="product-card">
+          <div class="product-image">
+            <img src="images/p3.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+
+        <article class="product-card">
+          <div class="product-image">
+            <img src="images/p4.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+      </div>
+      <button class="slider-btn slider-btn--right" type="button" aria-label="Вперёд">
+        <img src="icons/arrow-left.svg" alt="">
+      </button>
+    </section>
+
+    <section class="collection" id="collections">
+      <div class="collection-side">
+        <article class="product-card product-card--small">
+          <div class="product-image">
+            <img src="images/p1.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+
+        <article class="product-card product-card--small">
+          <div class="product-image">
+            <img src="images/p2.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+      </div>
+
+      <a class="collection-banner" href="#">
+        <img src="images/collection-banner.jpg" alt="Новая коллекция SIREN">
+        <span class="banner-copy banner-copy--dark">
+          <span>Новая<br>коллекция</span>
+          <b>Перейти</b>
+        </span>
+      </a>
+    </section>
+
+    <section class="promo" id="lookbook">
+      <a class="promo-card promo-card--large" href="#">
+        <img src="images/large-banner.jpg" alt="Аксессуары">
+        <span class="banner-copy banner-copy--dark">
+          <span>Аксессуары</span>
+          <b>Перейти</b>
+        </span>
+      </a>
+
+      <a class="promo-card promo-card--small" href="#">
+        <img src="images/small-banner.jpg" alt="Мерч">
+        <span class="banner-copy banner-copy--dark banner-copy--right">
+          <span>Мерч</span>
+          <b>Перейти</b>
+        </span>
+      </a>
+    </section>
+
+    <section class="category-strip" aria-label="Разделы каталога">
+      <a href="#">Одежда</a>
+      <a href="#">Аксессуары</a>
+      <a href="#">Мерч</a>
+      <a href="#">Лукбук</a>
+    </section>
+
+    <section class="products products--more" aria-label="Новые поступления">
+      <div class="section-heading">
+        <h2>Новые поступления</h2>
+        <a href="#">Смотреть все</a>
+      </div>
+
+      <div class="products-grid">
+        <article class="product-card">
+          <div class="product-image">
+            <img src="images/p4.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+
+        <article class="product-card">
+          <div class="product-image">
+            <img src="images/p3.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+
+        <article class="product-card">
+          <div class="product-image">
+            <img src="images/p2.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+
+        <article class="product-card">
+          <div class="product-image">
+            <img src="images/p1.jpg" alt="LEGACY DROP ARM TANK">
+            <button class="like-btn" type="button" aria-label="Добавить в избранное">
+              <img src="icons/heart.svg" alt="">
+            </button>
+          </div>
+          <h2>LEGACY DROP ARM TANK</h2>
+          <p>GRAY</p>
+          <strong>930.000 СУМ</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="records" id="records">
+      <div class="records-main">
+        <div class="records-content">
+          <div class="records-heading">
+            <h2>Записи</h2>
+            <a href="#playlist-frame">Перейти в плейлист</a>
+          </div>
+
+          <div class="records-grid">
+            <article class="record-card record-card--blue">
+              <img src="images/p1.jpg" alt="">
+              <div>
+                <small>Album: SIREN</small>
+                <h3>Lil cover</h3>
+                <p>Rap</p>
+              </div>
+              <b>EP.0001</b>
+            </article>
+
+            <article class="record-card record-card--pink">
+              <img src="images/banner.jpg" alt="">
+              <div>
+                <small>Album: SIREN</small>
+                <h3>Cyberbonk</h3>
+                <p>Тесno</p>
+              </div>
+              <b>EP.0001</b>
+            </article>
+
+            <article class="record-card record-card--brown">
+              <img src="images/collection-banner.jpg" alt="">
+              <div>
+                <small>Album: SIREN</small>
+                <h3>Given up</h3>
+                <p>Nu metal</p>
+              </div>
+              <b>EP.0001</b>
+            </article>
+
+            <article class="record-card record-card--red">
+              <img src="images/large-banner.jpg" alt="">
+              <div>
+                <small>Album: SIREN</small>
+                <h3>Leech</h3>
+                <p>Rapcore/nu metal</p>
+              </div>
+              <b>EP.0001</b>
+            </article>
+
+            <article class="record-card record-card--green">
+              <img src="images/small-banner.jpg" alt="">
+              <div>
+                <small>Album: SIREN</small>
+                <h3>Lil cover</h3>
+                <p>Alternative</p>
+              </div>
+              <b>EP.0001</b>
+            </article>
+
+            <article class="record-card record-card--yellow">
+              <img src="images/p4.jpg" alt="">
+              <div>
+                <small>Album: SIREN</small>
+                <h3>Let it happen</h3>
+                <p>Indie</p>
+              </div>
+              <b>EP.0001</b>
+            </article>
+          </div>
+
+        </div>
+
+        <div class="record-player">
+          <button class="record-play" id="record-play" type="button" aria-label="Воспроизвести трек">
+            <span></span>
+            <b>Воспроизвести трек</b>
+          </button>
+          <div class="disc" id="disc" aria-hidden="true">
+            <div class="disc-hole"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="blog" id="blog">
+      <div class="section-heading blog-heading">
+        <h2>Блог</h2>
+        <a href="#">Перейти</a>
+      </div>
+
+      <div class="blog-grid">
+        <a class="blog-card blog-card--image blog-card--hero" href="#">
+          <img src="images/banner.jpg" alt="Нам нужно больше скейтеров">
+        </a>
+
+        <a class="blog-card blog-card--article" href="#">
+          <img src="images/collection-banner.jpg" alt="Образы сезона">
+          <div class="blog-copy">
+            <time datetime="2025-12-22">Пон, Dec 22 2025</time>
+            <h3>Нам нужно больше скейтеров</h3>
+            <p>Mark Mcgowan discovered Shepard Fairey's work 20 years ago when he first moved from England to America. He was hit with unexpected culture shock seeing the logical contradictions embedded in American culture.</p>
+            <span>Читать дальше</span>
+          </div>
+        </a>
+
+        <a class="blog-card blog-card--article" href="#">
+          <img src="images/small-banner.jpg" alt="Детали и аксессуары">
+          <div class="blog-copy">
+            <time datetime="2025-12-22">Пон, Dec 22 2025</time>
+            <h3>Нам нужно больше скейтеров</h3>
+            <p>Mark Mcgowan discovered Shepard Fairey's work 20 years ago when he first moved from England to America. He was hit with unexpected culture shock seeing the logical contradictions embedded in American culture.</p>
+            <span>Читать дальше</span>
+          </div>
+        </a>
+
+        <a class="blog-card blog-card--image blog-card--portrait" href="#">
+          <img src="images/large-banner.jpg" alt="SIREN blog">
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer footer--old" aria-hidden="true">
+    <div class="footer-logo">
+      <img src="icons/logo.svg" alt="SIREN">
+    </div>
+
+    <div class="footer-columns">
+      <div>
+        <h2>Каталог</h2>
+        <a href="#shop">Магазин</a>
+        <a href="#collections">Коллекции</a>
+        <a href="#lookbook">Лукбук</a>
+        <a href="#blog">Блог</a>
+      </div>
+
+      <div>
+        <h2>Помощь</h2>
+        <a href="#">Доставка</a>
+        <a href="#">Оплата</a>
+        <a href="#">Возврат</a>
+        <a href="#">Контакты</a>
+      </div>
+
+      <div>
+        <h2>Соцсети</h2>
+        <a href="#">Instagram</a>
+        <a href="#">Telegram</a>
+        <a href="#">TikTok</a>
+        <a href="#">YouTube</a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <span>© 2026 SIREN</span>
+      <span>Ташкент</span>
+    </div>
+  </footer>
+
+  <footer class="siren-footer">
+    <div class="footer-ticker" aria-hidden="true">
+      <div>
+        <span>SIREN.</span><span>SIREN.</span><span>SIREN.</span><span>SIREN.</span><span>SIREN.</span><span>SIREN.</span>
+        <span>SIREN.</span><span>SIREN.</span><span>SIREN.</span><span>SIREN.</span><span>SIREN.</span><span>SIREN.</span>
+      </div>
+    </div>
+
+    <div class="siren-footer__inner">
+      <nav class="footer-menu" aria-label="Footer navigation">
+        <a href="#shop">Магазин</a>
+        <a href="#collections">Коллекции</a>
+        <a href="#lookbook">Лукбук</a>
+        <a href="#blog">Блог</a>
+      </nav>
+
+      <div class="footer-buyers">
+        <h2>Покупателю</h2>
+        <a href="#">Доставка и оплата</a>
+        <a href="#">Обмен и возврат</a>
+        <a href="#">Размерная сетка</a>
+        <a href="#">(FAQ)</a>
+      </div>
+
+      <div class="footer-contacts">
+        <h2>Контакты</h2>
+        <p><b>E-mail:</b> sirencloths@gmail.com</p>
+        <p><b>Телефон:</b> +998 (20) 001-66-68</p>
+        <p><b>Поддержка:</b> отвечаем ежедневно</p>
+        <p>с 10:00 до 22:00</p>
+      </div>
+
+      <div class="footer-social">
+        <div class="social-icons" aria-label="Соцсети">
+          <a href="#" aria-label="TikTok">♪</a>
+          <a href="#" aria-label="X">𝕏</a>
+          <a href="#" aria-label="YouTube">▶</a>
+          <a href="#" aria-label="Facebook">f</a>
+          <a href="#" aria-label="Telegram">➤</a>
+          <a href="#" aria-label="Instagram">◎</a>
+        </div>
+        <a class="policy-link" href="#">Политика конфиденциальности</a>
+        <a class="policy-link" href="#">Пользовательское соглашение</a>
+        <div class="store-buttons">
+          <a href="#"><small>Get it on</small><b>Google Play</b></a>
+          <a href="#"><small>Download on the</small><b>App Store</b></a>
+        </div>
+      </div>
+
+      <div class="footer-payments">
+        <h2>Виды оплаты</h2>
+        <div>
+          <span>UZCARD</span>
+          <span>HUMO</span>
+          <span>VISA</span>
+          <span>Mastercard</span>
+          <span>Payme</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="siren-footer__bottom">2025 © ИП ООО «SIREN» ВСЕ ПРАВА ЗАЩИЩЕНЫ</div>
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html>

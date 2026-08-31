@@ -1,0 +1,35 @@
+import type { Metadata } from "next";
+import localFont from "next/font/local";
+import "./globals.css";
+import { CartProvider } from "@/components/CartContext";
+import { LanguageProvider } from "@/components/LanguageProvider";
+import { SearchProvider } from "@/components/SearchProvider";
+import { FavoriteProvider } from "@/components/FavoriteContext";
+import MobileBottomNav from "@/components/MobileBottomNav";
+
+const gilroy = localFont({
+  src: "../public/fonts/Gilroy-Extrabold.ttf",
+  weight: "800",
+  style: "normal",
+  display: "swap",
+  variable: "--font-gilroy",
+});
+
+export const metadata: Metadata = {
+  title: "SIREN",
+  description: "SIREN — новая коллекция одежды, аксессуаров и мерча.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="ru" className={gilroy.variable}>
+      <body>
+        <LanguageProvider>
+          <FavoriteProvider><SearchProvider><CartProvider>{children}<MobileBottomNav /></CartProvider></SearchProvider></FavoriteProvider>
+        </LanguageProvider>
+      </body>
+    </html>
+  );
+}
