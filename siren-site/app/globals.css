@@ -1066,6 +1066,21 @@ button {
 /* Keep the "ПЕРЕЙТИ" underline exactly under its label, never across the banner. */
 .banner-copy b { display: inline-block; width: fit-content; }
 
+/* Mobile header: preserve every navigation item down to narrow phone widths. */
+@media (max-width: 760px) {
+  .topbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .topbar-control { min-width: 0; margin: 0 clamp(8px, 3.6vw, 16px); gap: clamp(5px, 1.6vw, 7px); font-size: clamp(17px, 5vw, 22px); }
+  .topbar-control--right { margin-right: clamp(8px, 3.6vw, 16px); }
+  .topbar-control img { width: clamp(20px, 6vw, 26px); height: clamp(20px, 6vw, 26px); flex: 0 0 auto; }
+  .topbar-control span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .header .nav { box-sizing: border-box; min-width: 0; min-height: 48px; height: 48px; padding: 0 clamp(10px, 4.5vw, 20px); overflow: hidden; }
+  .nav-logo, .nav-logo img { width: clamp(70px, 20.9vw, 92px); height: auto; flex: 0 0 clamp(70px, 20.9vw, 92px); }
+  .nav-menu { min-width: 0; margin-left: -5px; gap: clamp(2px, 1.1vw, 5px); }
+  .nav-menu li { min-width: 0; flex: 0 1 auto; }
+  .nav-menu a { overflow: hidden; font-size: clamp(9px, 2.9vw, 14px); letter-spacing: -.35px; text-overflow: ellipsis; }
+}
+
 .fixed-top {
   position: fixed;
   top: 0;
