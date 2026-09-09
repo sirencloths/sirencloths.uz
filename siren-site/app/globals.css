@@ -6923,6 +6923,9 @@ body {
 @media(max-width:760px){
   .fixed-top + .product-detail{margin-top:0!important;padding-top:var(--site-header-stack)!important}
   .product-detail>.product-mobile-carousel{margin-top:0!important;padding-top:0!important}
+  .fixed-top + .search-page{padding-top:var(--site-header-stack)!important}
+  .search-page-content .site-search-input{margin-top:0!important}
+  .site-search-layer>.site-search{top:76px!important;margin-top:0!important}
 }
 @media(max-width:760px){.hero{min-height:620px;height:82svh}.hero-media{object-position:center}}
 @media(prefers-reduced-motion:reduce){.hero-slides,.products-track,.collections-page-product-track{transition:none!important}.product-card-image{transition:none!important}}
