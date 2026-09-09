@@ -27,6 +27,7 @@ export default function CartPage() {
     cart,
     increaseQuantity,
     decreaseQuantity,
+    removeFromCart,
   } = useCart();
 
   const [promo, setPromo] = useState("");
@@ -124,6 +125,11 @@ export default function CartPage() {
 
       <main className="cart-page">
 
+        <div className="cart-mobile-heading">
+          <h1>{t("cart")}</h1>
+          <button type="button" aria-label="Korzinani yopish" onClick={() => router.push("/shop")}>×</button>
+        </div>
+
         {/* CART TITLE */}
         <div className="cart-title">
           <h1>{t("cart")}</h1>
@@ -131,22 +137,6 @@ export default function CartPage() {
           <span className="cart-count">
             ({cart.length})
           </span>
-        </div>
-
-        <div className="mobile-cart-promo">
-          <div className={`cart-promo-input${discountApplied ? " is-applied" : ""}`}>
-            <input
-              type="text"
-              placeholder={t("enterCode")}
-              value={promo}
-              readOnly={discountApplied}
-              onChange={(event) => updatePromo(event.target.value)}
-            />
-            {discountApplied && <span aria-label="Promokod qabul qilindi">✓</span>}
-          </div>
-          <button type="button" onClick={discountApplied ? removePromo : applyPromo}>
-            {discountApplied ? "OLIB TASHLASH" : t("apply")}
-          </button>
         </div>
 
         {/* PRODUCTS */}
@@ -180,7 +170,7 @@ export default function CartPage() {
                 {/* INFO */}
                 <div className="cart-product-info">
 
-                  <div className="cart-product-row">
+                  <div className="cart-product-row cart-product-row--name">
                     <strong>
                       {t("name")}
                     </strong>
@@ -190,7 +180,7 @@ export default function CartPage() {
                     </span>
                   </div>
 
-                  <div className="cart-product-row">
+                  <div className="cart-product-row cart-product-row--color">
                     <strong>
                       {t("color")}
                     </strong>
@@ -200,7 +190,7 @@ export default function CartPage() {
                     </span>
                   </div>
 
-                  <div className="cart-product-row">
+                  <div className="cart-product-row cart-product-row--size">
                     <strong>
                       {t("size")}
                     </strong>
@@ -241,6 +231,15 @@ export default function CartPage() {
                         height={24}
                       />
                     )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="cart-product-remove"
+                    onClick={() => removeFromCart(item.id, item.color, item.size)}
+                    aria-label={`${item.title}ni korzinadan olib tashlash`}
+                  >
+                    ×
                   </button>
 
                   {/* QUANTITY */}
@@ -402,7 +401,7 @@ export default function CartPage() {
           <button type="button" onClick={discountApplied ? removePromo : applyPromo}>{discountApplied ? "OLIB TASHLASH" : t("apply")}</button>
         </div>
         <div className="mobile-cart-summary-details">
-          <div><span>{t("subtotal")}</span><b>{subtotal.toLocaleString(locale)} СУМ</b></div>
+          <div><span>{t("subtotal")} ({selectedItems.length})</span><b>{subtotal.toLocaleString(locale)} СУМ</b></div>
           {discountApplied && <div><span>КОД ALEX10</span><b className="cart-discount">−{discount.toLocaleString(locale)} СУМ</b></div>}
           <div><span>{t("estimatedDelivery")}</span><b>{delivery.toLocaleString(locale)} СУМ</b></div>
         </div>
@@ -417,7 +416,7 @@ export default function CartPage() {
         </button>}
       </aside>
 
-      <Footer />
+      <div className="cart-page-footer"><Footer /></div>
     </>
   );
 }

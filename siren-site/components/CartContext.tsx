@@ -24,7 +24,7 @@ type AddToCartItem = Omit<CartItem, "quantity">;
 type CartContextType = {
   cart: CartItem[];
   addToCart: (item: AddToCartItem) => void;
-  removeFromCart: (id: string) => void;
+  removeFromCart: (id: string, color?: string, size?: string) => void;
   increaseQuantity: (id: string) => void;
   decreaseQuantity: (id: string) => void;
   clearCart: () => void;
@@ -111,9 +111,9 @@ export function CartProvider({
     });
   };
 
-  const removeFromCart = (id: string) => {
+  const removeFromCart = (id: string, color?: string, size?: string) => {
     setCart((prev) =>
-      prev.filter((item) => item.id !== id)
+      prev.filter((item) => item.id !== id || (color !== undefined && (item.color !== color || item.size !== size)))
     );
   };
 
