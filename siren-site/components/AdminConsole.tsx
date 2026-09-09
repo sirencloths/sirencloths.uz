@@ -122,7 +122,7 @@ type Product = {
     };
   };
 };
-type Taxonomy = { id: string; name: string; slug: string; isVisible: boolean };
+type Taxonomy = { id: string; name: string; slug: string; isVisible: boolean; productCount?: number };
 type Order = {
   id: string;
   orderNumber: string;
@@ -1865,13 +1865,7 @@ export default function AdminConsole() {
         </TabsContent>
         <TabsContent value="catalog">
           <div className="admin-card-grid">
-            <Taxonomy
-              title="Kategoriya"
-              data={category}
-              setData={setCategory}
-              rows={categories}
-              submit={(e) => taxonomy("categories", e)}
-            />
+            <CategoryManager categories={categories} products={products} token={token} onChanged={() => refresh("catalog")} />
             <Taxonomy
               title="Kolleksiya"
               data={collection}
@@ -2049,6 +2043,13 @@ function Taxonomy({
       </CardContent>
     </Card>
   );
+}
+function CategoryManager({ categories, products, token, onChanged }: { categories: Taxonomy[]; products: Product[]; token: string; onChanged: () => Promise<void> }) {
+  const [editing, setEditing] = useState<Taxonomy | null>(null); const [query, setQuery] = useState(""); const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
+  const visible = products.filter((product) => `${product.title} ${product.slug}`.toLocaleLowerCase("uz-UZ").includes(query.toLocaleLowerCase("uz-UZ")));
+  const saveCategory = async () => { if (!editing) return; setBusy(true); try { await api(`/admin/catalog/categories/${editing.id}`, token, { method: "PATCH", body: JSON.stringify({ name: editing.name, slug: editing.slug, isVisible: editing.isVisible }) }); await onChanged(); setMessage("Kategoriya saqlandi."); } catch (error) { setMessage(error instanceof Error ? error.message : "Kategoriya saqlanmadi."); } finally { setBusy(false); } };
+  const move = async (product: Product) => { if (!editing) return; if (product.categoryId && product.categoryId !== editing.id && !confirm(`“${product.title}” boshqa kategoriyada. Shu kategoriyaga ko‘chirilsinmi?`)) return; setBusy(true); try { await api(`/admin/catalog/products/${product.id}`, token, { method: "PATCH", body: JSON.stringify({ categoryId: editing.id }) }); await onChanged(); } catch (error) { setMessage(error instanceof Error ? error.message : "Mahsulot ko‘chirilmadi."); } finally { setBusy(false); } };
+  return <Card className="category-manager"><CardHeader><div><p className="ui-overline">KATALOG / KATEGORIYALAR</p><CardTitle>Kategoriyalar</CardTitle><CardDescription>Har bir mahsulot faqat bitta primary kategoriyaga tegishli.</CardDescription></div><Badge variant="neutral">{categories.length} ta</Badge></CardHeader><CardContent><div className="category-manager-list">{categories.map((category) => <button type="button" key={category.id} className={editing?.id === category.id ? "is-active" : ""} onClick={() => { setEditing({ ...category }); setQuery(""); setMessage(""); }}><span><b>{category.name}</b><small>/{category.slug}</small></span><em>{category.productCount ?? products.filter((product) => product.categoryId === category.id).length} mahsulot</em></button>)}</div>{editing && <section className="category-editor"><header><div><p className="ui-overline">EDIT CATEGORY</p><h3>{editing.name}</h3></div><Button size="sm" onClick={() => void saveCategory()} disabled={busy}>Saqlash</Button></header><div className="ui-form-grid"><Field label="Nomi"><input value={editing.name} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></Field><Field label="Slug"><input value={editing.slug} onChange={(event) => setEditing({ ...editing, slug: event.target.value })} /></Field></div><label className="admin-record-active"><input type="checkbox" checked={editing.isVisible} onChange={(event) => setEditing({ ...editing, isVisible: event.target.checked })} /> Saytda ko‘rsatish</label><div className="category-product-head"><div><h3>Mahsulotlar</h3><span>✓ — shu kategoriya; boshqa mahsulotni bosish uni shu yerga ko‘chiradi.</span></div><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Mahsulot qidirish..." /></div><div className="category-product-list">{visible.map((product) => { const assigned = product.categoryId === editing.id; const owner = categories.find((category) => category.id === product.categoryId); return <button type="button" key={product.id} className={assigned ? "is-assigned" : ""} disabled={busy} onClick={() => !assigned && void move(product)}><span>{assigned ? "✓" : "+"}</span><div><b>{product.title}</b><small>{assigned ? "Shu kategoriya" : owner ? `Hozir: ${owner.name}` : "Kategoriya biriktirilmagan"}</small></div><em>{assigned ? "Biriktirilgan" : "Shu yerga ko‘chirish"}</em></button>; })}{!visible.length && <Empty>Mahsulot topilmadi.</Empty>}</div><AdminToast message={message} /></section>}</CardContent></Card>;
 }
 function List({ title, rows }: { title: string; rows: string[] }) {
   return (
