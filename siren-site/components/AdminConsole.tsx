@@ -88,6 +88,12 @@ type InventoryTransfer = {
   product?: Pick<Product, "id" | "title" | "slug">;
   variant?: Variant;
 };
+type CustomerRecord = {
+  id: string; email?: string | null; phone?: string | null; firstName: string; lastName: string;
+  createdAt: string; lastLoginAt?: string | null; region?: string | null; isActive?: boolean;
+  emailVerifiedAt?: string | null; welcomeDiscountEligible?: boolean; welcomeDiscountPercent?: number;
+  totalOrders: number; totalSpent: number;
+};
 type Product = {
   id: string;
   title: string;
@@ -699,6 +705,11 @@ function AdminModulePage({ config, loading, error, onNotify }: { config: AdminMo
   useEffect(() => { setSubtab(config.tabs[0]); setQuery(""); setPage(1); }, [config]);
   return <section className="admin-module-workspace"><aside className="admin-module-subnav"><p className="ui-overline">{config.title}</p>{config.tabs.map((item) => <button type="button" key={item} className={subtab === item ? "is-active" : ""} onClick={() => { setSubtab(item); setPage(1); }}>{item}</button>)}</aside><div className="admin-module-panel"><Card><CardHeader><div><p className="ui-overline">{config.title}</p><CardTitle>{subtab}</CardTitle><CardDescription>{config.description}</CardDescription></div><Button type="button" onClick={() => onNotify(`${config.action} formasi tayyorlanmoqda.`)}><Plus size={16} />{config.action}</Button></CardHeader><CardContent>{config.metrics && <div className="admin-module-metrics">{config.metrics.slice(0, 6).map((metric) => <div key={metric}><span>{metric}</span><b>—</b></div>)}</div>}<div className="admin-table-tools"><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Qidirish..." aria-label="Qidirish"/><select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Saralash"><option value="newest">Eng yangisi</option><option value="oldest">Eng eskisi</option><option value="az">A–Z</option><option value="za">Z–A</option></select><select aria-label="Filter"><option>Barcha statuslar</option><option>Aktiv</option><option>Kutilmoqda</option><option>Yakunlangan</option></select></div>{loading ? <div className="admin-module-state">Yuklanmoqda…</div> : error ? <div className="admin-module-state is-error">{error}</div> : <div className="admin-module-table-wrap"><table className="admin-module-table"><thead><tr>{config.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody><tr><td colSpan={config.columns.length}><Empty>{query ? "Qidiruv bo‘yicha natija topilmadi." : "Bu bo‘limda hozircha ma’lumot yo‘q."}</Empty></td></tr></tbody></table></div>}<div className="admin-table-pagination"><span>0 ta natija · {page}-sahifa</span><div><Button type="button" size="sm" variant="outline" disabled>Oldingi</Button><Button type="button" size="sm" variant="outline" disabled>Keyingi</Button></div></div></CardContent></Card><Card className="admin-module-fields"><CardHeader><CardTitle>{subtab} uchun ma’lumotlar</CardTitle><CardDescription>Yaratish yoki tahrirlash formasida quyidagi maydonlar bo‘ladi.</CardDescription></CardHeader><CardContent><div>{config.fields.map((field) => <span key={field}>{field}</span>)}</div></CardContent></Card></div></section>;
 }
+function CustomerManager({ customers, loading, error }: { customers: CustomerRecord[]; loading: boolean; error: string }) {
+  const [query, setQuery] = useState("");
+  const filtered = customers.filter((customer) => `${customer.firstName} ${customer.lastName} ${customer.email ?? ""} ${customer.phone ?? ""}`.toLocaleLowerCase("uz-UZ").includes(query.toLocaleLowerCase("uz-UZ")));
+  return <section className="admin-module-workspace"><div className="admin-module-panel"><Card><CardHeader><div><p className="ui-overline">MIJOZLAR</p><CardTitle>Barcha mijozlar</CardTitle><CardDescription>Saytda ro‘yxatdan o‘tgan va checkout qilgan haqiqiy customer yozuvlari.</CardDescription></div><Badge variant="neutral">{customers.length} ta mijoz</Badge></CardHeader><CardContent><div className="admin-table-tools"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ism, email yoki telefon qidirish..." aria-label="Mijoz qidirish" /></div>{loading ? <div className="admin-module-state">Yuklanmoqda…</div> : error ? <div className="admin-module-state is-error">{error}</div> : <div className="admin-module-table-wrap"><table className="admin-module-table"><thead><tr><th>Ism</th><th>Telefon</th><th>Email</th><th>Ro‘yxatdan o‘tgan</th><th>Buyurtmalar</th><th>Jami xarid</th><th>O‘rtacha chek</th><th>Region</th><th>Holat</th></tr></thead><tbody>{filtered.map((customer) => { const average = customer.totalOrders ? customer.totalSpent / customer.totalOrders : 0; return <tr key={customer.id}><td><b>{`${customer.firstName} ${customer.lastName}`.trim() || "—"}</b></td><td>{customer.phone || "—"}</td><td>{customer.email || "—"}{customer.emailVerifiedAt ? <small> ✓</small> : null}</td><td>{readableDate(customer.createdAt)}</td><td>{customer.totalOrders}</td><td>{Math.round(customer.totalSpent).toLocaleString("uz-UZ")} UZS</td><td>{Math.round(average).toLocaleString("uz-UZ")} UZS</td><td>{customer.region || "—"}</td><td>{customer.isActive === false ? "Nofaol" : customer.welcomeDiscountEligible ? `${customer.welcomeDiscountPercent || 15}% welcome` : "Faol"}</td></tr>; })}{!filtered.length && <tr><td colSpan={9}><Empty>{query ? "Qidiruv bo‘yicha mijoz topilmadi." : "Hali customer yozuvi yo‘q."}</Empty></td></tr>}</tbody></table></div>}<div className="admin-table-pagination"><span>{filtered.length} ta natija</span></div></CardContent></Card></div></section>;
+}
 function Empty({ children }: { children: ReactNode }) {
   return <p className="admin-empty-v2">{children}</p>;
 }
@@ -747,6 +758,7 @@ export default function AdminConsole() {
   const [categories, setCategories] = useState<Taxonomy[]>([]);
   const [collections, setCollections] = useState<Taxonomy[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [lookbookEntries, setLookbookEntries] = useState<LookbookEntry[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
@@ -875,6 +887,7 @@ export default function AdminConsole() {
         );
       if (t === "products" || t === "catalog") await catalog();
       if (t === "orders") setOrders(await api<Order[]>("/admin/orders", token));
+      if (t === "customers") setCustomers(await api<CustomerRecord[]>("/admin/customers", token));
       if (t === "pages") setPages(await api<CmsPage[]>("/admin/content/pages", token));
       if (t === "content") {
         const [nextBanners, nextLookbook, nextPosts, nextRecords, settings] = await Promise.all([
@@ -1886,7 +1899,7 @@ export default function AdminConsole() {
           </Card>
         </TabsContent>
         <TabsContent value="delivery"><AdminModulePage config={adminModules.delivery} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
-        <TabsContent value="customers"><AdminModulePage config={adminModules.customers} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
+        <TabsContent value="customers"><CustomerManager customers={customers} loading={loading} error={error} /></TabsContent>
         <TabsContent value="promos"><AdminModulePage config={adminModules.promos} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
         <TabsContent value="partners"><AdminModulePage config={adminModules.partners} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
         <TabsContent value="finance"><AdminModulePage config={adminModules.finance} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
