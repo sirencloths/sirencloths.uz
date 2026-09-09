@@ -10,9 +10,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { heroProducts } from "@/lib/data";
+import { heroProducts, type Product } from "@/lib/data";
 import { searchCategories, searchProducts } from "@/lib/search";
 import { useLanguage } from "./LanguageProvider";
+import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
 
 type SearchContextValue = {
   isSearchOpen: boolean;
@@ -70,8 +71,12 @@ export function SearchContents({
 }) {
   const { t } = useLanguage();
   const [query, setQuery] = useState("");
-  const filtered = searchProducts(query).slice(0, 4);
-  const products = query ? filtered : heroProducts.slice(0, 4);
+  const [remoteProducts, setRemoteProducts] = useState<Product[] | null>(null);
+  useEffect(() => { let mounted = true; void getStorefrontProducts().then((items) => { if (mounted && items.length) setRemoteProducts(toStorefrontColorCards(items)); }).catch(() => undefined); return () => { mounted = false; }; }, []);
+  const catalogue = remoteProducts?.length ? remoteProducts : heroProducts;
+  const normalizedQuery = query.trim().toLocaleLowerCase("uz-UZ");
+  const filtered = normalizedQuery ? catalogue.filter((product) => `${product.title} ${product.color}`.toLocaleLowerCase("uz-UZ").includes(normalizedQuery)).slice(0, 4) : searchProducts(query).slice(0, 4);
+  const products = normalizedQuery ? filtered : catalogue.slice(0, 4);
 
   return (
     <>
@@ -90,7 +95,7 @@ export function SearchContents({
         {!query && <div className="site-search-categories">{searchCategories.map((category) => <button key={category} type="button" onClick={() => setQuery(category)}>{category}</button>)}</div>}
         <div className="site-search-products">
           {products.map((product) => (
-            <Link href={`/products/${product.id}`} key={product.id} onClick={onProductClick} className="site-search-product">
+            <Link href={`/products/${product.id}${product.colorSlug ? `?color=${encodeURIComponent(product.colorSlug)}` : ""}`} key={product.cardId ?? product.id} onClick={onProductClick} className="site-search-product">
               <Image src={product.image} alt={product.title} width={270} height={270} />
               <strong>{product.title}</strong><span>{product.color === "GRAY" ? t("gray") : product.color}</span><b>{product.price}</b>
             </Link>

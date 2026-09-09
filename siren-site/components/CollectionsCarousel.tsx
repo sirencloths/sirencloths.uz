@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import type { Product } from "@/lib/data";
 import ProductCard from "./ProductCard";
@@ -17,7 +17,7 @@ export default function CollectionsCarousel({
   const [start, setStart] = useState(initialOffset % products.length);
   const [direction, setDirection] = useState<-1 | 1 | null>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [mobileIndex, setMobileIndex] = useState(0);
+  const [mobileIndex, setMobileIndex] = useState(1);
   const [slideStep, setSlideStep] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -25,6 +25,10 @@ export default function CollectionsCarousel({
   const dragStartX = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
   const suppressClick = useRef(false);
+  const productSignature = products.map((product) => product.cardId ?? product.id).join("|");
+  const mobileProducts = useMemo(() => products.length > 1 ? [products[products.length - 1], ...products, products[0]] : products, [productSignature]);
+
+  useEffect(() => { setMobileIndex(1); }, [productSignature]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 760px)");
@@ -96,7 +100,7 @@ export default function CollectionsCarousel({
     const offset = dragOffsetRef.current;
     const threshold = Math.max(36, slideStep * 0.16);
     if (Math.abs(offset) > threshold) {
-      setMobileIndex((current) => Math.max(0, Math.min(products.length - 1, current + (offset < 0 ? 1 : -1))));
+      setMobileIndex((current) => current + (offset < 0 ? 1 : -1));
     }
     dragStartX.current = null;
     dragOffsetRef.current = 0;
@@ -104,7 +108,7 @@ export default function CollectionsCarousel({
     setIsDragging(false);
   };
 
-  const visibleProducts = isMobile ? products : trackProducts;
+  const visibleProducts = isMobile ? mobileProducts : trackProducts;
   const transform = isMobile
     ? `translateX(${-mobileIndex * slideStep + dragOffset}px)`
     : direction === 1
@@ -153,10 +157,15 @@ export default function CollectionsCarousel({
             transform,
             transition: isMobile && isDragging ? "none" : undefined,
           }}
-          onTransitionEnd={finishSlide}
+          onTransitionEnd={() => {
+            if (!isMobile) { finishSlide(); return; }
+            if (products.length < 2) return;
+            if (mobileIndex === 0) setMobileIndex(products.length);
+            if (mobileIndex === products.length + 1) setMobileIndex(1);
+          }}
         >
           {visibleProducts.map((product, index) => (
-            <div className="collections-page-product-slide" key={`${product.id}-${index}`}>
+            <div className="collections-page-product-slide" key={`${product.cardId ?? product.id}-${isMobile && (index === 0 || index === visibleProducts.length - 1) ? `loop-${index}` : index}`}>
               <ProductCard product={product} small />
             </div>
           ))}

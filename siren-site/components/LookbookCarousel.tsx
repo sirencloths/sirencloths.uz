@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LookbookItem } from "@/lib/data";
 
@@ -16,6 +16,10 @@ export default function LookbookCarousel({
   const [motion, setMotion] = useState<-1 | 1>(1);
   const startX = useRef<number | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    setCurrent(Math.min(Math.max(initialIndex, 0), Math.max(items.length - 1, 0)));
+  }, [initialIndex, items.length]);
 
   const show = (index: number, nextMotion: -1 | 1 = 1) => {
     setMotion(nextMotion);
@@ -51,14 +55,11 @@ export default function LookbookCarousel({
           onPointerUp={(event) => finishSwipe(event.clientX)}
           onPointerCancel={() => { startX.current = null; }}
         >
-          <Image
+          <img
             key={active.id}
             className={`lookbook-frame-image lookbook-frame-image--${motion === 1 ? "next" : "previous"}`}
             src={active.image}
             alt={active.alt}
-            width={1000}
-            height={1000}
-            priority
           />
         </div>
         <button className="lookbook-arrow lookbook-arrow--next" type="button" onClick={next} aria-label="Next image">

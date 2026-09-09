@@ -1,25 +1,24 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import { useCart } from "@/components/CartContext";
 import { orderStatusMeta, type Order } from "@/lib/orders";
 
 type Address = { id: string; title: string; lines: string[] };
-type Profile = { name: string; email: string; addresses: Address[] };
+type Profile = { name: string; email: string; addresses: Address[]; marketingEmails: boolean };
 
 const initialProfile: Profile = {
-  name: "ALEX",
-  email: "ALEXPROSIGN@GMAIL.COM",
-  addresses: [{
-    id: "default-address",
-    title: "Oleg Yusupov",
-    lines: ["Oleg Yusupov", "Feruza TTZ City 30 12", "Tashkent", "100000", "Uzbekistan", "+998200016668"],
-  }],
+  name: "",
+  email: "",
+  addresses: [],
+  marketingEmails: false,
 };
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<"profile" | "orders">("profile");
@@ -37,7 +36,7 @@ export default function ProfilePage() {
         setProfile({
           ...initialProfile,
           ...parsed,
-          addresses: Array.isArray(parsed.addresses) && parsed.addresses.length ? parsed.addresses : initialProfile.addresses,
+          addresses: Array.isArray(parsed.addresses) ? parsed.addresses : initialProfile.addresses,
         });
       } catch { localStorage.removeItem("siren-profile"); }
     }
@@ -67,6 +66,13 @@ export default function ProfilePage() {
     total: cart.reduce((sum, item) => sum + Number(item.price.replace(/\D/g, "")) * item.quantity, 0).toLocaleString("ru-RU") + " СУМ",
   } : null;
   const visibleOrders = orders.length ? orders : cartOrder ? [cartOrder] : [];
+  const signOut = () => {
+    localStorage.removeItem("siren-profile");
+    localStorage.removeItem("siren-orders");
+    setProfile(initialProfile);
+    setOrders([]);
+    router.push("/");
+  };
 
   return <><FixedTop />
     <main className="profile-page">
@@ -76,14 +82,16 @@ export default function ProfilePage() {
       </div>
       {tab === "profile" ? <>
         <section className="profile-box profile-details">
-          <label><b>ИМЯ</b><input value={profile.name} onChange={(e) => setProfile((current) => ({ ...current, name: e.target.value }))} /><span>✎</span></label>
-          <label><b>E-MAIL</b><input type="email" value={profile.email} onChange={(e) => setProfile((current) => ({ ...current, email: e.target.value }))} /><span>✎</span></label>
+          <label><b>ИМЯ</b><input value={profile.name} placeholder="Не указано" onChange={(e) => setProfile((current) => ({ ...current, name: e.target.value }))} /><span>✎</span></label>
+          <label><b>E-MAIL</b><input type="email" value={profile.email} placeholder="Не указан" onChange={(e) => setProfile((current) => ({ ...current, email: e.target.value }))} /><span>✎</span></label>
         </section>
         <section className="profile-box profile-addresses">
           <div className="profile-address-heading"><b>АДРЕС</b><button type="button" onClick={() => setShowAddressForm((open) => !open)}>ДОБАВИТЬ +</button></div>
           {showAddressForm && <form className="profile-address-form" onSubmit={addAddress}><div>{([ ["name", "ИМЯ"], ["street", "УЛИЦА, ДОМ"], ["city", "ГОРОД"], ["country", "СТРАНА"], ["phone", "ТЕЛЕФОН"] ] as const).map(([field, placeholder]) => <input key={field} value={address[field]} onChange={(e) => { setAddress((current) => ({ ...current, [field]: e.target.value })); setAddressError(""); }} placeholder={placeholder} />)}</div><button type="submit">СОХРАНИТЬ</button>{addressError && <p className="profile-address-error">{addressError}</p>}</form>}
           {profile.addresses.length ? <div className="profile-address-list">{profile.addresses.map((address, index) => <article key={address.id}><button type="button" className="profile-address-remove" onClick={() => setProfile((current) => ({ ...current, addresses: current.addresses.filter((item) => item.id !== address.id) }))}>×</button><small>{index === 0 ? "АДРЕС ПО УМОЛЧАНИЮ" : "АДРЕС"}</small>{address.lines.map((line, lineIndex) => <p key={`${address.id}-${lineIndex}`}>{line}</p>)}</article>)}</div> : <p className="profile-empty">НЕТ ДОБАВЛЕННЫХ АДРЕСОВ</p>}
         </section>
+        <section className="profile-box profile-preferences"><div><b>МАРКЕТИНГОВЫЕ РАССЫЛКИ</b><span>Получать новости и предложения на e-mail</span></div><label className="profile-toggle"><input type="checkbox" checked={profile.marketingEmails} onChange={(event) => setProfile((current) => ({ ...current, marketingEmails: event.target.checked }))} /><i /></label></section>
+        <section className="profile-actions"><button type="button" onClick={signOut}>ВЫЙТИ</button><button type="button" disabled title="Для выхода со всех устройств требуется customer-auth API">ВЫЙТИ СО ВСЕХ УСТРОЙСТВ</button></section>
       </> : <section className="profile-orders">{visibleOrders.length ? visibleOrders.map((order) => {
         const status = orderStatusMeta[order.status];
         return <article className="profile-order" key={order.id}>

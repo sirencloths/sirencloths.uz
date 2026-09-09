@@ -4,6 +4,7 @@ import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/CartContext";
+import { cartSubtotal, shippingCost } from "@/lib/commerce";
 import type { Order, OrderStatus } from "@/lib/orders";
 
 const payments = ["КАРТА", "PAYME", "CLICK", "PAYNET"] as const;
@@ -21,8 +22,8 @@ export default function CheckoutPage() {
   const [promo, setPromo] = useState("");
   const [discountApplied, setDiscountApplied] = useState(false);
   const [error, setError] = useState("");
-  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + Number(item.price.replace(/\D/g, "")) * item.quantity, 0), [cart]);
-  const shipping = cart.length ? 60000 : 0;
+  const subtotal = useMemo(() => cartSubtotal(cart), [cart]);
+  const shipping = shippingCost(subtotal, cart.length);
   const discount = discountApplied ? subtotal * .1 : 0;
   const total = subtotal - discount + shipping;
   const money = (value: number) => `${value.toLocaleString("ru-RU")} СУМ`;
@@ -45,6 +46,10 @@ export default function CheckoutPage() {
     const order: Order = { id: crypto.randomUUID().slice(0, 8).toUpperCase(), paidAt: new Date().toISOString(), status: "in_transit" as OrderStatus, items: cart, total: money(total) };
     const saved = JSON.parse(localStorage.getItem("siren-orders") ?? "[]");
     localStorage.setItem("siren-orders", JSON.stringify([order, ...(Array.isArray(saved) ? saved : [])]));
+    try {
+      const profile = JSON.parse(localStorage.getItem("siren-profile") ?? "{}");
+      localStorage.setItem("siren-profile", JSON.stringify({ ...profile, email: form.email }));
+    } catch { localStorage.setItem("siren-profile", JSON.stringify({ email: form.email })); }
     localStorage.removeItem("siren-cart-promo");
     clearCart();
     router.push("/profile");

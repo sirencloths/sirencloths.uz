@@ -7,6 +7,7 @@ import {
   useState,
   ReactNode,
 } from "react";
+import { cartSubtotal } from "@/lib/commerce";
 
 export type CartItem = {
   id: string;
@@ -28,6 +29,10 @@ type CartContextType = {
   decreaseQuantity: (id: string) => void;
   clearCart: () => void;
   cartCount: number;
+  subtotal: number;
+  isCartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
 };
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -39,6 +44,7 @@ export function CartProvider({
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Load cart from localStorage
   useEffect(() => {
@@ -145,6 +151,7 @@ export function CartProvider({
     (sum, item) => sum + item.quantity,
     0
   );
+  const subtotal = cartSubtotal(cart);
 
   return (
     <CartContext.Provider
@@ -156,6 +163,10 @@ export function CartProvider({
         decreaseQuantity,
         clearCart,
         cartCount,
+        subtotal,
+        isCartOpen,
+        openCart: () => setIsCartOpen(true),
+        closeCart: () => setIsCartOpen(false),
       }}
     >
       {children}

@@ -5,30 +5,50 @@ import { useCart } from "./CartContext";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
 import { useSearch } from "./SearchProvider";
+import { useEffect, useState } from "react";
 
-const navLinks = [
-  { href: "/shop", label: "shop" },
-  { href: "/collections", label: "collections" },
-  { href: "/lookbook", label: "lookbook" },
-  { href: "/blog", label: "blog" },
-] as const;
+type NavigationLink = { id: string; href: string; label: string; translationKey?: string; isActive?: boolean };
+
+const defaultNavLinks: NavigationLink[] = [
+  { id: "shop", href: "/shop", label: "shop", translationKey: "shop", isActive: true },
+  { id: "collections", href: "/collections", label: "collections", translationKey: "collections", isActive: true },
+  { id: "lookbook", href: "/lookbook", label: "lookbook", translationKey: "lookbook", isActive: true },
+  { id: "blog", href: "/blog", label: "blog", translationKey: "blog", isActive: true },
+];
 
 const navIcons = [
-  { href: "#search", label: "search", icon: "/icons/search.svg" },
+  { href: "/search", label: "search", icon: "/icons/search.svg" },
   { href: "/favorites", label: "favorites", icon: "/icons/heart.svg" },
   { href: "/cart", label: "cart", icon: "/icons/cart.svg" },
   { href: "/profile", label: "profile", icon: "/icons/user.svg" },
 ] as const;
 
 export default function Header() {
-  const { cartCount } = useCart();
+  const { cartCount, openCart } = useCart();
   const pathname = usePathname();
   const { t } = useLanguage();
   const { isSearchOpen, toggleSearch } = useSearch();
+  const [navLinks, setNavLinks] = useState<NavigationLink[]>(defaultNavLinks);
+  const [isMobile, setIsMobile] = useState(false);
 
-  const isCartPage = pathname === "/cart";
-  const isFavoritesPage = pathname === "/favorites";
-  const isProfilePage = pathname === "/profile";
+  useEffect(() => {
+    let mounted = true;
+    void fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"}/content/navigation`, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((items: NavigationLink[]) => {
+        if (mounted && Array.isArray(items)) setNavLinks(items);
+      })
+      .catch(() => undefined);
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   return (
     <header className="header">
@@ -48,14 +68,9 @@ export default function Header() {
         {/* NAVIGATION */}
         <ul className="nav-menu">
           {navLinks.map((link) => {
-            const isActive =
-              (link.href === "/shop" &&
-                (pathname === "/shop" ||
-                  pathname.startsWith("/shop/"))) ||
-              (link.href === "/collections" &&
-                pathname === "/collections") ||
-              (link.href === "/lookbook" && pathname === "/lookbook") ||
-              (link.href === "/blog" && pathname === "/blog");
+            const isActive = link.href === "/"
+              ? pathname === "/"
+              : pathname === link.href || pathname.startsWith(`${link.href}/`);
 
             return (
               <li key={link.href}>
@@ -67,7 +82,7 @@ export default function Header() {
                       : "nav-link"
                   }
                 >
-                  {t(link.label)}
+                  {link.translationKey ? t(link.translationKey) : link.label}
                 </a>
               </li>
             );
@@ -81,51 +96,42 @@ export default function Header() {
         >
           {navIcons.map((item) => {
             const isCartIcon = item.href === "/cart";
-            const isSearchIcon = item.href === "#search";
+            const isSearchIcon = item.href === "/search";
             const isFavoriteIcon = item.href === "/favorites";
             const isProfileIcon = item.href === "/profile";
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const desktopCloseIcon = !isMobile && ((isSearchIcon && isSearchOpen) || (isFavoriteIcon && isActive) || (isProfileIcon && isActive));
+            const href = isMobile
+              ? item.href
+              : isSearchIcon
+                ? "#search"
+                : isCartIcon
+                  ? "#cart"
+                  : desktopCloseIcon
+                    ? "/"
+                    : item.href;
 
             return (
               <a
                 key={item.href}
-                href={
-                  isCartIcon && isCartPage
-                    ? "/"
-                    : isFavoriteIcon && isFavoritesPage
-                    ? "/"
-                    : isProfileIcon && isProfilePage
-                    ? "/"
-                    : item.href
-                }
-                aria-label={
-                  isCartIcon && isCartPage
-                    ? t("home")
-                    : isFavoriteIcon && isFavoritesPage
-                    ? t("home")
-                    : isProfileIcon && isProfilePage
-                    ? t("home")
-                    : t(item.label)
-                }
-                className="nav-icon-link"
+                href={href}
+                aria-label={t(item.label)}
+                aria-current={isMobile && isActive ? "page" : undefined}
+                className={`nav-icon-link${isMobile && isActive ? " nav-icon-link--active" : ""}`}
                 onClick={(event) => {
+                  if (isMobile) return;
                   if (isSearchIcon) {
                     event.preventDefault();
                     toggleSearch();
                   }
+                  if (isCartIcon) {
+                    event.preventDefault();
+                    openCart();
+                  }
                 }}
               >
                 <Image
-                  src={
-                    isSearchIcon && isSearchOpen
-                      ? "/icons/close.svg"
-                      : isCartIcon && isCartPage
-                      ? "/icons/close.svg"
-                      : isFavoriteIcon && isFavoritesPage
-                      ? "/icons/close.svg"
-                      : isProfileIcon && isProfilePage
-                      ? "/icons/close.svg"
-                      : item.icon
-                  }
+                  src={desktopCloseIcon ? "/icons/close.svg" : item.icon}
                   alt=""
                   width={30}
                   height={30}
@@ -133,7 +139,6 @@ export default function Header() {
 
                 {/* CART BADGE */}
                 {isCartIcon &&
-                  !isCartPage &&
                   cartCount > 0 && (
                     <span className="cart-badge">
                       {cartCount}

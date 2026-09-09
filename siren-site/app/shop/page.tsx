@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
@@ -10,6 +10,7 @@ import ProductCard from "@/components/ProductCard";
 import { heroProducts } from "@/lib/data";
 import { searchProducts } from "@/lib/search";
 import { useLanguage } from "@/components/LanguageProvider";
+import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
 
 const categories = [
   "ВЕРХ",
@@ -22,7 +23,7 @@ const categories = [
 type Category = (typeof categories)[number];
 
 type ProductWithCategory = (typeof heroProducts)[number] & {
-  category?: Category;
+  category?: string;
 };
 
 export default function ShopPage() {
@@ -38,9 +39,10 @@ function ShopPageContent() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.trim() ?? "";
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [remoteProducts, setRemoteProducts] = useState<ProductWithCategory[] | null>(null);
   // ВСЕ ТОВАРЫ — DEFAULT
   const [selectedCategories, setSelectedCategories] =
-    useState<Category[]>([]);
+    useState<string[]>([]);
 
   const isAllSelected =
     selectedCategories.length === 0;
@@ -63,8 +65,15 @@ function ShopPageContent() {
     });
   };
 
-  const products =
-    heroProducts as ProductWithCategory[];
+  useEffect(() => {
+    let isMounted = true;
+    void getStorefrontProducts().then((items) => {
+    if (isMounted && items.length) setRemoteProducts(toStorefrontColorCards(items));
+    }).catch(() => undefined);
+    return () => { isMounted = false; };
+  }, []);
+
+  const products = remoteProducts ?? heroProducts as ProductWithCategory[];
 
   const searchedProducts = searchQuery
     ? searchProducts(searchQuery) as ProductWithCategory[]
@@ -163,7 +172,7 @@ function ShopPageContent() {
               filteredProducts.map(
                 (product, index) => (
                   <ProductCard
-                    key={`${product.id}-${index}`}
+                    key={product.cardId ?? `${product.id}-${index}`}
                     product={product}
                   />
                 )

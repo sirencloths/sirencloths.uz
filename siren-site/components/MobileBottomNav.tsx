@@ -24,6 +24,8 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const { cartCount } = useCart();
 
+  if (pathname.startsWith("/admin")) return null;
+
   return (
     <nav className="mobile-bottom-nav" aria-label="Мобильная навигация">
       {items.map((item) => {

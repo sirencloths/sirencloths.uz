@@ -1,13 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { useLanguage } from "./LanguageProvider";
 
-export default function ProductInfoAccordion() {
+export default function ProductInfoAccordion({ description, article }: { description?: string; article?: string }) {
   const { t } = useLanguage();
   const [descriptionOpen, setDescriptionOpen] = useState(true);
-  const [deliveryOpen, setDeliveryOpen] = useState(true);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
 
   return (
     <div className="product-info-accordion">
@@ -15,34 +14,17 @@ export default function ProductInfoAccordion() {
         <button
           type="button"
           className="product-info-heading"
-          onClick={() => setDescriptionOpen((prev) => !prev)}
+          onClick={() => { setDescriptionOpen((prev) => !prev); setDeliveryOpen(false); }}
           aria-expanded={descriptionOpen}
         >
           <span>{t("description")}</span>
 
-          <Image
-            className="product-info-arrow"
-            src={
-              descriptionOpen
-                ? "/icons/arrow-up.svg"
-                : "/icons/arrow-down.svg"
-            }
-            alt=""
-            width={20}
-            height={20}
-          />
+          <span className="product-info-arrow" aria-hidden="true">{descriptionOpen ? "−" : "+"}</span>
         </button>
 
         {descriptionOpen && (
           <div className="product-info-content">
-            <ul>
-              <li>{t("classicTee")}</li>
-              <li>{t("graphicPrint")}</li>
-              <li>{t("cotton")}</li>
-              <li>170 Г</li>
-              <li>{t("standardFit")}</li>
-              <li>{t("article")}</li>
-            </ul>
+            <p>{description || t("classicTee")}</p>{article && <p className="product-detail-article">ARTIKUL: {article}</p>}
           </div>
         )}
       </section>
@@ -51,22 +33,12 @@ export default function ProductInfoAccordion() {
         <button
           type="button"
           className="product-info-heading"
-          onClick={() => setDeliveryOpen((prev) => !prev)}
+          onClick={() => { setDeliveryOpen((prev) => !prev); setDescriptionOpen(false); }}
           aria-expanded={deliveryOpen}
         >
           <span>{t("delivery")}</span>
 
-          <Image
-            className="product-info-arrow"
-            src={
-              deliveryOpen
-                ? "/icons/arrow-up.svg"
-                : "/icons/arrow-down.svg"
-            }
-            alt=""
-            width={20}
-            height={20}
-          />
+          <span className="product-info-arrow" aria-hidden="true">{deliveryOpen ? "−" : "+"}</span>
         </button>
 
         {deliveryOpen && (

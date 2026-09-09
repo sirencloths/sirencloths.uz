@@ -1,11 +1,13 @@
 # dependencies
 /node_modules
+/backend/node_modules
 /.pnp
 .pnp.*
 
 # next.js
 /.next/
 /out/
+/backend/dist/
 
 # production
 /build

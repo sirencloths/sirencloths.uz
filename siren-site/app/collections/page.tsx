@@ -3,12 +3,16 @@
 import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import Image from "next/image";
-import { heroProducts } from "@/lib/data";
+import { heroProducts, type Product } from "@/lib/data";
 import CollectionsCarousel from "@/components/CollectionsCarousel";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useEffect, useState } from "react";
+import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
 
 export default function CollectionsPage() {
   const { t } = useLanguage();
+  const [products, setProducts] = useState<Product[]>(heroProducts);
+  useEffect(() => { void getStorefrontProducts().then((items) => { if (items.length) setProducts(toStorefrontColorCards(items)); }).catch(() => undefined); }, []);
 
   return (
     <>
@@ -30,11 +34,11 @@ export default function CollectionsPage() {
         <section className="collections-page-content">
           <CollectionFeature image="/images/collection-banner.jpg" title={t("newCollection")} go={t("go")} />
 
-          <CollectionsCarousel products={heroProducts} initialOffset={1} />
+          <CollectionsCarousel products={products} initialOffset={1} />
         </section>
 
         <section className="collections-page-content collections-page-content--reverse">
-          <CollectionsCarousel products={heroProducts} initialOffset={1} />
+          <CollectionsCarousel products={products} initialOffset={1} />
 
           <CollectionFeature
             image="/images/large-banner.jpg"

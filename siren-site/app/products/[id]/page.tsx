@@ -3,126 +3,42 @@ import Footer from "@/components/Footer";
 import Recommendation from "@/components/Recommendation";
 import ProductInfoAccordion from "@/components/ProductInfoAccordion";
 import ProductDetailClient from "@/components/ProductDetailClient";
-import ProductImageCarousel from "@/components/ProductImageCarousel";
+import ProductColorGallery from "@/components/ProductColorGallery";
 import { T } from "@/components/LanguageProvider";
-
 import { heroProducts } from "@/lib/data";
+import { formatStorePrice, getStorefrontProduct, storefrontProductImages, storefrontProductImagesByColor, storefrontProductPrice, type ApiProduct } from "@/lib/api";
 
-import Image from "next/image";
+type Props = { params: Promise<{ id: string }> };
 
-type Props = {
-  params: Promise<{
-    id: string;
-  }>;
-};
-
-export default async function ProductDetailPage({
-  params,
-}: Props) {
+export default async function ProductDetailPage({ params }: Props) {
   const { id } = await params;
+  let apiProduct: ApiProduct | null = null;
+  try { apiProduct = await getStorefrontProduct(id); } catch { /* legacy demo product fallback */ }
+  const legacy = !apiProduct ? heroProducts.find((item) => item.id === id) : undefined;
+  if (!apiProduct && !legacy) return <div><T text="notFound" /></div>;
 
-  const product = heroProducts.find(
-    (item) => item.id === id
-  );
+  const images = apiProduct ? storefrontProductImages(apiProduct) : [legacy!.image];
+  const imagesByColor = apiProduct ? storefrontProductImagesByColor(apiProduct) : { default: [legacy!.image] };
+  const image = images[0] || "/images/p1.jpg";
+  const title = apiProduct?.title ?? legacy!.title;
+  const price = apiProduct ? formatStorePrice(storefrontProductPrice(apiProduct), apiProduct.currencyCode) : legacy!.price;
+  const variants = apiProduct?.variants ?? [];
+  const article = apiProduct?.metadata?.article || variants[0]?.sku || "";
 
-  if (!product) {
-    return <div><T text="notFound" /></div>;
-  }
-
-  return (
-    <>
-      <FixedTop />
-
-      <main className="product-detail">
-
-        {/* =========================
-            CHAP TOMON — RASMLAR
-        ========================= */}
-
-        <ProductImageCarousel image={product.image} alt={product.title} />
-
-        <div className="product-detail-images product-detail-images--desktop">
-
-          <div className="product-detail-image">
-            <Image
-              src={product.image}
-              alt={product.title}
-              width={865}
-              height={865}
-              priority
-            />
-          </div>
-
-          <div className="product-detail-image">
-            <Image
-              src={product.image}
-              alt={product.title}
-              width={865}
-              height={865}
-            />
-          </div>
-
-        </div>
-
-        {/* =========================
-            O'NG TOMON — PRODUCT INFO
-        ========================= */}
-
-        <div className="product-detail-info">
-
-          {/* BREADCRUMB */}
-
-          <div className="product-detail-breadcrumb">
-            <a href="/"><T text="home" /></a>
-
-            <span>&gt;</span>
-
-            <span>
-              {product.title}
-            </span>
-          </div>
-
-          {/* TITLE */}
-
-          <h1 className="product-detail-title">
-            {product.title}
-          </h1>
-
-          {/* PRICE */}
-
-          <p className="product-detail-price">
-            {product.price}
-          </p>
-
-          {/* COLOR + SIZE + CART */}
-
-          <ProductDetailClient
-            id={product.id}
-            title={product.title}
-            price={product.price}
-            image={product.image}
-          />
-
-          {/* DELIVERY */}
-
-          <p className="product-delivery">
-            <T text="freeDelivery" />
-          </p>
-
-          {/* ACCORDION */}
-
-          <ProductInfoAccordion />
-
-        </div>
-      </main>
-
-      {/* RECOMMENDATION */}
-
-      <div className="product-detail-recommendations">
-        <Recommendation />
+  return <>
+    <FixedTop />
+    <main className="product-detail">
+      <ProductColorGallery productId={apiProduct?.id ?? legacy!.id} initialColor={variants[0]?.color || "Default"} imagesByColor={imagesByColor} fallbackImages={images.length ? images : [image]} alt={title} />
+      <div className="product-detail-info">
+        <div className="product-detail-breadcrumb"><a href="/"><T text="home" /></a><span>&gt;</span><span>{title}</span></div>
+        <h1 className="product-detail-title">{title}</h1>
+        <p className="product-detail-price">{price}</p>
+        {article && <p className="product-detail-sku">ARTIKUL: {article}</p>}
+        <ProductDetailClient id={apiProduct?.id ?? legacy!.id} title={title} price={price} image={image} variants={variants} sizeGuideImageUrl={apiProduct?.metadata?.sizeGuideImageUrl} />
+        <ProductInfoAccordion description={apiProduct?.description} article={article} />
       </div>
-
-      <Footer />
-    </>
-  );
+    </main>
+    <div className="product-detail-recommendations"><Recommendation /></div>
+    <Footer />
+  </>;
 }

@@ -9,15 +9,24 @@ import { heroProducts, type Product } from "@/lib/data";
 import { useFavorites } from "@/components/FavoriteContext";
 import { useLanguage } from "@/components/LanguageProvider";
 
+const apiOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
+
 function FavoriteCard({ product }: { product: Product }) {
   const { removeFavorite } = useFavorites();
   const { t } = useLanguage();
+  const candidateImage = typeof product.image === "string" ? product.image.trim() : "";
+  const imageSrc = candidateImage.startsWith("/uploads/") ? `${apiOrigin}${candidateImage}` : candidateImage;
+  const isRemoteImage = (() => {
+    try { const url = new URL(imageSrc); return url.protocol === "https:" || (url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1")); }
+    catch { return false; }
+  })();
+  const safeImage = imageSrc.startsWith("/images/") || isRemoteImage ? imageSrc : "/images/p1.jpg";
 
   return (
     <article className="product-card favorite-product-card">
       <div className="product-image">
         <Link href={`/products/${product.id}`} aria-label={product.title}>
-          <Image src={product.image} alt={product.alt} width={350} height={350} />
+          <Image src={safeImage} alt={product.alt} width={350} height={350} unoptimized={isRemoteImage} />
         </Link>
         <button type="button" className="favorite-remove-btn" aria-label={t("unselect")} onClick={() => removeFavorite(product.id)}>
           <Image src="/icons/close.svg" alt="" width={15} height={15} />

@@ -1,10 +1,17 @@
 export type Product = {
   id: string;
+  /** Stable listing-only identity. The parent id remains the detail/cart identity. */
+  cardId?: string;
   image: string;
+  hoverImage?: string;
   alt: string;
   title: string;
   color: string;
+  colorSlug?: string;
+  available?: boolean;
+  availableSizes?: string[];
   price: string;
+  category?: string;
 };
 
 export const heroProducts: Product[] = [

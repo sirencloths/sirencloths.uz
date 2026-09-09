@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Product } from "@/lib/data";
+import { getStorefrontProducts, toStorefrontProduct } from "@/lib/api";
 
 type FavoriteContextValue = {
   favorites: Product[];
@@ -32,6 +33,28 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loaded) localStorage.setItem("siren-favorites", JSON.stringify(favorites));
   }, [favorites, loaded]);
+
+  // Favorites only retain the product id locally.  Refresh its title, image
+  // and variant-derived price from the storefront so edited admin data is
+  // never replaced by an outdated browser snapshot.
+  useEffect(() => {
+    if (!loaded || !favorites.length) return;
+    let active = true;
+    void getStorefrontProducts()
+      .then((items) => {
+        if (!active) return;
+        const latest = new Map(items.map((item) => {
+          const product = toStorefrontProduct(item);
+          return [product.id, product] as const;
+        }));
+        setFavorites((current) => current.map((item) => latest.get(item.id) ?? item));
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  // Read once after local favorites are restored; future admin data is read
+  // when this page/provider is mounted again.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   const toggleFavorite = (product: Product) => {
     setFavorites((current) => current.some((item) => item.id === product.id)
