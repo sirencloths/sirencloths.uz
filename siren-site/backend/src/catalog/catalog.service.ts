@@ -2,11 +2,11 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'node:crypto';
-import { AuditLog, Category, CollectionEntity, InventoryTransfer, OrderItem, Product, ProductStatus, ProductVariant } from '../database/entities';
+import { AuditLog, Category, CollectionEntity, InventoryTransfer, OrderItem, Product, ProductGender, ProductStatus, ProductVariant } from '../database/entities';
 
 export type ProductInput = {
   slug: string; title: string; description?: string; status?: ProductStatus; price: string;
-  compareAtPrice?: string | null; currencyCode?: string; categoryId?: string | null;
+  compareAtPrice?: string | null; currencyCode?: string; categoryId?: string | null; gender?: ProductGender;
   media?: Array<{ url: string; alt?: string; position?: number }>; seo?: Record<string, unknown>; metadata?: Record<string, unknown>;
 };
 export type VariantInput = { sku: string; name?: string; barcode?: string | null; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity?: number; isActive?: boolean; attributes?: Record<string, unknown> };
@@ -26,6 +26,29 @@ export class CatalogService {
   ) {}
 
   publicProducts() { return this.products.find({ where: { status: ProductStatus.ACTIVE }, relations: { variants: true, category: true }, order: { createdAt: 'DESC' } }); }
+  async publicListing(query: { category?: string; gender?: string; colors?: string; sizes?: string; minPrice?: string; maxPrice?: string; sort?: string }) {
+    const genders = this.csv(query.gender); const colors = this.csv(query.colors); const sizes = this.csv(query.sizes);
+    if (genders.some((value) => !Object.values(ProductGender).includes(value as ProductGender))) throw new BadRequestException('Invalid gender filter');
+    const minPrice = query.minPrice === undefined ? null : Number(query.minPrice); const maxPrice = query.maxPrice === undefined ? null : Number(query.maxPrice);
+    if ((minPrice !== null && (!Number.isFinite(minPrice) || minPrice < 0)) || (maxPrice !== null && (!Number.isFinite(maxPrice) || maxPrice < 0)) || (minPrice !== null && maxPrice !== null && minPrice > maxPrice)) throw new BadRequestException('Invalid price range');
+    if (query.sort && !['recommended', 'newest', 'price-asc', 'price-desc', 'best-selling'].includes(query.sort)) throw new BadRequestException('Invalid sort');
+    let products = await this.publicProducts();
+    if (query.category) products = products.filter((product) => product.category?.slug === query.category);
+    if (genders.length) products = products.filter((product) => genders.includes(product.gender));
+    products = products.map((product) => ({ ...product, variants: product.variants.filter((variant) => variant.isActive && variant.inventoryQuantity > 0) })).filter((product) => product.variants.length);
+    if (colors.length) products = products.map((product) => ({ ...product, variants: product.variants.filter((variant) => colors.includes((variant.color || 'default').toLowerCase())) })).filter((product) => product.variants.length);
+    if (sizes.length) products = products.map((product) => ({ ...product, variants: product.variants.filter((variant) => sizes.includes((variant.size || '').toLowerCase())) })).filter((product) => product.variants.length);
+    const effective = (product: Product) => Math.min(...product.variants.map((variant) => Number(variant.price ?? product.price)).filter(Number.isFinite));
+    if (minPrice !== null) products = products.filter((product) => effective(product) >= minPrice);
+    if (maxPrice !== null) products = products.filter((product) => effective(product) <= maxPrice);
+    if (query.sort === 'price-asc') products.sort((a, b) => effective(a) - effective(b) || a.slug.localeCompare(b.slug));
+    if (query.sort === 'price-desc') products.sort((a, b) => effective(b) - effective(a) || a.slug.localeCompare(b.slug));
+    if (query.sort === 'newest') products.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const facetSource = products;
+    const count = (values: string[]) => [...new Set(values.filter(Boolean))].sort().map((value) => ({ value, count: values.filter((entry) => entry === value).length }));
+    const prices = facetSource.map(effective).filter(Number.isFinite);
+    return { products, total: products.reduce((sum, product) => sum + new Set(product.variants.map((variant) => (variant.color || 'Default').toLowerCase())).size, 0), facets: { genders: count(facetSource.map((product) => product.gender)), colors: count(facetSource.flatMap((product) => product.variants.map((variant) => (variant.color || 'Default').toLowerCase()))), sizes: count(facetSource.flatMap((product) => product.variants.map((variant) => (variant.size || '').toLowerCase()))), price: { min: prices.length ? Math.min(...prices) : 0, max: prices.length ? Math.max(...prices) : 0 } } };
+  }
   async publicRandomProducts(limit = 4) {
     const products = await this.publicProducts();
     const take = Math.max(1, Math.min(12, Number.isFinite(limit) ? Math.floor(limit) : 4));
@@ -60,9 +83,9 @@ export class CatalogService {
     const soldByProduct = new Map(soldRows.map((row) => [row.productId, Number(row.soldQuantity)]));
     return products.map((product) => ({ ...product, soldQuantity: soldByProduct.get(product.id) ?? 0 }));
   }
-  async createProduct(input: ProductInput) { return this.products.save(this.products.create({ ...input, media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} })); }
+  async createProduct(input: ProductInput) { await this.validateProductAssignment(input, true); return this.products.save(this.products.create({ ...input, media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} })); }
   async updateProduct(id: string, input: Partial<ProductInput>) {
-    const product = await this.products.preload({ id, ...input });
+    await this.validateProductAssignment(input, false); const product = await this.products.preload({ id, ...input });
     if (!product) throw new NotFoundException('Product not found');
     return this.products.save(product);
   }
@@ -155,10 +178,13 @@ export class CatalogService {
     });
   }
 
-  adminCategories() { return this.categories.find({ order: { position: 'ASC', name: 'ASC' } }); }
+  async adminCategories() { const categories = await this.categories.find({ order: { position: 'ASC', name: 'ASC' } }); return Promise.all(categories.map(async (category) => ({ ...category, productCount: await this.products.count({ where: { categoryId: category.id } }) }))); }
   createCategory(input: TaxonomyInput) { return this.categories.save(this.categories.create({ slug: input.slug, name: input.name, description: input.description ?? null, imageUrl: input.imageUrl ?? null, position: input.position ?? 0, isVisible: input.isVisible ?? true })); }
   async updateCategory(id: string, input: Partial<TaxonomyInput>) { const entity = await this.categories.preload({ id, ...input }); if (!entity) throw new NotFoundException('Category not found'); return this.categories.save(entity); }
-  async removeCategory(id: string) { await this.categories.delete(id); return { deleted: true }; }
+  async removeCategory(id: string) { const count = await this.products.count({ where: { categoryId: id } }); if (count) throw new BadRequestException(`Category contains ${count} products. Move products before deleting.`); await this.categories.delete(id); return { deleted: true }; }
+
+  private csv(value?: string) { return (value ?? '').split(',').map((entry) => entry.trim().toLowerCase()).filter(Boolean); }
+  private async validateProductAssignment(input: Partial<ProductInput>, required: boolean) { if (required && !input.categoryId) throw new BadRequestException('Please select a category.'); if (required && !input.gender) throw new BadRequestException('Please select a gender.'); if (input.categoryId && !(await this.categories.exists({ where: { id: input.categoryId } }))) throw new BadRequestException('Category not found.'); if (input.gender && !Object.values(ProductGender).includes(input.gender)) throw new BadRequestException('Invalid gender.'); }
 
   adminCollections() { return this.collections.find({ order: { position: 'ASC', name: 'ASC' } }); }
   createCollection(input: TaxonomyInput) { return this.collections.save(this.collections.create({ slug: input.slug, name: input.name, description: input.description ?? null, heroImageUrl: input.heroImageUrl ?? null, position: input.position ?? 0, isVisible: input.isVisible ?? true })); }

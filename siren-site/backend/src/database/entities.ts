@@ -23,6 +23,7 @@ export enum ProductStatus {
   ACTIVE = 'active',
   ARCHIVED = 'archived',
 }
+export enum ProductGender { MALE = 'male', FEMALE = 'female', UNISEX = 'unisex' }
 
 export enum OrderStatus {
   PENDING = 'pending',
@@ -85,6 +86,7 @@ export class Product {
   @Column({ name: 'currency_code', length: 3, default: 'UZS' }) currencyCode!: string;
   @Column({ name: 'category_id', type: 'uuid', nullable: true }) categoryId!: string | null;
   @ManyToOne(() => Category, { nullable: true, onDelete: 'SET NULL' }) @JoinColumn({ name: 'category_id' }) category!: Category | null;
+  @Index() @Column({ type: 'varchar', length: 16, default: ProductGender.UNISEX }) gender!: ProductGender;
   @Column({ type: 'jsonb', default: () => "'[]'" }) media!: Array<{ url: string; alt?: string; position?: number }>;
   @Column({ type: 'jsonb', default: () => "'{}'" }) seo!: { title?: string; description?: string; keywords?: string[] };
   @Column({ type: 'jsonb', default: () => "'{}'" }) metadata!: Record<string, unknown>;

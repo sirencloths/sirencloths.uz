@@ -3,7 +3,7 @@ import { IsArray, IsBoolean, IsEnum, IsInt, IsObject, IsOptional, IsString, IsUU
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { CurrentUser } from '../auth/jwt.strategy';
 import { Roles, RolesGuard } from '../auth/roles.guard';
-import { ProductStatus, UserRole } from '../database/entities';
+import { ProductGender, ProductStatus, UserRole } from '../database/entities';
 import { CatalogService } from './catalog.service';
 
 class ProductDto {
@@ -15,6 +15,7 @@ class ProductDto {
   @IsOptional() @IsString() compareAtPrice?: string | null;
   @IsOptional() @Matches(/^[A-Z]{3}$/) currencyCode?: string;
   @IsOptional() @IsUUID() categoryId?: string | null;
+  @IsOptional() @IsEnum(ProductGender) gender?: ProductGender;
   @IsOptional() @IsArray() media?: Array<{ url: string; alt?: string; position?: number }>;
   @IsOptional() @IsObject() seo?: Record<string, unknown>;
   @IsOptional() @IsObject() metadata?: Record<string, unknown>;
@@ -47,11 +48,21 @@ class TaxonomyDto {
   @IsOptional() @IsInt() position?: number;
   @IsOptional() @IsBoolean() isVisible?: boolean;
 }
+class ListingQueryDto {
+  @IsOptional() @IsString() category?: string;
+  @IsOptional() @IsString() gender?: string;
+  @IsOptional() @IsString() colors?: string;
+  @IsOptional() @IsString() sizes?: string;
+  @IsOptional() @IsString() minPrice?: string;
+  @IsOptional() @IsString() maxPrice?: string;
+  @IsOptional() @IsString() sort?: string;
+}
 
 @Controller('catalog')
 export class CatalogController {
   constructor(private readonly catalog: CatalogService) {}
   @Get('products') products() { return this.catalog.publicProducts(); }
+  @Get('products/listing') listing(@Query() query: ListingQueryDto) { return this.catalog.publicListing(query); }
   @Get('products/random') randomProducts(@Query('limit') limit?: string) { return this.catalog.publicRandomProducts(Number(limit)); }
   @Get('products/:slug') product(@Param('slug') slug: string) { return this.catalog.publicProduct(slug); }
   @Get('categories') categories() { return this.catalog.publicCategories(); }

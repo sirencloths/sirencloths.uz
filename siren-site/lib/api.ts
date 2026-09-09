@@ -11,7 +11,11 @@ export type ApiProduct = {
   variants: Array<{ id: string; sku: string; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity: number; isActive?: boolean; attributes?: Record<string, unknown> }>;
   category?: { name: string } | null;
   metadata?: { article?: string; sizeGuideImageUrl?: string };
+  gender?: "male" | "female" | "unisex";
 };
+export type ApiCategory = { id: string; slug: string; name: string; description?: string | null; isVisible: boolean };
+export type ListingFacet = { value: string; count: number };
+export type StorefrontListing = { products: ApiProduct[]; total: number; facets: { genders: ListingFacet[]; colors: ListingFacet[]; sizes: ListingFacet[]; price: { min: number; max: number } } };
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 const apiOrigin = apiBaseUrl.replace(/\/api$/, '');
@@ -105,6 +109,16 @@ export async function getStorefrontProducts(): Promise<ApiProduct[]> {
   const response = await fetch(`${apiBaseUrl}/catalog/products`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Unable to load products');
   return response.json() as Promise<ApiProduct[]>;
+}
+export async function getStorefrontCategories(): Promise<ApiCategory[]> {
+  const response = await fetch(`${apiBaseUrl}/catalog/categories`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Unable to load categories');
+  return response.json() as Promise<ApiCategory[]>;
+}
+export async function getStorefrontListing(params: URLSearchParams): Promise<StorefrontListing> {
+  const response = await fetch(`${apiBaseUrl}/catalog/products/listing?${params.toString()}`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Unable to load shop listing');
+  return response.json() as Promise<StorefrontListing>;
 }
 
 export async function getStorefrontRandomProducts(limit = 4): Promise<ApiProduct[]> {

@@ -102,6 +102,7 @@ type Product = {
   status: "draft" | "active" | "archived";
   price: string;
   categoryId?: string | null;
+  gender?: "male" | "female" | "unisex";
   currencyCode: string;
   media: Array<{ url: string }>;
   variants: Variant[];
@@ -352,6 +353,7 @@ const blankProduct = () => ({
   price: "",
   currencyCode: "UZS",
   categoryId: "",
+  gender: "unisex" as "male" | "female" | "unisex",
   inventoryQuantity: 0,
   sizeGuideImageUrl: "",
 });
@@ -958,6 +960,7 @@ export default function AdminConsole() {
       price: p.price,
       currencyCode: p.currencyCode,
       categoryId: p.categoryId ?? "",
+      gender: p.gender ?? "unisex",
       inventoryQuantity: Number(p.metadata?.baseInventoryQuantity ?? p.variants.reduce((sum, item) => sum + item.inventoryQuantity, 0)),
       sizeGuideImageUrl: p.metadata?.sizeGuideImageUrl ?? "",
     });
@@ -997,6 +1000,8 @@ export default function AdminConsole() {
   };
   const save = async (e: FormEvent) => {
     e.preventDefault();
+    if (!form.categoryId) { setNotice("Kategoriya tanlang."); return; }
+    if (!form.gender) { setNotice("Gender tanlang."); return; }
     const isCreate = !selectedId;
     const primaryTitle = form.titleUz.trim() || form.title.trim() || form.titleRu.trim() || form.titleEn.trim();
     const primaryDescription = form.descriptionUz.trim() || form.description.trim() || form.descriptionRu.trim() || form.descriptionEn.trim();
@@ -1064,6 +1069,7 @@ export default function AdminConsole() {
         price: effectiveProductPrice,
         currencyCode: form.currencyCode,
         categoryId: form.categoryId || null,
+        gender: form.gender,
         media: imageUrl
           ? [{ url: imageUrl, alt: primaryTitle, position: 0 }]
           : [],
@@ -1503,12 +1509,13 @@ export default function AdminConsole() {
                 <CardContent>
                   <form id="product-editor-form" className="ui-form product-main-form" onSubmit={save}>
                     <section className="product-form-block product-form-block--category">
-                      <Field label="Tovar kategoriyasi">
-                        <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
+                      <Field label="Tovar kategoriyasi *">
+                        <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} required>
                           <option value="">Kategoriya tanlang</option>
                           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                       </Field>
+                      <Field label="Gender *"><select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value as typeof form.gender })} required><option value="male">Male</option><option value="female">Female</option><option value="unisex">Unisex</option></select></Field>
                     </section>
                     <section className="product-form-block">
                       <div>
