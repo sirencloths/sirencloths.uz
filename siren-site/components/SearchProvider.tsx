@@ -6,6 +6,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -52,10 +53,22 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
 function SearchOverlay({ close }: { close: () => void }) {
   const { t } = useLanguage();
+  const [headerBottom, setHeaderBottom] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const header = document.querySelector<HTMLElement>(".fixed-top .nav");
+    if (!header) return;
+    const updatePosition = () => setHeaderBottom(Math.round(header.getBoundingClientRect().bottom));
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(header);
+    window.addEventListener("resize", updatePosition);
+    return () => { observer.disconnect(); window.removeEventListener("resize", updatePosition); };
+  }, []);
 
   return (
     <div className="site-search-layer" role="presentation" onMouseDown={close}>
-      <section className="site-search" role="dialog" aria-modal="true" aria-label={t("search")} onMouseDown={(event) => event.stopPropagation()}>
+      <section className="site-search" style={headerBottom === null ? undefined : { top: headerBottom }} role="dialog" aria-modal="true" aria-label={t("search")} onMouseDown={(event) => event.stopPropagation()}>
         <SearchContents onProductClick={close} />
       </section>
     </div>
