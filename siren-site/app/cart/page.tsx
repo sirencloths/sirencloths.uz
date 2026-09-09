@@ -7,7 +7,7 @@ import { useCart } from "@/components/CartContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
-import { cartItemPrice, shippingCost } from "@/lib/commerce";
+import { cartItemPrice, FREE_DELIVERY_THRESHOLD, shippingCost } from "@/lib/commerce";
 
 const legacyColorKeys: Record<string, "darkGray" | "black" | "cream" | "pink"> = {
   "ТЕМНО СЕРЫЙ": "darkGray",
@@ -96,6 +96,8 @@ export default function CartPage() {
   const delivery = shippingCost(subtotal, selectedItems.length);
 
   const total = subtotal - discount + delivery;
+  const deliveryProgress = Math.min(100, Math.round((subtotal / FREE_DELIVERY_THRESHOLD) * 100));
+  const deliveryRemaining = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
 
   const applyPromo = () => {
     if (promo.trim().toUpperCase() === "ALEX10") {
@@ -128,7 +130,10 @@ export default function CartPage() {
 
         <div className="cart-mobile-heading">
           <h1>{t("cart")}</h1>
-          <button type="button" aria-label="Korzinani yopish" onClick={() => router.push("/shop")}>×</button>
+          <div className="mobile-cart-shipping" aria-label="Bepul yetkazib berish indikatori">
+            <b>{deliveryRemaining ? `ДО БЕСПЛАТНОЙ ${uzs(deliveryRemaining, locale)}` : "БЕСПЛАТНАЯ ДОСТАВКА"}</b>
+            <span><i style={{ width: `${deliveryProgress}%` }} /></span>
+          </div>
         </div>
 
         {/* CART TITLE */}
@@ -386,11 +391,6 @@ export default function CartPage() {
       </main>
 
       <aside className="mobile-cart-summary">
-        <div className="mobile-cart-shipping" aria-label="Bepul yetkazib berish">
-          <b>БЕСПЛАТНАЯ ДОСТАВКА</b>
-          <span><i /></span>
-          <small>Доставка включена в стоимость заказа</small>
-        </div>
         <div className="mobile-cart-summary-promo">
           <div className={`cart-promo-input${discountApplied ? " is-applied" : ""}`}>
             <input type="text" placeholder={t("enterCode")} value={promo} readOnly={discountApplied} onChange={(event) => updatePromo(event.target.value)} />

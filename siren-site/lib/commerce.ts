@@ -3,6 +3,7 @@ import type { CartItem } from "@/components/CartContext";
 // Store-wide delivery values live in one place.  Cart, drawer and checkout
 // consume these values instead of each maintaining its own calculation.
 export const STANDARD_DELIVERY_FEE = 60_000;
+export const FREE_DELIVERY_THRESHOLD = 2_000_000;
 
 export function cartItemPrice(price: string) {
   const numeric = price.replace(/[^0-9.,-]/g, "");
