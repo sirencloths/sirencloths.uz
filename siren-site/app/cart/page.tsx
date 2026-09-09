@@ -239,7 +239,7 @@ export default function CartPage() {
                     onClick={() => removeFromCart(item.id, item.color, item.size)}
                     aria-label={`${item.title}ni korzinadan olib tashlash`}
                   >
-                    ×
+                    ⌫
                   </button>
 
                   {/* QUANTITY */}
