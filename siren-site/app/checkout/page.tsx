@@ -4,7 +4,7 @@ import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/CartContext";
-import { cartSubtotal, shippingCost } from "@/lib/commerce";
+import { cartItemPrice, cartSubtotal, shippingCost } from "@/lib/commerce";
 import type { Order, OrderStatus } from "@/lib/orders";
 
 const payments = ["КАРТА", "PAYME", "CLICK", "PAYNET"] as const;
@@ -65,7 +65,7 @@ export default function CheckoutPage() {
       <section className="checkout-main">
         <section className={`checkout-mobile-summary${mobileSummaryOpen ? " is-open" : ""}`}>
           <button type="button" className="checkout-mobile-summary-toggle" onClick={() => setMobileSummaryOpen((open) => !open)} aria-expanded={mobileSummaryOpen}><span>Сводка заказа</span><Image src="/icons/arrow-down.svg" alt="" width={14} height={8} /><span className="checkout-mobile-summary-total"><small>СУМ</small><b>{total.toLocaleString("ru-RU")}</b></span></button>
-          <div className="checkout-mobile-summary-details">{cart.map((item) => <div key={`mobile-${item.id}-${item.size}`}><span>{item.title} × {item.quantity}</span><b>{money(Number(item.price.replace(/\D/g, "")) * item.quantity)}</b></div>)}</div>
+          <div className="checkout-mobile-summary-details">{cart.map((item) => <div key={`mobile-${item.id}-${item.size}`}><span>{item.title} × {item.quantity}</span><b>{money(cartItemPrice(item.price) * item.quantity)}</b></div>)}</div>
         </section>
         <div className="checkout-payment-logos"><Image src="/images/payments/visa.png" alt="Visa" width={44} height={24} /><Image src="/images/payments/Mastercard.png" alt="Mastercard" width={44} height={24} /><Image src="/images/payments/American%20Express.png" alt="Uzcard" width={44} height={24} /><Image src="/images/payments/PayPal.png" alt="Humo" width={44} height={24} /></div>
         <p className="checkout-fast-title">Быстрое оформление заказа</p>
@@ -97,7 +97,7 @@ export default function CheckoutPage() {
         <div className="checkout-mobile-total"><Image src={cart[0].image} alt="" width={42} height={42} /><span><b>Total</b><small>{cart.reduce((sum, item) => sum + item.quantity, 0)} item</small></span><strong>{money(total)}</strong></div>
         <button className="checkout-submit" type="submit">Pay now</button>
       </section>
-      <aside className="checkout-summary"><h2 className="checkout-summary-title">Ваш заказ</h2><div className="checkout-summary-list">{cart.map((item) => <article className="checkout-item" key={`${item.id}-${item.size}`}><div className="checkout-item-image"><Image src={item.image} alt={item.title} width={58} height={58} /><span>{item.quantity}</span></div><span><b>{item.title}</b><small>{item.size} / {item.color}</small></span><strong>{money(Number(item.price.replace(/\D/g, "")) * item.quantity)}</strong></article>)}</div><dl className="checkout-totals"><div><dt>Промежуточный итог</dt><dd>{money(subtotal)}</dd></div><div><dt>Доставка</dt><dd>{money(shipping)}</dd></div><div className="checkout-total"><dt>К оплате</dt><dd>{money(total)}</dd></div></dl></aside>
+      <aside className="checkout-summary"><h2 className="checkout-summary-title">Ваш заказ</h2><div className="checkout-summary-list">{cart.map((item) => <article className="checkout-item" key={`${item.id}-${item.size}`}><div className="checkout-item-image"><Image src={item.image} alt={item.title} width={58} height={58} /><span>{item.quantity}</span></div><span><b>{item.title}</b><small>{item.size} / {item.color}</small></span><strong>{money(cartItemPrice(item.price) * item.quantity)}</strong></article>)}</div><dl className="checkout-totals"><div><dt>Промежуточный итог</dt><dd>{money(subtotal)}</dd></div><div><dt>Доставка</dt><dd>{money(shipping)}</dd></div><div className="checkout-total"><dt>К оплате</dt><dd>{money(total)}</dd></div></dl></aside>
     </form>
     <footer className="checkout-footer">Политика возврата средств　 Перевозки　 Политика конфиденциальности　 Условия предоставления услуг　 Контакт</footer>
   </main>;

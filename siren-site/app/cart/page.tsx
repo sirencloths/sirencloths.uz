@@ -7,7 +7,7 @@ import { useCart } from "@/components/CartContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
-import { shippingCost } from "@/lib/commerce";
+import { cartItemPrice, shippingCost } from "@/lib/commerce";
 
 const legacyColorKeys: Record<string, "darkGray" | "black" | "cream" | "pink"> = {
   "ТЕМНО СЕРЫЙ": "darkGray",
@@ -21,6 +21,7 @@ const legacyColorKeys: Record<string, "darkGray" | "black" | "cream" | "pink"> =
 };
 const assetOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
 const cartImageUrl = (value: string) => value.startsWith("/uploads/") ? `${assetOrigin}${value}` : value;
+const uzs = (value: number, locale: string) => `${value.toLocaleString(locale)} UZS`;
 
 export default function CartPage() {
   const { t, locale } = useLanguage();
@@ -81,9 +82,7 @@ export default function CartPage() {
         return sum;
       }
 
-      const price = Number(
-        item.price.replace(/\D/g, "")
-      );
+      const price = cartItemPrice(item.price);
 
       return sum + price * item.quantity;
     },
@@ -201,7 +200,8 @@ export default function CartPage() {
                   </div>
 
                   <div className="cart-product-price">
-                    {item.price}
+                    <span className="cart-desktop-price">{item.price}</span>
+                    <span className="cart-mobile-price">{uzs(cartItemPrice(item.price) * item.quantity, locale)}</span>
                   </div>
 
                 </div>
@@ -386,6 +386,11 @@ export default function CartPage() {
       </main>
 
       <aside className="mobile-cart-summary">
+        <div className="mobile-cart-shipping" aria-label="Bepul yetkazib berish">
+          <b>БЕСПЛАТНАЯ ДОСТАВКА</b>
+          <span><i /></span>
+          <small>Доставка включена в стоимость заказа</small>
+        </div>
         <div className="mobile-cart-summary-promo">
           <div className={`cart-promo-input${discountApplied ? " is-applied" : ""}`}>
             <input type="text" placeholder={t("enterCode")} value={promo} readOnly={discountApplied} onChange={(event) => updatePromo(event.target.value)} />
@@ -394,13 +399,13 @@ export default function CartPage() {
           <button type="button" onClick={discountApplied ? removePromo : applyPromo}>{discountApplied ? "OLIB TASHLASH" : t("apply")}</button>
         </div>
         <div className="mobile-cart-summary-details">
-          <div><span>{t("subtotal")} ({selectedItems.length})</span><b>{subtotal.toLocaleString(locale)} СУМ</b></div>
-          {discountApplied && <div><span>КОД ALEX10</span><b className="cart-discount">−{discount.toLocaleString(locale)} СУМ</b></div>}
+          <div><span>{t("subtotal")} ({selectedItems.length})</span><b>{uzs(subtotal, locale)}</b></div>
+          {discountApplied && <div><span>КОД ALEX10</span><b className="cart-discount">−{uzs(discount, locale)}</b></div>}
         </div>
 
         <div className="mobile-cart-summary-total">
           <span>{t("total")}</span>
-          <b>{total.toLocaleString(locale)} СУМ</b>
+          <b>{uzs(total, locale)}</b>
         </div>
 
         {cart.length > 0 && <button type="button" className="mobile-cart-checkout" onClick={() => router.push("/checkout")}>
