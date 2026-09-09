@@ -1321,7 +1321,7 @@ export default function AdminConsole() {
   const nav: Array<[Tab, string, typeof LayoutDashboard]> = [
     ["dashboard", "Overview", LayoutDashboard],
     ["products", "Mahsulotlar", Package],
-    ["catalog", "Katalog", Tags],
+    ["catalog", "Kategoriyalar", Tags],
     ["orders", "Buyurtmalar", ShoppingBag],
     ["delivery", "Yetkazib berish", ClipboardList],
     ["customers", "Mijozlar", Users],
