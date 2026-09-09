@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
 import { useSearch } from "./SearchProvider";
 import { useEffect, useState } from "react";
+import { useCustomerAuth } from "./CustomerAuthProvider";
 
 type NavigationLink = { id: string; href: string; label: string; translationKey?: string; isActive?: boolean };
 
@@ -28,6 +29,7 @@ export default function Header() {
   const pathname = usePathname();
   const { t } = useLanguage();
   const { isSearchOpen, toggleSearch } = useSearch();
+  const { customer, openAuth } = useCustomerAuth();
   const [navLinks, setNavLinks] = useState<NavigationLink[]>(defaultNavLinks);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -119,6 +121,11 @@ export default function Header() {
                 aria-current={isMobile && isActive ? "page" : undefined}
                 className={`nav-icon-link${isMobile && isActive ? " nav-icon-link--active" : ""}`}
                 onClick={(event) => {
+                  if (isProfileIcon && !customer) {
+                    event.preventDefault();
+                    openAuth();
+                    return;
+                  }
                   if (isMobile) return;
                   if (isSearchIcon) {
                     event.preventDefault();

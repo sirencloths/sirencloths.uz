@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { IsArray, IsEmail, IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
+import { AuthService } from '../auth/auth.service';
 import { Roles, RolesGuard } from '../auth/roles.guard';
 import { OrderStatus, UserRole } from '../database/entities';
 import { CommerceService } from './commerce.service';
@@ -27,8 +28,10 @@ class UpdateOrderDto {
 
 @Controller('checkout')
 export class CheckoutController {
-  constructor(private readonly commerce: CommerceService) {}
-  @Post('orders') createOrder(@Body() body: CheckoutDto) { return this.commerce.checkout(body); }
+  constructor(private readonly commerce: CommerceService, private readonly auth: AuthService) {}
+  @Post('orders') async createOrder(@Body() body: CheckoutDto, @Headers('authorization') authorization?: string) {
+    return this.commerce.checkout({ ...body, customerId: await this.auth.customerIdFromToken(authorization) });
+  }
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)

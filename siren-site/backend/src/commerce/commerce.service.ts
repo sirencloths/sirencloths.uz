@@ -6,7 +6,7 @@ import { Customer, Order, OrderItem, OrderStatus, Product, ProductVariant } from
 export type CheckoutInput = {
   email: string; phone?: string; firstName: string; lastName: string;
   shippingAddress: Record<string, unknown>; billingAddress?: Record<string, unknown>;
-  paymentMethod: string; note?: string; items: Array<{ variantId: string; quantity: number }>;
+  paymentMethod: string; note?: string; customerId?: string | null; items: Array<{ variantId: string; quantity: number }>;
 };
 
 @Injectable()
@@ -25,7 +25,7 @@ export class CommerceService {
       const productRepo = manager.getRepository(Product);
       const orderRepo = manager.getRepository(Order);
       const itemRepo = manager.getRepository(OrderItem);
-      let customer = await customerRepo.findOne({ where: { email: input.email.toLowerCase() } });
+      let customer = input.customerId ? await customerRepo.findOneBy({ id: input.customerId }) : await customerRepo.findOne({ where: { email: input.email.toLowerCase() } });
       if (!customer) customer = await customerRepo.save(customerRepo.create({ email: input.email.toLowerCase(), phone: input.phone ?? null, firstName: input.firstName, lastName: input.lastName }));
       else {
         customer.phone = input.phone ?? customer.phone;
@@ -45,16 +45,18 @@ export class CommerceService {
         subtotal += unitPrice * cartItem.quantity;
         prepared.push({ variant, product, quantity: cartItem.quantity, unitPrice });
       }
+      const discount = customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt ? Math.round(subtotal * (customer.welcomeDiscountPercent || 15) / 100) : 0;
       const order = await orderRepo.save(orderRepo.create({
         customerId: customer.id,
         status: OrderStatus.PENDING,
         paymentStatus: 'pending',
         fulfillmentStatus: 'unfulfilled',
         currencyCode: 'UZS',
-        subtotalAmount: String(subtotal), shippingAmount: '0', discountAmount: '0', totalAmount: String(subtotal),
+        subtotalAmount: String(subtotal), shippingAmount: '0', discountAmount: String(discount), totalAmount: String(Math.max(0, subtotal - discount)),
         shippingAddress: input.shippingAddress, billingAddress: input.billingAddress ?? input.shippingAddress,
         paymentMethod: input.paymentMethod, note: input.note ?? null,
       }));
+      if (discount) { customer.welcomeDiscountEligible = false; customer.welcomeDiscountUsedAt = new Date(); await customerRepo.save(customer); }
       for (const row of prepared) {
         row.variant.inventoryQuantity -= row.quantity;
         await variantRepo.save(row.variant);
@@ -70,5 +72,11 @@ export class CommerceService {
     if (!order) throw new NotFoundException('Order not found');
     return this.orders.save(order);
   }
-  listCustomers() { return this.customers.find({ order: { createdAt: 'DESC' } }); }
+  async listCustomers() {
+    const customers = await this.customers.find({ order: { createdAt: 'DESC' } });
+    return Promise.all(customers.map(async (customer) => {
+      const totals = await this.orders.createQueryBuilder('order').select('COUNT(*)', 'orders').addSelect('COALESCE(SUM(order.total_amount), 0)', 'spent').where('order.customer_id = :id', { id: customer.id }).getRawOne<{ orders: string; spent: string }>();
+      return { ...customer, totalOrders: Number(totals?.orders ?? 0), totalSpent: Number(totals?.spent ?? 0) };
+    }));
+  }
 }

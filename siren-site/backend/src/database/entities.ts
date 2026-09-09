@@ -123,9 +123,32 @@ export class Customer {
   @Column({ type: 'varchar', nullable: true, length: 40 }) phone!: string | null;
   @Column({ name: 'first_name', length: 100, default: '' }) firstName!: string;
   @Column({ name: 'last_name', length: 100, default: '' }) lastName!: string;
+  @Column({ name: 'password_hash', type: 'varchar', nullable: true, select: false }) passwordHash!: string | null;
+  @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true }) emailVerifiedAt!: Date | null;
+  @Column({ type: 'varchar', nullable: true, length: 120 }) region!: string | null;
+  @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true }) lastLoginAt!: Date | null;
+  @Column({ name: 'registration_source', length: 80, default: 'checkout' }) registrationSource!: string;
+  @Column({ name: 'is_active', default: true }) isActive!: boolean;
+  @Column({ name: 'welcome_discount_eligible', default: false }) welcomeDiscountEligible!: boolean;
+  @Column({ name: 'welcome_discount_percent', type: 'int', default: 0 }) welcomeDiscountPercent!: number;
+  @Column({ name: 'welcome_discount_used_at', type: 'timestamptz', nullable: true }) welcomeDiscountUsedAt!: Date | null;
   @Column({ type: 'jsonb', default: () => "'{}'" }) metadata!: Record<string, unknown>;
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
+@Entity('auth_otps')
+@Index(['email', 'purpose'])
+export class AuthOtp {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ length: 255 }) email!: string;
+  @Column({ length: 40 }) purpose!: 'registration' | 'password_reset' | 'password_change';
+  @Column({ name: 'code_hash', length: 255, select: false }) codeHash!: string;
+  @Column({ name: 'expires_at', type: 'timestamptz' }) expiresAt!: Date;
+  @Column({ name: 'resend_available_at', type: 'timestamptz' }) resendAvailableAt!: Date;
+  @Column({ type: 'int', default: 0 }) attempts!: number;
+  @Column({ name: 'used_at', type: 'timestamptz', nullable: true }) usedAt!: Date | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
 }
 
 @Entity('customer_addresses')
@@ -298,7 +321,7 @@ export class InventoryTransfer {
 }
 
 export const entities = [
-  User, Category, CollectionEntity, Product, ProductVariant, Customer,
+  User, Category, CollectionEntity, Product, ProductVariant, Customer, AuthOtp,
   CustomerAddress, Order, OrderItem, Banner, Page, PageSection, BlogPost,
   LookbookEntry, MusicRecord, SiteSetting, AuditLog, InventoryTransfer,
 ];
