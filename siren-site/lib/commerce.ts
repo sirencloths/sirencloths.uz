@@ -13,7 +13,8 @@ export function cartSubtotal(cart: CartItem[]) {
   return cart.reduce((sum, item) => sum + cartItemPrice(item.price) * item.quantity, 0);
 }
 
-export function shippingCost(_subtotal: number, itemCount: number) {
-  if (!itemCount) return 0;
-  return STANDARD_DELIVERY_FEE;
+export function shippingCost(_subtotal: number, _itemCount: number) {
+  // Delivery is currently included in the order total. Keep this single source
+  // of truth so the cart, drawer and checkout never calculate different totals.
+  return 0;
 }

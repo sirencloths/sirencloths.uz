@@ -19,6 +19,8 @@ const legacyColorKeys: Record<string, "darkGray" | "black" | "cream" | "pink"> =
   cream: "cream",
   pink: "pink",
 };
+const assetOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
+const cartImageUrl = (value: string) => value.startsWith("/uploads/") ? `${assetOrigin}${value}` : value;
 
 export default function CartPage() {
   const { t, locale } = useLanguage();
@@ -159,11 +161,9 @@ export default function CartPage() {
 
                 {/* IMAGE */}
                 <div className="cart-product-image">
-                  <Image
-                    src={item.image}
+                  <img
+                    src={cartImageUrl(item.image)}
                     alt={item.title}
-                    fill
-                    sizes="337px"
                   />
                 </div>
 
@@ -341,17 +341,10 @@ export default function CartPage() {
               </div>
             )}
 
-            <div className="cart-summary-row">
-
-              <span>
-                {t("estimatedDelivery")}
-              </span>
-
-              <span>
-                {delivery.toLocaleString(locale)} СУМ
-              </span>
-
-            </div>
+            {delivery > 0 && <div className="cart-summary-row">
+              <span>{t("estimatedDelivery")}</span>
+              <span>{delivery.toLocaleString(locale)} СУМ</span>
+            </div>}
 
             <div className="cart-summary-total">
 
@@ -403,7 +396,6 @@ export default function CartPage() {
         <div className="mobile-cart-summary-details">
           <div><span>{t("subtotal")} ({selectedItems.length})</span><b>{subtotal.toLocaleString(locale)} СУМ</b></div>
           {discountApplied && <div><span>КОД ALEX10</span><b className="cart-discount">−{discount.toLocaleString(locale)} СУМ</b></div>}
-          <div><span>{t("estimatedDelivery")}</span><b>{delivery.toLocaleString(locale)} СУМ</b></div>
         </div>
 
         <div className="mobile-cart-summary-total">

@@ -7,6 +7,8 @@ import { useLanguage } from "./LanguageProvider";
 import { cartItemPrice, shippingCost } from "@/lib/commerce";
 
 const money = (value: number, locale: string) => `${value.toLocaleString(locale)} СУМ`;
+const assetOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
+const cartImageUrl = (value: string) => value.startsWith("/uploads/") ? `${assetOrigin}${value}` : value;
 
 export default function CartDrawer() {
   const router = useRouter();
@@ -74,9 +76,9 @@ export default function CartDrawer() {
       </header>
       <div className="cart-drawer-items">
         {cart.length ? cart.map((item) => <article className="cart-drawer-item" key={`${item.id}-${item.color}-${item.size}`}>
-          <img src={item.image} alt={item.title} />
+          <img src={cartImageUrl(item.image)} alt={item.title} />
           <div><strong>{item.title}</strong><small>{item.color} · {item.size}</small><b>{money(cartItemPrice(item.price) * item.quantity, locale)}</b><div className="cart-drawer-stepper"><button type="button" onClick={() => decreaseQuantity(item.id)} aria-label="Уменьшить">−</button><span>{item.quantity}</span><button type="button" onClick={() => increaseQuantity(item.id)} aria-label="Увеличить">+</button></div></div>
-          <button type="button" className="cart-drawer-remove" onClick={() => removeFromCart(item.id)} aria-label="Удалить">⌫</button>
+          <button type="button" className="cart-drawer-remove" onClick={() => removeFromCart(item.id, item.color, item.size)} aria-label="Удалить">⌫</button>
         </article>) : <p className="cart-drawer-empty">КОРЗИНА ПУСТА</p>}
       </div>
       <footer className="cart-drawer-foot">
@@ -84,7 +86,7 @@ export default function CartDrawer() {
         {promoMessage && <p className="cart-drawer-promo-message">{promoMessage}</p>}
         <div className="cart-drawer-subtotal"><span>ПРОМЕЖУТОЧНЫЙ ИТОГ ({cartCount})</span><b>{money(subtotal, locale)}</b></div>
         {appliedPromo && <div className="cart-drawer-summary-row cart-drawer-summary-row--discount"><span>КОД {appliedPromo} · 10%</span><b>−{money(discount, locale)}</b></div>}
-        <div className="cart-drawer-summary-row"><span>ДОСТАВКА</span><b>{money(delivery, locale)}</b></div>
+        {delivery > 0 && <div className="cart-drawer-summary-row"><span>ДОСТАВКА</span><b>{money(delivery, locale)}</b></div>}
         <div className="cart-drawer-total"><span>ИТОГО</span><b>{money(total, locale)}</b></div>
         <button type="button" className="cart-drawer-checkout" disabled={!cart.length} onClick={checkout}>ОФОРМИТЬ ЗАКАЗ →</button>
       </footer>
