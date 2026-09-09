@@ -14,6 +14,7 @@ export type ApiProduct = {
 };
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
+const apiOrigin = apiBaseUrl.replace(/\/api$/, '');
 
 export type ApiMusicRecord = {
   id: string;
@@ -104,6 +105,18 @@ export async function getStorefrontProducts(): Promise<ApiProduct[]> {
   const response = await fetch(`${apiBaseUrl}/catalog/products`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Unable to load products');
   return response.json() as Promise<ApiProduct[]>;
+}
+
+export async function getStorefrontRandomProducts(limit = 4): Promise<ApiProduct[]> {
+  const response = await fetch(`${apiBaseUrl}/catalog/products/random?limit=${Math.max(1, Math.min(12, limit))}`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Unable to load random products');
+  return response.json() as Promise<ApiProduct[]>;
+}
+
+/** Turns an API upload path into an image URL visible to the storefront. */
+export function storefrontAssetUrl(value?: string | null) {
+  const url = value?.trim() ?? '';
+  return url.startsWith('/uploads/') ? `${apiOrigin}${url}` : url;
 }
 
 export async function getStorefrontProduct(slug: string): Promise<ApiProduct> {

@@ -6927,6 +6927,10 @@ body {
   .search-page-content .site-search-input{top:var(--search-page-header-bottom,var(--site-header-stack))!important;margin-top:0!important}
   .site-search-layer>.site-search{margin-top:0!important}
 }
+
+/* Search suggestions are a compact, readable history list on every screen. */
+.site-search-history{padding:14px 12px 8px}.site-search-history>p{margin:0 0 7px;color:#8a8a86;font-family:Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:.08em}.site-search-history .site-search-categories{gap:4px;padding:0}.site-search-history .site-search-categories button{display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 9px;border:1px solid transparent;border-radius:5px;font-size:14px;line-height:1.15;text-align:left;transition:background .16s ease,border-color .16s ease}.site-search-history .site-search-categories button span{font-size:16px;line-height:1}.site-search-history .site-search-categories button:hover{border-color:#deded9;background:#f2f2ef}
+@media(min-width:761px){.site-search-history{padding:16px 14px 10px}.site-search-history .site-search-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.site-search-history .site-search-categories button{border-color:#e1e1dd;font-size:12px}.site-search-history .site-search-categories button span{display:none}}
 @media(max-width:760px){.hero{min-height:620px;height:82svh}.hero-media{object-position:center}}
 @media(prefers-reduced-motion:reduce){.hero-slides,.products-track,.collections-page-product-track{transition:none!important}.product-card-image{transition:none!important}}
 

@@ -12,9 +12,9 @@ import {
   type ReactNode,
 } from "react";
 import { heroProducts, type Product } from "@/lib/data";
-import { searchCategories, searchProducts } from "@/lib/search";
+import { searchCategories } from "@/lib/search";
 import { useLanguage } from "./LanguageProvider";
-import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
+import { getStorefrontProducts, getStorefrontRandomProducts, storefrontAssetUrl, toStorefrontColorCards } from "@/lib/api";
 
 type SearchContextValue = {
   isSearchOpen: boolean;
@@ -85,11 +85,23 @@ export function SearchContents({
   const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [remoteProducts, setRemoteProducts] = useState<Product[] | null>(null);
-  useEffect(() => { let mounted = true; void getStorefrontProducts().then((items) => { if (mounted && items.length) setRemoteProducts(toStorefrontColorCards(items)); }).catch(() => undefined); return () => { mounted = false; }; }, []);
+  const [randomProducts, setRandomProducts] = useState<Product[] | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    void getStorefrontProducts().then((items) => { if (mounted && items.length) setRemoteProducts(toStorefrontColorCards(items)); }).catch(() => undefined);
+    void getStorefrontRandomProducts(4).then((items) => { if (mounted && items.length) setRandomProducts(toStorefrontColorCards(items).slice(0, 4)); }).catch(() => undefined);
+    return () => { mounted = false; };
+  }, []);
   const catalogue = remoteProducts?.length ? remoteProducts : heroProducts;
   const normalizedQuery = query.trim().toLocaleLowerCase("uz-UZ");
-  const filtered = normalizedQuery ? catalogue.filter((product) => `${product.title} ${product.color}`.toLocaleLowerCase("uz-UZ").includes(normalizedQuery)).slice(0, 4) : searchProducts(query).slice(0, 4);
-  const products = normalizedQuery ? filtered : catalogue.slice(0, 4);
+  const relatedTerms: Record<string, string[]> = {
+    "футболки": ["футбол", "t-shirt", "tee", "tank"],
+    "свитеры": ["свитер", "sweat", "hoodie", "sweater"],
+    "майки": ["майк", "tank", "top"],
+  };
+  const terms = relatedTerms[normalizedQuery] ?? [normalizedQuery];
+  const filtered = normalizedQuery ? catalogue.filter((product) => terms.some((term) => `${product.title} ${product.color} ${product.category ?? ""}`.toLocaleLowerCase("uz-UZ").includes(term))).slice(0, 4) : [];
+  const products = normalizedQuery ? filtered : (randomProducts?.length ? randomProducts : catalogue.slice(0, 4));
 
   return (
     <>
@@ -105,11 +117,11 @@ export function SearchContents({
             placeholder={t("search")}
           />
         </label>
-        {!query && <div className="site-search-categories">{searchCategories.map((category) => <button key={category} type="button" onClick={() => setQuery(category)}>{category}</button>)}</div>}
+        {!query && <div className="site-search-history"><p>ПОСЛЕДНИЕ ЗАПРОСЫ</p><div className="site-search-categories">{searchCategories.map((category) => <button key={category} type="button" onClick={() => setQuery(category)}>{category}<span>→</span></button>)}</div></div>}
         <div className="site-search-products">
           {products.map((product) => (
             <Link href={`/products/${product.id}${product.colorSlug ? `?color=${encodeURIComponent(product.colorSlug)}` : ""}`} key={product.cardId ?? product.id} onClick={onProductClick} className="site-search-product">
-              <Image src={product.image} alt={product.title} width={270} height={270} />
+              <SearchResultImage src={product.image} alt={product.title} />
               <strong>{product.title}</strong><span>{product.color === "GRAY" ? t("gray") : product.color}</span><b>{product.price}</b>
             </Link>
           ))}
@@ -117,6 +129,13 @@ export function SearchContents({
         </div>
     </>
   );
+}
+
+function SearchResultImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const imageSrc = failed ? "/images/p1.jpg" : storefrontAssetUrl(src) || "/images/p1.jpg";
+  const isRemote = imageSrc.startsWith("http://") || imageSrc.startsWith("https://");
+  return <Image src={imageSrc} alt={alt} width={270} height={270} unoptimized={isRemote} onError={() => setFailed(true)} />;
 }
 
 export function useSearch() {

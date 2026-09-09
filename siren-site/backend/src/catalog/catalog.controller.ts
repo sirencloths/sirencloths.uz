@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { IsArray, IsBoolean, IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID, Matches, Min, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { CurrentUser } from '../auth/jwt.strategy';
@@ -52,6 +52,7 @@ class TaxonomyDto {
 export class CatalogController {
   constructor(private readonly catalog: CatalogService) {}
   @Get('products') products() { return this.catalog.publicProducts(); }
+  @Get('products/random') randomProducts(@Query('limit') limit?: string) { return this.catalog.publicRandomProducts(Number(limit)); }
   @Get('products/:slug') product(@Param('slug') slug: string) { return this.catalog.publicProduct(slug); }
   @Get('categories') categories() { return this.catalog.publicCategories(); }
   @Get('collections') collections() { return this.catalog.publicCollections(); }

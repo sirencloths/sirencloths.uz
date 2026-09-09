@@ -26,6 +26,16 @@ export class CatalogService {
   ) {}
 
   publicProducts() { return this.products.find({ where: { status: ProductStatus.ACTIVE }, relations: { variants: true, category: true }, order: { createdAt: 'DESC' } }); }
+  async publicRandomProducts(limit = 4) {
+    const products = await this.publicProducts();
+    const take = Math.max(1, Math.min(12, Number.isFinite(limit) ? Math.floor(limit) : 4));
+    // Shuffle in application code so it behaves identically on PostgreSQL and pg-mem.
+    for (let index = products.length - 1; index > 0; index -= 1) {
+      const selected = Math.floor(Math.random() * (index + 1));
+      [products[index], products[selected]] = [products[selected], products[index]];
+    }
+    return products.slice(0, take);
+  }
   async publicProduct(slug: string) {
     const product = await this.products.findOne({ where: { slug, status: ProductStatus.ACTIVE }, relations: { variants: true, category: true } });
     if (!product) throw new NotFoundException('Product not found');
