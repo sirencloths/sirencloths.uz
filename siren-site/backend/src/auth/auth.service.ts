@@ -161,11 +161,13 @@ export class AuthService implements OnApplicationBootstrap {
   private async issueOtp(email: string, purpose: OtpPurpose) {
     const latest = await this.otps.findOne({ where: { email, purpose, usedAt: IsNull() }, order: { createdAt: 'DESC' } });
     if (latest && latest.resendAvailableAt.getTime() > Date.now()) throw new HttpException('Please wait before requesting another code', HttpStatus.TOO_MANY_REQUESTS);
-    await this.otps.createQueryBuilder().update().set({ usedAt: new Date() }).where('email = :email AND purpose = :purpose AND used_at IS NULL', { email, purpose }).execute();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const now = new Date();
-    await this.otps.save(this.otps.create({ email, purpose, codeHash: await bcrypt.hash(code, 10), expiresAt: new Date(now.getTime() + 10 * 60_000), resendAvailableAt: new Date(now.getTime() + 60_000), attempts: 0 }));
+    // Delivery happens before invalidating the previous code so a missing SMTP
+    // configuration never leaves the customer with an unreachable new code.
     await this.email.sendVerificationCode(email, code);
+    await this.otps.createQueryBuilder().update().set({ usedAt: new Date() }).where('email = :email AND purpose = :purpose AND used_at IS NULL', { email, purpose }).execute();
+    await this.otps.save(this.otps.create({ email, purpose, codeHash: await bcrypt.hash(code, 10), expiresAt: new Date(now.getTime() + 10 * 60_000), resendAvailableAt: new Date(now.getTime() + 60_000), attempts: 0 }));
   }
 
   private async verificationPayload(token: string, purpose: OtpPurpose) {
