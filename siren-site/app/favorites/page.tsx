@@ -25,14 +25,14 @@ function FavoriteCard({ product }: { product: Product }) {
   return (
     <article className="product-card favorite-product-card">
       <div className="product-image">
-        <Link href={`/products/${product.id}`} aria-label={product.title}>
+        <Link href={`/products/${product.id}${product.colorSlug ? `?color=${encodeURIComponent(product.colorSlug)}` : ""}`} aria-label={product.title}>
           <Image src={safeImage} alt={product.alt} width={350} height={350} unoptimized={isRemoteImage} />
         </Link>
-        <button type="button" className="favorite-remove-btn" aria-label={t("unselect")} onClick={() => removeFavorite(product.id)}>
+        <button type="button" className="favorite-remove-btn" aria-label={t("unselect")} onClick={() => removeFavorite(product)}>
           <Image src="/icons/close.svg" alt="" width={15} height={15} />
         </button>
       </div>
-      <Link href={`/products/${product.id}`}>
+      <Link href={`/products/${product.id}${product.colorSlug ? `?color=${encodeURIComponent(product.colorSlug)}` : ""}`}>
         <h2>{product.title}</h2>
         <p>{product.color === "GRAY" ? t("gray") : product.color}</p>
         <strong>{product.price}</strong>

@@ -15,7 +15,7 @@ type Props = {
 export default function ProductCard({ product, small = false }: Props) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { t } = useLanguage();
-  const liked = isFavorite(product.id);
+  const liked = isFavorite(product);
   // Admin-created products may not have an image yet. Never pass an empty URL to next/image.
   const candidateImage = typeof product.image === "string" ? product.image.trim() : "";
   // Accept local assets and valid HTTPS assets added by the admin; reject malformed values.

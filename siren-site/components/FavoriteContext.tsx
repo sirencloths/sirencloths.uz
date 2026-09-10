@@ -2,16 +2,17 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Product } from "@/lib/data";
-import { getStorefrontProducts, toStorefrontProduct } from "@/lib/api";
+import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
 
 type FavoriteContextValue = {
   favorites: Product[];
-  isFavorite: (id: string) => boolean;
+  isFavorite: (product: Product) => boolean;
   toggleFavorite: (product: Product) => void;
-  removeFavorite: (id: string) => void;
+  removeFavorite: (product: Product) => void;
 };
 
 const FavoriteContext = createContext<FavoriteContextValue | null>(null);
+const favoriteKey = (product: Product) => `${product.id}:${product.colorSlug || product.color.trim().toLocaleLowerCase("uz-UZ").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "default"}`;
 
 export function FavoriteProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<Product[]>([]);
@@ -34,20 +35,16 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
     if (loaded) localStorage.setItem("siren-favorites", JSON.stringify(favorites));
   }, [favorites, loaded]);
 
-  // Favorites only retain the product id locally.  Refresh its title, image
-  // and variant-derived price from the storefront so edited admin data is
-  // never replaced by an outdated browser snapshot.
+  // A favorite represents one product colour card. Refresh its current data
+  // without collapsing other colours of the same product into one favorite.
   useEffect(() => {
     if (!loaded || !favorites.length) return;
     let active = true;
     void getStorefrontProducts()
       .then((items) => {
         if (!active) return;
-        const latest = new Map(items.map((item) => {
-          const product = toStorefrontProduct(item);
-          return [product.id, product] as const;
-        }));
-        setFavorites((current) => current.map((item) => latest.get(item.id) ?? item));
+        const latest = new Map(toStorefrontColorCards(items).map((product) => [favoriteKey(product), product] as const));
+        setFavorites((current) => current.map((item) => latest.get(favoriteKey(item)) ?? item));
       })
       .catch(() => undefined);
     return () => { active = false; };
@@ -57,19 +54,19 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
   }, [loaded]);
 
   const toggleFavorite = (product: Product) => {
-    setFavorites((current) => current.some((item) => item.id === product.id)
-      ? current.filter((item) => item.id !== product.id)
+    setFavorites((current) => current.some((item) => favoriteKey(item) === favoriteKey(product))
+      ? current.filter((item) => favoriteKey(item) !== favoriteKey(product))
       : [...current, product]);
   };
 
-  const removeFavorite = (id: string) => {
-    setFavorites((current) => current.filter((item) => item.id !== id));
+  const removeFavorite = (product: Product) => {
+    setFavorites((current) => current.filter((item) => favoriteKey(item) !== favoriteKey(product)));
   };
 
   return (
     <FavoriteContext.Provider value={{
       favorites,
-      isFavorite: (id) => favorites.some((item) => item.id === id),
+      isFavorite: (product) => favorites.some((item) => favoriteKey(item) === favoriteKey(product)),
       toggleFavorite,
       removeFavorite,
     }}>
