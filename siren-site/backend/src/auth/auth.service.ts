@@ -110,6 +110,7 @@ export class AuthService implements OnApplicationBootstrap {
     if (!customer?.passwordHash || !customer.isActive || !(await bcrypt.compare(password, customer.passwordHash))) throw new UnauthorizedException('Invalid email or password');
     customer.lastLoginAt = new Date();
     await this.customers.save(customer);
+    await this.auditLogs.save(this.auditLogs.create({ actorId: null, action: 'logged_in', entityType: 'customer', entityId: customer.id, payload: { email: customer.email } }));
     return { accessToken: await this.signCustomer(customer), customer: await this.customerMe(customer.id) };
   }
 
