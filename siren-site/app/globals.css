@@ -7662,3 +7662,7 @@ body {
 /* Product cards embedded beside homepage banners keep the catalogue hover preview. */
 .custom-section-product-card .product-image>img.custom-section-product-image--hover{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity 320ms cubic-bezier(.22,1,.36,1),transform 320ms cubic-bezier(.22,1,.36,1);transform:scale(1.015)}@media(hover:hover) and (pointer:fine){.custom-section-product-card:hover .custom-section-product-image--primary{opacity:0;transform:scale(1.015)}.custom-section-product-card:hover .custom-section-product-image--hover{opacity:1;transform:scale(1)}}
 .dashboard-control-fields input{height:38px;border:1px solid #d8d8d3;border-radius:7px;background:#fff;padding:0 10px;color:#171717;font:800 12px Arial,sans-serif}
+
+/* The homepage collection campaign directly below the product rail is a true
+   mobile full-bleed banner, independent of the collection column gutter. */
+@media(max-width:760px){.collection>.collection-banner{width:100vw!important;max-width:none!important;margin-right:calc(50% - 50vw)!important;margin-left:calc(50% - 50vw)!important}.collection>.collection-banner>img{display:block;width:100%!important;max-width:none!important}}
