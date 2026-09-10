@@ -6918,6 +6918,9 @@ body {
 /* Keep the homepage rail as airy as the surrounding product grids. */
 @media(min-width:761px){.products--slider .products-track{column-gap:32px!important;gap:32px!important}.products--slider .products-slide{flex-basis:calc((100% - 96px) / 4)}}
 
+/* Embla loop clones need physical slide spacing: flex-gap can disappear at the last → first boundary. */
+@media(min-width:761px){.products--slider .products-track{column-gap:0!important;gap:0!important}.products--slider .products-slide{flex-basis:calc((100% - 128px) / 4)!important;margin-right:32px!important}}
+
 /* Embla's looping transform keeps per-slide margins more reliably than flex gap
    on the narrow mobile product rail. */
 @media(max-width:760px){.products--slider .products-track{column-gap:0!important;gap:0!important}.products--slider .products-slide{flex-basis:calc(100% - 80px)!important;margin-right:16px!important}}
@@ -7646,3 +7649,6 @@ body {
 
 /* The second mobile promo is a true full-bleed campaign banner, not a narrow card. */
 @media(max-width:760px){.promo-card--small{align-self:stretch!important;width:100%!important;max-width:none!important;aspect-ratio:4 / 3!important}.promo-card--small>img{width:100%!important;height:100%!important;object-fit:cover}}
+
+/* Product cards embedded beside homepage banners keep the catalogue hover preview. */
+.custom-section-product-card .product-image>img.custom-section-product-image--hover{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity 320ms cubic-bezier(.22,1,.36,1),transform 320ms cubic-bezier(.22,1,.36,1);transform:scale(1.015)}@media(hover:hover) and (pointer:fine){.custom-section-product-card:hover .custom-section-product-image--primary{opacity:0;transform:scale(1.015)}.custom-section-product-card:hover .custom-section-product-image--hover{opacity:1;transform:scale(1)}}

@@ -146,7 +146,7 @@ function SectionCart({
     >
       {items.map(({ product, variant }, index) => (
         <a className="product-card custom-section-product-card" href={`/products/${product.slug}`} key={`${device}-${variant.id}-${index}`}>
-          <span className="product-image"><img src={imageUrl(product.media[0]?.url ?? "")} alt="" /><span className="like-btn"><img src="/icons/heart.svg" alt="" /></span></span>
+          <span className="product-image"><img className="custom-section-product-image--primary" src={imageUrl(product.media[0]?.url ?? "")} alt="" />{product.media[1]?.url && <img className="custom-section-product-image--hover" src={imageUrl(product.media[1].url)} alt="" aria-hidden="true" />}<span className="like-btn"><img src="/icons/heart.svg" alt="" /></span></span>
           <h2>{product.title}</h2>
           <p>{(variant.color || variant.size || "").toUpperCase()}</p>
           <strong>{formatStorePrice(product.price, product.currencyCode)}</strong>

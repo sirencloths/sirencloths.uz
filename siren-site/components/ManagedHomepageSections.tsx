@@ -32,9 +32,13 @@ function sectionProducts(section: Section, products: ApiProduct[], device: "desk
 
 function Card({ item }: { item: { product: ApiProduct; variant: ApiProduct["variants"][number] } }) {
   const { product, variant } = item;
+  const colorImages = Array.isArray(variant.attributes?.images)
+    ? variant.attributes.images.filter((image): image is string => typeof image === "string" && Boolean(image.trim()))
+    : [];
   const cardProduct: Product = {
     id: product.slug,
-    image: asset(product.media[0]?.url ?? ""),
+    image: asset(colorImages[0] || product.media[0]?.url || ""),
+    hoverImage: asset(colorImages[1] || product.media[1]?.url || ""),
     alt: product.title,
     title: product.title,
     color: (variant.color || variant.size || "").toUpperCase(),
