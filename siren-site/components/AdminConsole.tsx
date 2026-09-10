@@ -1450,7 +1450,6 @@ export default function AdminConsole() {
       <main className="admin-main">
         <header className="admin-topbar">
           <div className="admin-topbar-title">
-            <a href="/" className="admin-topbar-brand">SIREN.</a>
             <h1>{nav.find((x) => x[0] === tab)?.[1]}</h1>
           </div>
           <div className="admin-topbar-actions">
