@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { IsNull, Repository } from 'typeorm';
-import { AuthOtp, Customer, CustomerAddress, User, UserRole } from '../database/entities';
+import { AuditLog, AuthOtp, Customer, CustomerAddress, User, UserRole } from '../database/entities';
 import { EmailService } from './email.service';
 
 type OtpPurpose = 'registration' | 'password_reset' | 'password_change';
@@ -18,6 +18,7 @@ export class AuthService implements OnApplicationBootstrap {
     @InjectRepository(Customer) private readonly customers: Repository<Customer>,
     @InjectRepository(CustomerAddress) private readonly addresses: Repository<CustomerAddress>,
     @InjectRepository(AuthOtp) private readonly otps: Repository<AuthOtp>,
+    @InjectRepository(AuditLog) private readonly auditLogs: Repository<AuditLog>,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly email: EmailService,
@@ -40,6 +41,7 @@ export class AuthService implements OnApplicationBootstrap {
     if (!user || !user.isActive || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new UnauthorizedException('Invalid email or password');
     }
+    await this.auditLogs.save(this.auditLogs.create({ actorId: user.id, action: 'logged_in', entityType: 'admin_session', entityId: user.id, payload: { email: user.email } }));
     return { accessToken: await this.sign(user), user: this.sanitize(user) };
   }
 
@@ -97,6 +99,7 @@ export class AuthService implements OnApplicationBootstrap {
     });
     const saved = await this.customers.save(customer);
     await this.saveDefaultAddress(saved.id, profile.region, profile.address);
+    await this.auditLogs.save(this.auditLogs.create({ actorId: null, action: 'registered', entityType: 'customer', entityId: saved.id, payload: { email: saved.email } }));
     return { accessToken: await this.signCustomer(saved), customer: await this.customerMe(saved.id) };
   }
 

@@ -6,12 +6,15 @@ import {
   ArrowDown,
   ArrowUp,
   BarChart3,
+  Bell,
   Box,
   ChevronRight,
+  ChevronDown,
   ClipboardList,
   Crown,
   FileText,
   GripVertical,
+  Grid2X2,
   LayoutDashboard,
   LockKeyhole,
   LogOut,
@@ -25,6 +28,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   Smartphone,
+  Sun,
   Tags,
   Trash2,
   Upload,
@@ -798,6 +802,10 @@ export default function AdminConsole() {
   const [dashboardGranularity, setDashboardGranularity] = useState("daily");
   const [dashboardFrom, setDashboardFrom] = useState("");
   const [dashboardTo, setDashboardTo] = useState("");
+  const [adminProfile, setAdminProfile] = useState<{ firstName?: string; lastName?: string; email?: string; role?: string } | null>(null);
+  const [adminTheme, setAdminTheme] = useState<"light" | "midnight" | "violet">("light");
+  const [showProfile, setShowProfile] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [transfers, setTransfers] = useState<InventoryTransfer[]>([]);
   const [productSubsection, setProductSubsection] = useState<"all" | "transfer">("all");
@@ -963,7 +971,14 @@ export default function AdminConsole() {
   useEffect(() => {
     const v = localStorage.getItem("siren-admin-token");
     if (v) setToken(v);
+    const savedTheme = localStorage.getItem("siren-admin-theme");
+    if (savedTheme === "midnight" || savedTheme === "violet" || savedTheme === "light") setAdminTheme(savedTheme);
   }, []);
+  useEffect(() => {
+    if (!token) { setAdminProfile(null); return; }
+    void api<{ firstName?: string; lastName?: string; email?: string; role?: string }>("/auth/me", token).then(setAdminProfile).catch(() => setAdminProfile(null));
+  }, [token]);
+  useEffect(() => { localStorage.setItem("siren-admin-theme", adminTheme); }, [adminTheme]);
   useEffect(() => {
     const signOutExpiredSession = () => setToken("");
     window.addEventListener("siren-admin-unauthorized", signOutExpiredSession);
@@ -1401,54 +1416,34 @@ export default function AdminConsole() {
         setTab(v as Tab);
         void run(() => refresh(v as Tab));
       }}
-      className="admin-shell"
+      className={`admin-shell admin-theme--${adminTheme}`}
     >
-      <aside className="admin-sidebar-v2">
-        <a href="/" className="admin-wordmark">
-          <span>SIREN.</span>
-          <small>ADMIN</small>
-        </a>
-        <TabsList>
-          {nav.map(([id, label, Icon]) => (
-            <TabsTrigger value={id} key={id}>
-              <Icon size={17} />
-              <span>{label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        <div className="admin-sidebar-foot">
-          <p>
-            <Crown size={14} /> Super admin
-          </p>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              localStorage.removeItem("siren-admin-token");
-              setToken("");
-            }}
-          >
-            <LogOut size={16} /> Chiqish
-          </Button>
-        </div>
-      </aside>
       <main className="admin-main">
         <header className="admin-topbar">
-          <div>
-            <p className="ui-overline">SIREN / ADMINISTRATION</p>
+          <div className="admin-topbar-title">
+            <a href="/" className="admin-topbar-brand">SIREN.</a>
             <h1>{nav.find((x) => x[0] === tab)?.[1]}</h1>
           </div>
-          <div>
-            <Badge variant="success">● System online</Badge>
+          <div className="admin-topbar-actions">
+            <div className="admin-theme-picker" aria-label="Theme tanlash">
+              <Sun size={18} />
+              <select value={adminTheme} onChange={(event) => setAdminTheme(event.target.value as "light" | "midnight" | "violet")} aria-label="Theme">
+                <option value="light">Light</option><option value="midnight">Midnight</option><option value="violet">Violet</option>
+              </select>
+            </div>
+            <div className="admin-notification-wrap"><button type="button" className="admin-icon-control" aria-label="Bildirishnomalar" onClick={() => { setShowNotifications((current) => !current); void run(() => refresh("dashboard")); }}><Bell size={19} />{((dashboard as DashboardData | null)?.activity?.length ?? 0) > 0 && <i />}</button>{showNotifications && <div className="admin-notifications"><header><b>Bildirishnomalar</b><button type="button" onClick={() => setShowNotifications(false)}>×</button></header>{((dashboard as DashboardData | null)?.activity ?? []).map((item) => <article key={item.id}><b>{item.action} · {item.entityType}</b><span>{item.user} · {dashboardTime(item.createdAt)}</span></article>)}{!((dashboard as DashboardData | null)?.activity?.length) && <p>Yangi bildirishnoma yo‘q.</p>}</div>}</div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void run(() => refresh())}
+              onClick={() => void run(async () => { await refresh(); await refresh("dashboard"); })}
             >
               <RefreshCw size={15} className={loading ? "is-spinning" : ""} />{" "}
               Yangilash
             </Button>
+            <div className="admin-profile-wrap"><button type="button" className="admin-profile-trigger" onClick={() => setShowProfile((current) => !current)}><span>{`${adminProfile?.firstName?.[0] ?? ""}${adminProfile?.lastName?.[0] ?? ""}` || adminProfile?.email?.[0]?.toUpperCase() || "A"}</span><b>{`${adminProfile?.firstName ?? ""} ${adminProfile?.lastName ?? ""}`.trim() || adminProfile?.email || "Admin"}</b><ChevronDown size={15} /></button>{showProfile && <div className="admin-profile-menu"><b>{adminProfile?.email}</b><span>{adminProfile?.role ?? "admin"}</span><button type="button" onClick={() => { localStorage.removeItem("siren-admin-token"); setToken(""); }}> <LogOut size={15} /> Chiqish</button></div>}</div>
           </div>
         </header>
+        <nav className="admin-top-navigation" aria-label="Admin bo‘limlari"><TabsList>{nav.map(([id, label, Icon]) => <TabsTrigger value={id} key={id}><Icon size={16} /><span>{label}</span></TabsTrigger>)}</TabsList></nav>
         <AdminToast message={notice} />
         <AdminToast message={error} tone="error" />
         <TabsContent value="dashboard">

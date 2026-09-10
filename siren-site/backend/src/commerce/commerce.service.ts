@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Customer, Order, OrderItem, OrderStatus, Product, ProductVariant } from '../database/entities';
+import { AuditLog, Customer, Order, OrderItem, OrderStatus, Product, ProductVariant } from '../database/entities';
 
 export type CheckoutInput = {
   email: string; phone?: string; firstName: string; lastName: string;
@@ -62,7 +62,9 @@ export class CommerceService {
         await variantRepo.save(row.variant);
         await itemRepo.save(itemRepo.create({ orderId: order.id, productId: row.product.id, variantId: row.variant.id, titleSnapshot: row.product.title, skuSnapshot: row.variant.sku, quantity: row.quantity, unitPrice: String(row.unitPrice), totalPrice: String(row.unitPrice * row.quantity) }));
       }
-      return orderRepo.findOneOrFail({ where: { id: order.id }, relations: { items: true, customer: true } });
+      const completed = await orderRepo.findOneOrFail({ where: { id: order.id }, relations: { items: true, customer: true } });
+      await manager.getRepository(AuditLog).save(manager.getRepository(AuditLog).create({ actorId: null, action: 'created', entityType: 'order', entityId: completed.id, payload: { orderNumber: completed.orderNumber, customerId: completed.customerId, total: completed.totalAmount } }));
+      return completed;
     });
   }
 
