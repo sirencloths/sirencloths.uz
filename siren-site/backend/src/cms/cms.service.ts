@@ -68,6 +68,14 @@ export class CmsService {
   async updateLookbook(id: string, input: Partial<LookbookEntry>) { const entity = await this.lookbook.preload({ id, ...input }); if (!entity) throw new NotFoundException('Lookbook entry not found'); return this.lookbook.save(entity); }
   async removeLookbook(id: string) { await this.lookbook.delete(id); return { deleted: true }; }
   recordsForStorefront() { return this.records.find({ where: { isActive: true }, order: { position: 'ASC', createdAt: 'DESC' } }); }
+  async notificationsForStorefront() {
+    const setting = await this.settings.findOneBy({ key: 'site-notifications' });
+    const items = setting?.value?.items;
+    return Array.isArray(items)
+      ? items.filter((item) => item && typeof item === 'object' && (item as { isActive?: boolean }).isActive !== false)
+        .sort((a, b) => String((b as { createdAt?: string }).createdAt ?? '').localeCompare(String((a as { createdAt?: string }).createdAt ?? '')))
+      : [];
+  }
   adminRecords() { return this.records.find({ order: { position: 'ASC', createdAt: 'DESC' } }); }
   createRecord(input: Partial<MusicRecord>) { return this.records.save(this.records.create(input)); }
   async updateRecord(id: string, input: Partial<MusicRecord>) { const entity = await this.records.preload({ id, ...input }); if (!entity) throw new NotFoundException('Music record not found'); return this.records.save(entity); }

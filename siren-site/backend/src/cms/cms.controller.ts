@@ -21,6 +21,7 @@ export class CmsController {
   @Get('custom-sections') customSections() { return this.cms.customSectionsForStorefront(); }
   @Get('navigation') navigation() { return this.cms.navigationForStorefront(); }
   @Get('records') records() { return this.cms.recordsForStorefront(); }
+  @Get('notifications') notifications() { return this.cms.notificationsForStorefront(); }
   @Get('pages/:slug') page(@Param('slug') slug: string) { return this.cms.pageForStorefront(slug); }
 }
 

@@ -60,11 +60,13 @@ type Tab =
   | "currencies"
   | "analytics"
   | "content"
+  | "notifications"
   | "pages"
   | "team"
   | "audit"
   | "settings";
 type ContentSubsection = "main-banner" | "custom-pages" | "lookbook" | "blog" | "records" | "collections";
+type StoreNotification = { id: string; title: Record<string, string>; text: Record<string, string>; imageUrl?: string; href?: string; createdAt: string; isActive?: boolean };
 type Variant = {
   id: string;
   sku: string;
@@ -821,6 +823,7 @@ export default function AdminConsole() {
   const [lookbookEntries, setLookbookEntries] = useState<LookbookEntry[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [records, setRecords] = useState<MusicRecord[]>([]);
+  const [storeNotifications, setStoreNotifications] = useState<StoreNotification[]>([]);
   const [pageBanners, setPageBanners] = useState<PageBannerDraft[]>([]);
   const [pages, setPages] = useState<CmsPage[]>([]);
   const [users, setUsers] = useState<
@@ -978,6 +981,11 @@ export default function AdminConsole() {
         const pageBannerSetting = settings.find((setting) => setting.key === "page-banners");
         const storedItems = pageBannerSetting?.value?.items;
         setPageBanners(Array.isArray(storedItems) ? (storedItems as PageBannerDraft[]).map((item) => ({ ...blankPageBanner(), ...item, cartItems: Array.isArray(item.cartItems) ? item.cartItems : [] })) : []);
+      }
+      if (t === "notifications") {
+        const settings = await api<SiteSetting[]>("/admin/content/settings", token);
+        const storedItems = settings.find((setting) => setting.key === "site-notifications")?.value?.items;
+        setStoreNotifications(Array.isArray(storedItems) ? storedItems as StoreNotification[] : []);
       }
       if (t === "team") setUsers(await api("/admin/users", token));
       if (t === "audit") setAudit(await api("/admin/audit-logs", token));
@@ -1411,6 +1419,7 @@ export default function AdminConsole() {
     ["analytics", "Analitika", Monitor],
     ["content", "Kontent", FileText],
     ["pages", "Sahifalar", FileText],
+    ["notifications", "Xabarlar", Bell],
     ["team", "Jamoa", Users],
     ["audit", "Audit", ShieldCheck],
     ["settings", "Sozlamalar", Settings2],
@@ -1430,8 +1439,8 @@ export default function AdminConsole() {
   const navGroups: Array<[string, Array<[Tab, string, typeof LayoutDashboard]>]> = [
     ["Asosiy", nav.slice(0, 4)],
     ["Savdo", nav.slice(4, 11)],
-    ["Kontent", nav.slice(11, 13)],
-    ["Tizim", nav.slice(13)],
+    ["Kontent", nav.slice(11, 14)],
+    ["Tizim", nav.slice(14)],
   ];
   return (
     <Tabs
@@ -2009,6 +2018,7 @@ export default function AdminConsole() {
             onChanged={() => void run(() => refresh("pages"))}
           />
         </TabsContent>
+        <TabsContent value="notifications"><NotificationManager items={storeNotifications} token={token} onChanged={(items) => setStoreNotifications(items)} /></TabsContent>
         <TabsContent value="team">
           <List
             title="Jamoa"
@@ -3223,6 +3233,23 @@ function MockCart({
     </button>
   );
 }
+function NotificationManager({ items, token, onChanged }: { items: StoreNotification[]; token: string; onChanged: (items: StoreNotification[]) => void }) {
+  const blank = () => ({ title: { ru: "", uz: "", en: "" }, text: { ru: "", uz: "", en: "" }, imageUrl: "", href: "", isActive: true });
+  const [draft, setDraft] = useState(blank());
+  const [saving, setSaving] = useState(false);
+  const saveItems = async (next: StoreNotification[]) => {
+    setSaving(true);
+    try { await api("/admin/content/settings/site-notifications", token, { method: "PUT", body: JSON.stringify({ value: { items: next } }) }); onChanged(next); } finally { setSaving(false); }
+  };
+  const create = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!draft.title.ru.trim() || !draft.text.ru.trim()) return;
+    const item: StoreNotification = { id: crypto.randomUUID(), title: draft.title, text: draft.text, imageUrl: draft.imageUrl.trim(), href: draft.href.trim() || "/", createdAt: new Date().toISOString(), isActive: draft.isActive };
+    await saveItems([item, ...items]); setDraft(blank());
+  };
+  return <section className="notification-manager"><div className="admin-product-index-head"><div><p className="ui-overline">XABARLAR</p><h2>Sayt xabarlari</h2><span>Yaratilgan xabar barcha foydalanuvchilarga headerdagi «Новости» oynasida ko‘rinadi.</span></div></div><Card><CardContent><form className="ui-form" onSubmit={(event) => void create(event)}><div className="ui-form-grid--three ui-form-grid"><Field label="Asosiy sarlavha — Ruscha"><input value={draft.title.ru} onChange={(event) => setDraft({ ...draft, title: { ...draft.title, ru: event.target.value } })} required /></Field><Field label="Sarlavha — O‘zbekcha"><input value={draft.title.uz} onChange={(event) => setDraft({ ...draft, title: { ...draft.title, uz: event.target.value } })} /></Field><Field label="Sarlavha — Inglizcha"><input value={draft.title.en} onChange={(event) => setDraft({ ...draft, title: { ...draft.title, en: event.target.value } })} /></Field></div><div className="ui-form-grid--three ui-form-grid"><Field label="Matn — Ruscha"><textarea value={draft.text.ru} onChange={(event) => setDraft({ ...draft, text: { ...draft.text, ru: event.target.value } })} required /></Field><Field label="Matn — O‘zbekcha"><textarea value={draft.text.uz} onChange={(event) => setDraft({ ...draft, text: { ...draft.text, uz: event.target.value } })} /></Field><Field label="Matn — Inglizcha"><textarea value={draft.text.en} onChange={(event) => setDraft({ ...draft, text: { ...draft.text, en: event.target.value } })} /></Field></div><div className="ui-form-grid"><Field label="Rasm uchun ssilka"><input type="url" value={draft.imageUrl} onChange={(event) => setDraft({ ...draft, imageUrl: event.target.value })} placeholder="https://... yoki /uploads/..." /></Field><Field label="Sahifa havolasi"><input value={draft.href} onChange={(event) => setDraft({ ...draft, href: event.target.value })} placeholder="/shop yoki https://..." /></Field></div><label className="notification-active"><input type="checkbox" checked={draft.isActive} onChange={(event) => setDraft({ ...draft, isActive: event.target.checked })} /> Saytda ko‘rsatish</label><div className="product-editor-actions-top"><Button disabled={saving}>{saving ? "Saqlanmoqda…" : "Xabar yaratish"}</Button></div></form></CardContent></Card><div className="notification-admin-list">{items.map((item) => <article key={item.id}><img src={item.imageUrl || "/images/p1.jpg"} alt="" /><div><b>{item.title.ru || item.title.uz || item.title.en}</b><p>{item.text.ru || item.text.uz || item.text.en}</p><small>{item.href || "/"} · {new Date(item.createdAt).toLocaleString("ru-RU")}</small></div><Button type="button" variant="outline" onClick={() => void saveItems(items.filter((current) => current.id !== item.id))}>Olib tashlash</Button></article>)}{!items.length && <Empty>Hali xabar yaratilmagan.</Empty>}</div></section>;
+}
+
 function BannerManager({
   banners,
   token,
