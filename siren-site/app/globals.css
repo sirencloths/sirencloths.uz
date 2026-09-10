@@ -6924,7 +6924,7 @@ body {
 /* Give every mobile carousel item its own trailing gutter.  This is deliberately
    padding (not only flex-gap), so Embla preserves the whitespace where its last
    loop clone meets the first card as well. */
-@media(max-width:760px){.products--slider .products-track{column-gap:0!important;gap:0!important}.products--slider .products-slide{box-sizing:border-box;flex-basis:calc(100% - 64px)!important;margin-right:0!important;padding-right:20px!important}}
+@media(max-width:760px){.products--slider .products-track{column-gap:0!important;gap:0!important}.products--slider .products-slide{box-sizing:border-box;flex-basis:calc(100% - 64px)!important;margin-right:0!important;padding-right:32px!important}}
 
 /* Product photography must start exactly where the compact mobile header ends.
    This selector deliberately matches the legacy high-specificity rule above. */
