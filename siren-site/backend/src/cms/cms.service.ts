@@ -74,7 +74,25 @@ export class CmsService {
     return Array.isArray(items)
       ? items.filter((item) => item && typeof item === 'object' && (item as { isActive?: boolean }).isActive !== false)
         .sort((a, b) => String((b as { createdAt?: string }).createdAt ?? '').localeCompare(String((a as { createdAt?: string }).createdAt ?? '')))
+        .map((item) => { const { clickVisitorIds: _clickVisitorIds, ...safe } = item as Record<string, unknown>; return safe; })
       : [];
+  }
+  async recordNotificationClick(id: string, visitorId: string) {
+    const cleanVisitorId = visitorId.trim().slice(0, 120);
+    if (!cleanVisitorId) return { clicks: 0 };
+    const setting = await this.settings.findOneBy({ key: 'site-notifications' });
+    const items = Array.isArray(setting?.value?.items) ? setting.value.items : [];
+    let clicks = 0;
+    const nextItems = items.map((item) => {
+      if (!item || typeof item !== 'object' || (item as { id?: string }).id !== id) return item;
+      const value = item as Record<string, unknown>;
+      const visitors = Array.isArray(value.clickVisitorIds) ? value.clickVisitorIds.filter((entry): entry is string => typeof entry === 'string') : [];
+      const nextVisitors = visitors.includes(cleanVisitorId) ? visitors : [...visitors, cleanVisitorId];
+      clicks = nextVisitors.length;
+      return { ...value, clickVisitorIds: nextVisitors, clicks };
+    });
+    if (setting) await this.settings.save({ ...setting, value: { ...setting.value, items: nextItems } });
+    return { clicks };
   }
   adminRecords() { return this.records.find({ order: { position: 'ASC', createdAt: 'DESC' } }); }
   createRecord(input: Partial<MusicRecord>) { return this.records.save(this.records.create(input)); }

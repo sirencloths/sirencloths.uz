@@ -11,6 +11,7 @@ import { CmsService } from './cms.service';
 
 class CmsDto { @IsOptional() @IsString() title?: string; @IsOptional() @IsString() slug?: string; @IsOptional() @IsString() imageUrl?: string; @IsOptional() @IsString() mobileImageUrl?: string | null; @IsOptional() @IsString() targetUrl?: string | null; @IsOptional() @IsString() linkLabel?: string; @IsOptional() @IsString() excerpt?: string; @IsOptional() @IsString() body?: string; @IsOptional() @IsString() coverImageUrl?: string | null; @IsOptional() @IsString() caption?: string | null; @IsOptional() @IsString() artist?: string; @IsOptional() @IsString() audioUrl?: string; @IsOptional() @IsString() publishedAt?: string | null; @IsOptional() @IsBoolean() isActive?: boolean; @IsOptional() @IsBoolean() isPublished?: boolean; @IsOptional() @IsBoolean() isVisible?: boolean; @IsOptional() @IsBoolean() textShadow?: boolean; @IsOptional() @IsInt() position?: number; @IsOptional() @IsObject() seo?: Record<string, unknown>; @IsOptional() @IsObject() content?: Record<string, unknown>; @IsOptional() @IsString() type?: string; }
 class SettingDto { @IsObject() value!: Record<string, unknown>; }
+class NotificationClickDto { @IsString() visitorId!: string; }
 
 @Controller('content')
 export class CmsController {
@@ -22,6 +23,7 @@ export class CmsController {
   @Get('navigation') navigation() { return this.cms.navigationForStorefront(); }
   @Get('records') records() { return this.cms.recordsForStorefront(); }
   @Get('notifications') notifications() { return this.cms.notificationsForStorefront(); }
+  @Post('notifications/:id/click') notificationClick(@Param('id') id: string, @Body() body: NotificationClickDto) { return this.cms.recordNotificationClick(id, body.visitorId); }
   @Get('pages/:slug') page(@Param('slug') slug: string) { return this.cms.pageForStorefront(slug); }
 }
 
