@@ -488,7 +488,7 @@ function VariantCharacteristics({ drafts, onUpdate, onAddColor, onAddSize, onRem
     })}
   </section>;
 }
-function VariantImages({ drafts, onAddImage }: { drafts: VariantDraft[]; onAddImage: (index: number, url: string, file: File | null) => void }) {
+function VariantImages({ drafts, onAddImage, onRemoveImage }: { drafts: VariantDraft[]; onAddImage: (index: number, url: string, file: File | null) => void; onRemoveImage: (index: number, image: string) => void }) {
   const [target, setTarget] = useState<number | null>(null);
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -507,7 +507,7 @@ function VariantImages({ drafts, onAddImage }: { drafts: VariantDraft[]; onAddIm
       // to the colour. Variants keep the same image references for reliable
       // storefront reads, so only render each image once in this editor.
       const images = [...new Set(group.indices.flatMap((index) => [drafts[index].imageUrl, ...drafts[index].extraImageUrls]).filter(Boolean))];
-      return <div className="variant-images-group" key={group.key}><div className="variant-images-color"><b>{first.color || "Rang tanlanmagan"}</b><i style={{ backgroundColor: colorHex(first.color) }} /></div><div className="variant-image-list">{images.map((image, index) => <img src={image} alt={`${first.color} rasm ${index + 1}`} key={`${image}-${index}`} />)}<button type="button" className="variant-image-add" onClick={() => open(group.indices[0])}><Plus size={17} /> Rasm</button></div></div>;
+      return <div className="variant-images-group" key={group.key}><div className="variant-images-color"><b>{first.color || "Rang tanlanmagan"}</b><i style={{ backgroundColor: colorHex(first.color) }} /></div><div className="variant-image-list">{images.map((image, index) => <div className="variant-image-item" key={`${image}-${index}`}><img src={image} alt={`${first.color} rasm ${index + 1}`} /><button type="button" className="variant-image-remove" aria-label={`${first.color} rasmini olib tashlash`} title="Rasmni olib tashlash" onClick={() => onRemoveImage(group.indices[0], image)}><Trash2 size={15} /></button></div>)}<button type="button" className="variant-image-add" onClick={() => open(group.indices[0])}><Plus size={17} /> Rasm</button></div></div>;
     })}</div>
     {target !== null && <div className="variant-image-modal-backdrop" role="presentation" onMouseDown={() => setTarget(null)}><form className="variant-image-modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); onAddImage(target, url, file); setTarget(null); }}><div><p className="ui-overline">RASM QO‘SHISH</p><h4>Rasm manbasini tanlang</h4></div><Field label="Rasm URL linki"><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://.../image.jpg" /></Field><Field label="Kompyuterdan yuklash"><input type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></Field><div className="variant-image-modal-actions"><Button type="button" variant="outline" onClick={() => setTarget(null)}>Bekor qilish</Button><Button disabled={!url.trim() && !file}><Plus size={16} /> Rasm qo‘shish</Button></div></form></div>}
   </section>;
@@ -913,6 +913,18 @@ export default function AdminConsole() {
     }
     setAdditionalVariants((current) => current.map((item, itemIndex) => itemIndex === index - 1 ? appendUrl(item) : item));
     if (file) setAdditionalVariantFiles((current) => current.map((files, itemIndex) => itemIndex === index - 1 ? [...files, file] : files));
+  };
+  const removeVariantImage = (index: number, image: string) => {
+    const source = creationDrafts[index];
+    const groupKey = source.characteristicId || source.color.trim().toLocaleLowerCase("uz-UZ");
+    const withoutImage = (item: ReturnType<typeof blankVariant>) => {
+      const itemKey = item.characteristicId || item.color.trim().toLocaleLowerCase("uz-UZ");
+      if (itemKey !== groupKey) return item;
+      const remaining = [item.imageUrl, ...item.extraImageUrls].filter((url) => url && url !== image);
+      return { ...item, imageUrl: remaining[0] ?? "", extraImageUrls: remaining.slice(1) };
+    };
+    setVariant((current) => withoutImage(current));
+    setAdditionalVariants((current) => current.map(withoutImage));
   };
   const run = async (fn: () => Promise<void>) => {
     setLoading(true);
@@ -1886,7 +1898,7 @@ export default function AdminConsole() {
                           </div>
                         );
                       })}
-                      {showVariantForm && <VariantImages drafts={creationDrafts} onAddImage={addVariantImage} />}
+                      {showVariantForm && <VariantImages drafts={creationDrafts} onAddImage={addVariantImage} onRemoveImage={removeVariantImage} />}
                       <FinanceTable
                         currency={form.currencyCode}
                         rows={creationDrafts}
