@@ -803,7 +803,8 @@ export default function AdminConsole() {
   const [dashboardFrom, setDashboardFrom] = useState("");
   const [dashboardTo, setDashboardTo] = useState("");
   const [adminProfile, setAdminProfile] = useState<{ firstName?: string; lastName?: string; email?: string; role?: string } | null>(null);
-  const [adminTheme, setAdminTheme] = useState<"light" | "midnight" | "violet">("light");
+  const [adminTheme, setAdminTheme] = useState<"light" | "midnight" | "violet" | "graphite" | "forest">("light");
+  const [sidebarCompact, setSidebarCompact] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -972,13 +973,15 @@ export default function AdminConsole() {
     const v = localStorage.getItem("siren-admin-token");
     if (v) setToken(v);
     const savedTheme = localStorage.getItem("siren-admin-theme");
-    if (savedTheme === "midnight" || savedTheme === "violet" || savedTheme === "light") setAdminTheme(savedTheme);
+    if (savedTheme === "midnight" || savedTheme === "violet" || savedTheme === "graphite" || savedTheme === "forest" || savedTheme === "light") setAdminTheme(savedTheme);
+    setSidebarCompact(localStorage.getItem("siren-admin-sidebar-compact") === "true");
   }, []);
   useEffect(() => {
     if (!token) { setAdminProfile(null); return; }
     void api<{ firstName?: string; lastName?: string; email?: string; role?: string }>("/auth/me", token).then(setAdminProfile).catch(() => setAdminProfile(null));
   }, [token]);
   useEffect(() => { localStorage.setItem("siren-admin-theme", adminTheme); }, [adminTheme]);
+  useEffect(() => { localStorage.setItem("siren-admin-sidebar-compact", String(sidebarCompact)); }, [sidebarCompact]);
   useEffect(() => {
     const signOutExpiredSession = () => setToken("");
     window.addEventListener("siren-admin-unauthorized", signOutExpiredSession);
@@ -1409,6 +1412,12 @@ export default function AdminConsole() {
     ["records", "Records", "Musiqa va audio treklar"],
     ["collections", "Kolleksiyalar", "Mahsulot kolleksiyalari"],
   ];
+  const navGroups: Array<[string, Array<[Tab, string, typeof LayoutDashboard]>]> = [
+    ["Asosiy", nav.slice(0, 4)],
+    ["Savdo", nav.slice(4, 11)],
+    ["Kontent", nav.slice(11, 13)],
+    ["Tizim", nav.slice(13)],
+  ];
   return (
     <Tabs
       value={tab}
@@ -1416,8 +1425,13 @@ export default function AdminConsole() {
         setTab(v as Tab);
         void run(() => refresh(v as Tab));
       }}
-      className={`admin-shell admin-theme--${adminTheme}`}
+      className={`admin-shell admin-theme--${adminTheme}${sidebarCompact ? " is-sidebar-compact" : ""}`}
     >
+      <aside className="admin-sidebar-v2 admin-sidebar-command">
+        <div className="admin-sidebar-brand-row"><a href="/" className="admin-wordmark"><span>SIREN.</span><small>ADMIN</small></a><button type="button" className="admin-sidebar-compact-toggle" onClick={() => setSidebarCompact((current) => !current)} aria-label="Sidebarni yig‘ish"><Grid2X2 size={17} /></button></div>
+        <TabsList>{navGroups.map(([title, entries]) => <section className="admin-nav-group" key={title}><p>{title}</p>{entries.map(([id, label, Icon]) => <TabsTrigger value={id} key={id} title={label}><Icon size={17} /><span>{label}</span></TabsTrigger>)}</section>)}</TabsList>
+        <div className="admin-sidebar-foot"><p><Crown size={14} /> <span>{adminProfile?.role ?? "Super admin"}</span></p><Button variant="ghost" onClick={() => { localStorage.removeItem("siren-admin-token"); setToken(""); }}><LogOut size={16} /> <span>Chiqish</span></Button></div>
+      </aside>
       <main className="admin-main">
         <header className="admin-topbar">
           <div className="admin-topbar-title">
@@ -1427,8 +1441,8 @@ export default function AdminConsole() {
           <div className="admin-topbar-actions">
             <div className="admin-theme-picker" aria-label="Theme tanlash">
               <Sun size={18} />
-              <select value={adminTheme} onChange={(event) => setAdminTheme(event.target.value as "light" | "midnight" | "violet")} aria-label="Theme">
-                <option value="light">Light</option><option value="midnight">Midnight</option><option value="violet">Violet</option>
+              <select value={adminTheme} onChange={(event) => setAdminTheme(event.target.value as "light" | "midnight" | "violet" | "graphite" | "forest")} aria-label="Theme">
+                <option value="light">Light</option><option value="midnight">Midnight</option><option value="violet">Violet</option><option value="graphite">Graphite</option><option value="forest">Forest</option>
               </select>
             </div>
             <div className="admin-notification-wrap"><button type="button" className="admin-icon-control" aria-label="Bildirishnomalar" onClick={() => { setShowNotifications((current) => !current); void run(() => refresh("dashboard")); }}><Bell size={19} />{((dashboard as DashboardData | null)?.activity?.length ?? 0) > 0 && <i />}</button>{showNotifications && <div className="admin-notifications"><header><b>Bildirishnomalar</b><button type="button" onClick={() => setShowNotifications(false)}>×</button></header>{((dashboard as DashboardData | null)?.activity ?? []).map((item) => <article key={item.id}><b>{item.action} · {item.entityType}</b><span>{item.user} · {dashboardTime(item.createdAt)}</span></article>)}{!((dashboard as DashboardData | null)?.activity?.length) && <p>Yangi bildirishnoma yo‘q.</p>}</div>}</div>
@@ -1443,7 +1457,6 @@ export default function AdminConsole() {
             <div className="admin-profile-wrap"><button type="button" className="admin-profile-trigger" onClick={() => setShowProfile((current) => !current)}><span>{`${adminProfile?.firstName?.[0] ?? ""}${adminProfile?.lastName?.[0] ?? ""}` || adminProfile?.email?.[0]?.toUpperCase() || "A"}</span><b>{`${adminProfile?.firstName ?? ""} ${adminProfile?.lastName ?? ""}`.trim() || adminProfile?.email || "Admin"}</b><ChevronDown size={15} /></button>{showProfile && <div className="admin-profile-menu"><b>{adminProfile?.email}</b><span>{adminProfile?.role ?? "admin"}</span><button type="button" onClick={() => { localStorage.removeItem("siren-admin-token"); setToken(""); }}> <LogOut size={15} /> Chiqish</button></div>}</div>
           </div>
         </header>
-        <nav className="admin-top-navigation" aria-label="Admin bo‘limlari"><TabsList>{nav.map(([id, label, Icon]) => <TabsTrigger value={id} key={id}><Icon size={16} /><span>{label}</span></TabsTrigger>)}</TabsList></nav>
         <AdminToast message={notice} />
         <AdminToast message={error} tone="error" />
         <TabsContent value="dashboard">
