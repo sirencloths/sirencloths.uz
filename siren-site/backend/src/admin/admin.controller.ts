@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 import { CurrentUser, JwtAuthGuard } from '../auth/jwt.strategy';
 import { Roles, RolesGuard } from '../auth/roles.guard';
@@ -24,7 +24,14 @@ class UpdateAdminUserDto {
 @Controller('admin')
 export class AdminController {
   constructor(private readonly admin: AdminService) {}
-  @Get('dashboard') dashboard() { return this.admin.dashboard(); }
+  @Get('dashboard') dashboard(
+    @Query('period') period?: 'today' | '7d' | '30d' | 'month' | 'year' | 'custom',
+    @Query('metric') metric?: 'visitors' | 'customers' | 'orders' | 'units' | 'revenue' | 'profit',
+    @Query('granularity') granularity?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    @Query('currency') currency?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) { return this.admin.dashboard({ period, metric, granularity, currency, from, to }); }
   @Get('audit-logs') logs() { return this.admin.logs(); }
   @Roles(UserRole.SUPER_ADMIN)
   @Get('users') users() { return this.admin.listUsers(); }

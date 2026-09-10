@@ -744,6 +744,42 @@ function flavor(x: string) {
       : ("danger" as const);
 }
 
+type DashboardData = {
+  currency?: { code?: string; available?: boolean };
+  kpis?: { current?: Record<string, number>; previous?: Record<string, number>; changes?: Record<string, number | null> };
+  chart?: { metric?: string; granularity?: string; current?: Array<{ label: string; value: number }>; previous?: Array<{ label: string; value: number }>; currentTotal?: number; previousTotal?: number; change?: number | null; financial?: boolean };
+  team?: Array<{ id: string; firstName: string; lastName: string; email: string; role: string; isActive: boolean; lastSeen?: string | null; online: boolean }>;
+  activity?: Array<{ id: string; action: string; entityType: string; entityId?: string | null; user: string; createdAt: string }>;
+};
+const DASHBOARD_METRICS: Array<[string, string]> = [["visitors", "Tashrif buyurganlar"], ["customers", "Mijozlar"], ["orders", "Buyurtmalar"], ["units", "Sotilgan mahsulotlar"], ["revenue", "Savdo / Revenue"], ["profit", "Foyda"]];
+const DASHBOARD_PERIODS: Array<[string, string]> = [["today", "Bugun"], ["7d", "7 kun"], ["30d", "30 kun"], ["month", "Bu oy"], ["year", "Bu yil"]];
+function dashboardMoney(value: number, currency: string) {
+  const amount = new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: currency === "UZS" ? 0 : 2 }).format(value);
+  return currency === "USD" ? `$${amount}` : currency === "EUR" ? `€${amount}` : `${amount} ${currency}`;
+}
+function dashboardTime(value?: string | null) {
+  if (!value) return "Faollik yozilmagan";
+  const diff = Date.now() - new Date(value).valueOf();
+  if (diff < 60_000) return "Hozirgina";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min oldin`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} soat oldin`;
+  return new Intl.DateTimeFormat("uz-UZ", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+function DashboardOverview({ dashboard, currency, period, metric, granularity, onCurrency, onPeriod, onMetric, onGranularity }: { dashboard: DashboardData | null; currency: string; period: string; metric: string; granularity: string; onCurrency: (value: string) => void; onPeriod: (value: string) => void; onMetric: (value: string) => void; onGranularity: (value: string) => void }) {
+  const kpis = dashboard?.kpis?.current ?? {}; const changes = dashboard?.kpis?.changes ?? {}; const chart = dashboard?.chart; const chartCurrency = dashboard?.currency?.code ?? currency;
+  const cards: Array<[string, string, typeof Package, boolean]> = [["Jami mijozlar", "customers", Users, false], ["Jami savdo", "revenue", BarChart3, true], ["Jami yaratilgan mahsulotlar", "products", Package, false], ["Jami sotilgan birliklar", "units", ShoppingBag, false], ["Asosiy mahsulot modellari", "baseProducts", Box, false], ["Buyurtmalar", "orders", ClipboardList, false], ["O‘rtacha chek", "averageOrderValue", BarChart3, true], ["Foyda", "profit", ArrowUp, true]];
+  const current = chart?.current ?? []; const previous = chart?.previous ?? []; const labels = Array.from(new Set([...current.map((item) => item.label), ...previous.map((item) => item.label)])); const values = labels.map((label) => Math.max(current.find((item) => item.label === label)?.value ?? 0, previous.find((item) => item.label === label)?.value ?? 0)); const max = Math.max(1, ...values);
+  const line = (items: Array<{ label: string; value: number }>) => labels.map((label, index) => `${labels.length < 2 ? 50 : (index / (labels.length - 1)) * 100},${92 - ((items.find((item) => item.label === label)?.value ?? 0) / max) * 80}`).join(" ");
+  const chartFinancial = chart?.financial ?? false;
+  return <section className="dashboard-overview">
+    <header className="dashboard-controls"><div><p className="ui-overline">REAL-TIME OVERVIEW</p><h2>Dashboard</h2></div><div className="dashboard-control-fields"><label>Valyuta<select value={currency} onChange={(event) => onCurrency(event.target.value)}>{["UZS", "USD", "EUR", "RUB", "KZT"].map((code) => <option key={code} value={code}>{code}</option>)}</select></label><label>Davr<select value={period} onChange={(event) => onPeriod(event.target.value)}>{DASHBOARD_PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}<option value="custom">Custom</option></select></label></div></header>
+    {dashboard?.currency?.available === false && <p className="dashboard-rate-warning">{currency} kursi <b>currency-rates</b> sozlamasida kiritilmagan. Moliyaviy qiymatlar UZSda ko‘rsatilmoqda.</p>}
+    <div className="dashboard-kpi-grid">{cards.map(([label, key, Icon, financial]) => { const change = changes[key]; return <Card className="dashboard-kpi" key={key}><CardContent><span><Icon size={17} />{label}</span><b>{financial ? dashboardMoney(kpis[key] ?? 0, chartCurrency) : new Intl.NumberFormat("uz-UZ").format(kpis[key] ?? 0)}</b><small className={change === null || change === undefined ? "" : change >= 0 ? "is-positive" : "is-negative"}>{change === null || change === undefined ? "Taqqoslash uchun ma’lumot yo‘q" : `${change >= 0 ? "+" : ""}${change.toFixed(1)}% · oldingi davrga nisbatan`}</small></CardContent></Card>; })}</div>
+    <Card className="dashboard-chart-card"><CardHeader><div><p className="ui-overline">ANALYTICS TREND</p><CardTitle>{DASHBOARD_METRICS.find(([value]) => value === metric)?.[1] ?? "Analitika"}</CardTitle></div><div className="dashboard-chart-selects"><select value={metric} onChange={(event) => onMetric(event.target.value)}>{DASHBOARD_METRICS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><div>{[["daily", "Kunlik"], ["weekly", "Haftalik"], ["monthly", "Oylik"], ["yearly", "Yillik"]].map(([value, label]) => <button type="button" className={granularity === value ? "is-active" : ""} onClick={() => onGranularity(value)} key={value}>{label}</button>)}</div></div></CardHeader><CardContent><div className="dashboard-chart-summary"><span>Joriy davr<b>{chartFinancial ? dashboardMoney(chart?.currentTotal ?? 0, chartCurrency) : new Intl.NumberFormat("uz-UZ").format(chart?.currentTotal ?? 0)}</b></span><span>Oldingi davr<b>{chartFinancial ? dashboardMoney(chart?.previousTotal ?? 0, chartCurrency) : new Intl.NumberFormat("uz-UZ").format(chart?.previousTotal ?? 0)}</b></span><strong className={(chart?.change ?? 0) >= 0 ? "is-positive" : "is-negative"}>{chart?.change === null || chart?.change === undefined ? "—" : `${chart.change >= 0 ? "+" : ""}${chart.change.toFixed(1)}%`}</strong></div><div className="dashboard-chart-wrap"><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Joriy va oldingi davr trend chizig‘i"><line x1="0" x2="100" y1="92" y2="92" /><polyline className="dashboard-line dashboard-line--previous" points={line(previous)} /><polyline className="dashboard-line" points={line(current)} /></svg>{labels.length ? <div className="dashboard-chart-labels">{labels.map((label) => <span key={label}>{label.slice(5)}</span>)}</div> : <p>Tanlangan davrda haqiqiy ma’lumot yo‘q.</p>}</div><div className="dashboard-legend"><span><i /> Joriy davr</span><span><i /> Oldingi davr</span></div></CardContent></Card>
+    <div className="dashboard-lower-grid"><Card><CardHeader><div><p className="ui-overline">JAMOA</p><CardTitle>Jamoa faolligi</CardTitle></div></CardHeader><CardContent><div className="dashboard-team">{(dashboard?.team ?? []).map((member) => <article key={member.id}><span className="dashboard-avatar">{`${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}` || member.email[0]?.toUpperCase()}</span><div><b>{`${member.firstName} ${member.lastName}`.trim() || member.email}</b><small>{member.role}</small></div><span className={member.online && member.isActive ? "is-online" : "is-offline"}>{member.online && member.isActive ? "● Online" : `○ ${dashboardTime(member.lastSeen)}`}</span></article>)}{!dashboard?.team?.length && <p className="dashboard-empty">Jamoa ma’lumoti yo‘q.</p>}</div></CardContent></Card><Card><CardHeader><div><p className="ui-overline">AUDIT</p><CardTitle>So‘nggi faollik</CardTitle></div></CardHeader><CardContent><div className="dashboard-activity">{(dashboard?.activity ?? []).map((item) => <article key={item.id}><b>{item.action} · {item.entityType}</b><span>{item.user} · {dashboardTime(item.createdAt)}</span></article>)}{!dashboard?.activity?.length && <p className="dashboard-empty">Audit yozuvlari yo‘q.</p>}</div></CardContent></Card></div>
+  </section>;
+}
+
 export default function AdminConsole() {
   const [token, setToken] = useState("");
   const [email, setEmail] = useState("");
@@ -756,6 +792,10 @@ export default function AdminConsole() {
   const [dashboard, setDashboard] = useState<Record<string, unknown> | null>(
     null,
   );
+  const [dashboardCurrency, setDashboardCurrency] = useState("UZS");
+  const [dashboardPeriod, setDashboardPeriod] = useState("30d");
+  const [dashboardMetric, setDashboardMetric] = useState("revenue");
+  const [dashboardGranularity, setDashboardGranularity] = useState("daily");
   const [products, setProducts] = useState<Product[]>([]);
   const [transfers, setTransfers] = useState<InventoryTransfer[]>([]);
   const [productSubsection, setProductSubsection] = useState<"all" | "transfer">("all");
@@ -885,10 +925,12 @@ export default function AdminConsole() {
   }, [token]);
   const refresh = useCallback(
     async (t = tab) => {
-      if (t === "dashboard")
+      if (t === "dashboard") {
+        const query = new URLSearchParams({ currency: dashboardCurrency, period: dashboardPeriod, metric: dashboardMetric, granularity: dashboardGranularity });
         setDashboard(
-          await api<Record<string, unknown>>("/admin/dashboard", token),
+          await api<Record<string, unknown>>(`/admin/dashboard?${query.toString()}`, token),
         );
+      }
       if (t === "products" || t === "catalog") await catalog();
       if (t === "orders") setOrders(await api<Order[]>("/admin/orders", token));
       if (t === "customers") setCustomers(await api<CustomerRecord[]>("/admin/customers", token));
@@ -912,7 +954,7 @@ export default function AdminConsole() {
       if (t === "team") setUsers(await api("/admin/users", token));
       if (t === "audit") setAudit(await api("/admin/audit-logs", token));
     },
-    [catalog, tab, token],
+    [catalog, dashboardCurrency, dashboardGranularity, dashboardMetric, dashboardPeriod, tab, token],
   );
   useEffect(() => {
     const v = localStorage.getItem("siren-admin-token");
@@ -1406,28 +1448,7 @@ export default function AdminConsole() {
         <AdminToast message={notice} />
         <AdminToast message={error} tone="error" />
         <TabsContent value="dashboard">
-          <div className="admin-metric-grid">
-            {[
-              ["Mahsulotlar", dashboard?.products, Package],
-              ["Mijozlar", dashboard?.customers, Users],
-              ["Buyurtmalar", dashboard?.orders, ClipboardList],
-              ["Savdo", `${dashboard?.paidRevenue ?? 0} UZS`, BarChart3],
-            ].map(([label, value, Icon]) => {
-              const I = Icon as typeof Package;
-              return (
-                <Card className="admin-metric" key={String(label)}>
-                  <CardContent>
-                    <span>
-                      <I size={18} />
-                      {String(label)}
-                    </span>
-                    <b>{String(value ?? 0)}</b>
-                    <small>Real-time ma’lumot</small>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+          <DashboardOverview dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} period={dashboardPeriod} metric={dashboardMetric} granularity={dashboardGranularity} onCurrency={setDashboardCurrency} onPeriod={setDashboardPeriod} onMetric={setDashboardMetric} onGranularity={setDashboardGranularity} />
         </TabsContent>
         <TabsContent value="products">
           {productView === "list" ? (
