@@ -5027,6 +5027,11 @@ body {
     padding: 20px 0 24px 20px;
   }
 
+  /* The continuous product rail meets both mobile screen edges. */
+  .products--slider {
+    padding-left: 0;
+  }
+
   .products-slider {
     overflow: visible;
   }
