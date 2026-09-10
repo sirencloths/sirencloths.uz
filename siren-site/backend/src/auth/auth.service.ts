@@ -9,7 +9,7 @@ import { AuditLog, AuthOtp, Customer, CustomerAddress, User, UserRole } from '..
 import { EmailService } from './email.service';
 
 type OtpPurpose = 'registration' | 'password_reset' | 'password_change';
-type CustomerProfile = { firstName: string; lastName: string; phone: string; region: string; address?: string };
+type CustomerProfile = { firstName: string; lastName: string; phone: string; region: string; address?: string; notificationPreferences?: { blog?: boolean; discounts?: boolean } };
 
 @Injectable()
 export class AuthService implements OnApplicationBootstrap {
@@ -148,6 +148,15 @@ export class AuthService implements OnApplicationBootstrap {
     if (profile.lastName !== undefined) customer.lastName = profile.lastName.trim();
     if (profile.phone !== undefined) customer.phone = this.normalizePhone(profile.phone);
     if (profile.region !== undefined) customer.region = profile.region.trim();
+    if (profile.notificationPreferences !== undefined) {
+      customer.metadata = {
+        ...(customer.metadata ?? {}),
+        notificationPreferences: {
+          blog: Boolean(profile.notificationPreferences.blog),
+          discounts: Boolean(profile.notificationPreferences.discounts),
+        },
+      };
+    }
     await this.customers.save(customer);
     if (profile.address !== undefined || profile.region !== undefined) await this.saveDefaultAddress(customer.id, customer.region ?? '', profile.address);
     return this.customerMe(id);

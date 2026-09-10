@@ -6255,6 +6255,7 @@ body {
 .profile-address-form input::placeholder { color: #aaa; }
 .profile-address-form button { height: 40px; padding: 0 18px; background: #000; color: #fff; }
 .profile-address-error { align-self: end; margin: 0 0 10px; color: #e00000; font-size: 11px; font-weight: 800; }
+.profile-notification-settings{display:grid;gap:0;width:100%;margin-top:14px;padding-top:18px;border-top:1px solid #d9d9d6}.profile-notification-settings>div{margin-bottom:6px}.profile-notification-settings>div>b{font-size:14px}.profile-notification-settings>div>p{margin:4px 0 0;color:#777;font:12px Arial,sans-serif}.profile-notification-option{display:flex!important;align-items:center;justify-content:space-between;gap:18px;padding:13px 0!important;border-bottom:1px solid #e2e2df}.profile-notification-option span{display:grid;gap:3px}.profile-notification-option small{color:#777;font:11px Arial,sans-serif}.profile-notification-option input{width:19px!important;height:19px!important;accent-color:#111;cursor:pointer}.profile-notification-option input:disabled{opacity:.75;cursor:not-allowed}
 .profile-address-list { display: flex; gap: 0; margin-top: 18px; }
 .profile-address-list article { position: relative; width: 178px; min-height: 88px; padding-right: 16px; border-right: 1px solid #ccc; }
 .profile-address-list article + article { padding-left: 32px; }

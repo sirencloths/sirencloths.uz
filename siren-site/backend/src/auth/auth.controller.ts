@@ -27,6 +27,7 @@ class CustomerUpdateDto {
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() region?: string;
   @IsOptional() @IsString() address?: string;
+  @IsOptional() notificationPreferences?: { blog?: boolean; discounts?: boolean };
 }
 
 @Controller('auth')

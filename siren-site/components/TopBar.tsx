@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useLanguage } from "./LanguageProvider";
 
 const marqueeItems = Array.from({ length: 8 });
@@ -23,10 +24,9 @@ export default function TopBar() {
         </div>
       </div>
 
-      <button className="topbar-control topbar-control--right" type="button">
-        <Image src="/icons/location.svg" alt="" width={22} height={22} />
-        <span>{t("location")}</span>
-      </button>
+      <Link className="topbar-control topbar-control--right" href="/profile/settings#notifications" aria-label="Xabarlar sozlamalari">
+        <span>XABARLAR</span>
+      </Link>
     </div>
   );
 }
