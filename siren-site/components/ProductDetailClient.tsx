@@ -8,17 +8,17 @@ import { useLanguage } from "./LanguageProvider";
 import { useFavorites } from "./FavoriteContext";
 
 type Variant = { id: string; sku: string; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity: number; isActive?: boolean; attributes?: Record<string, unknown> };
-type Props = { id: string; title: string; price: string; image: string; variants: Variant[]; sizeGuideImageUrl?: string };
+type Props = { id: string; title: string; price: string; image: string; variants: Variant[]; initialColor?: string; sizeGuideImageUrl?: string };
 
 const swatch = (color: string) => ({ black: "#111", white: "#fff", gray: "#8b8b8b", blue: "#1769aa", green: "#0b7a3a", red: "#b91c1c", brown: "#704214", pink: "#db5b82", cream: "#f4ead2" }[color.toLowerCase()] ?? "#d8d8d4");
 
-export default function ProductDetailClient({ id, title, price, image, variants, sizeGuideImageUrl }: Props) {
+export default function ProductDetailClient({ id, title, price, image, variants, initialColor, sizeGuideImageUrl }: Props) {
   const { t } = useLanguage();
   const { isFavorite, toggleFavorite } = useFavorites();
   const searchParams = useSearchParams();
   const usableVariants = variants.filter((variant) => variant.isActive !== false);
   const colors = [...new Set(usableVariants.map((variant) => variant.color || "Default"))];
-  const [selectedColor, setSelectedColor] = useState(colors[0] ?? "Default");
+  const [selectedColor, setSelectedColor] = useState(() => colors.find((color) => color === initialColor) ?? colors[0] ?? "Default");
   useEffect(() => {
     const requested = searchParams.get("color")?.trim().toLocaleLowerCase("uz-UZ");
     if (!requested) return;

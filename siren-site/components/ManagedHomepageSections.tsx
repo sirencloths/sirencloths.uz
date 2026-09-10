@@ -32,16 +32,23 @@ function sectionProducts(section: Section, products: ApiProduct[], device: "desk
 
 function Card({ item }: { item: { product: ApiProduct; variant: ApiProduct["variants"][number] } }) {
   const { product, variant } = item;
-  const colorImages = Array.isArray(variant.attributes?.images)
-    ? variant.attributes.images.filter((image): image is string => typeof image === "string" && Boolean(image.trim()))
-    : [];
+  const colorKey = (variant.color || "Default").trim().toLocaleLowerCase("uz-UZ");
+  const colorImages = [...new Set(product.variants
+    .filter((item) => (item.color || "Default").trim().toLocaleLowerCase("uz-UZ") === colorKey)
+    .flatMap((item) => Array.isArray(item.attributes?.images)
+      ? item.attributes.images.filter((image): image is string => typeof image === "string" && Boolean(image.trim()))
+      : []))];
+  const colorSlug = colorKey.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "default";
   const cardProduct: Product = {
     id: product.slug,
     image: asset(colorImages[0] || product.media[0]?.url || ""),
-    hoverImage: asset(colorImages[1] || product.media[1]?.url || ""),
+    // Hover belongs to the same colour only. A single-image card intentionally
+    // has no hover state.
+    hoverImage: colorImages[1] ? asset(colorImages[1]) : "",
     alt: product.title,
     title: product.title,
     color: (variant.color || variant.size || "").toUpperCase(),
+    colorSlug,
     price: formatStorePrice(variant.price || product.price, product.currencyCode),
   };
   // Reuse the site's actual product-card component so cards saved from admin

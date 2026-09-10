@@ -503,7 +503,10 @@ function VariantImages({ drafts, onAddImage }: { drafts: VariantDraft[]; onAddIm
     <h3>Rasmlar</h3>
     <div className="variant-images-groups">{groups.map((group) => {
       const first = drafts[group.indices[0]];
-      const images = group.indices.flatMap((index) => [drafts[index].imageUrl, ...drafts[index].extraImageUrls]).filter(Boolean);
+      // A colour may have several size SKUs, but its image collection belongs
+      // to the colour. Variants keep the same image references for reliable
+      // storefront reads, so only render each image once in this editor.
+      const images = [...new Set(group.indices.flatMap((index) => [drafts[index].imageUrl, ...drafts[index].extraImageUrls]).filter(Boolean))];
       return <div className="variant-images-group" key={group.key}><div className="variant-images-color"><b>{first.color || "Rang tanlanmagan"}</b><i style={{ backgroundColor: colorHex(first.color) }} /></div><div className="variant-image-list">{images.map((image, index) => <img src={image} alt={`${first.color} rasm ${index + 1}`} key={`${image}-${index}`} />)}<button type="button" className="variant-image-add" onClick={() => open(group.indices[0])}><Plus size={17} /> Rasm</button></div></div>;
     })}</div>
     {target !== null && <div className="variant-image-modal-backdrop" role="presentation" onMouseDown={() => setTarget(null)}><form className="variant-image-modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); onAddImage(target, url, file); setTarget(null); }}><div><p className="ui-overline">RASM QO‘SHISH</p><h4>Rasm manbasini tanlang</h4></div><Field label="Rasm URL linki"><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://.../image.jpg" /></Field><Field label="Kompyuterdan yuklash"><input type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></Field><div className="variant-image-modal-actions"><Button type="button" variant="outline" onClick={() => setTarget(null)}>Bekor qilish</Button><Button disabled={!url.trim() && !file}><Plus size={16} /> Rasm qo‘shish</Button></div></form></div>}

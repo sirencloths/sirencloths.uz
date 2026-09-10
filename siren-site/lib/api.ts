@@ -243,7 +243,10 @@ export function toStorefrontColorCards(products: ApiProduct[]): StorefrontProduc
           ? variant.attributes.images.filter((image): image is string => typeof image === "string" && Boolean(image.trim()))
           : [],
       ))];
-      const images = colorImages.length ? colorImages : fallbackImages;
+      // A listing card represents a colour, not an arbitrary size SKU. Do not
+      // borrow a second product-level image for hover: a card with one colour
+      // image must stay static, while a colour with two images can hover.
+      const images = colorImages.length ? colorImages : fallbackImages.slice(0, 1);
       const usableVariants = variants.filter((variant) => variant.isActive !== false);
       const prices = usableVariants.map((variant) => Number(variant.price)).filter((value) => Number.isFinite(value) && value > 0);
       const rawColor = representative.color || "Default";
