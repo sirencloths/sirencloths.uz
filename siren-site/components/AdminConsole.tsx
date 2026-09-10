@@ -765,14 +765,14 @@ function dashboardTime(value?: string | null) {
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} soat oldin`;
   return new Intl.DateTimeFormat("uz-UZ", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
-function DashboardOverview({ dashboard, currency, period, metric, granularity, onCurrency, onPeriod, onMetric, onGranularity }: { dashboard: DashboardData | null; currency: string; period: string; metric: string; granularity: string; onCurrency: (value: string) => void; onPeriod: (value: string) => void; onMetric: (value: string) => void; onGranularity: (value: string) => void }) {
+function DashboardOverview({ dashboard, currency, period, metric, granularity, customFrom, customTo, onCurrency, onPeriod, onMetric, onGranularity, onCustomFrom, onCustomTo }: { dashboard: DashboardData | null; currency: string; period: string; metric: string; granularity: string; customFrom: string; customTo: string; onCurrency: (value: string) => void; onPeriod: (value: string) => void; onMetric: (value: string) => void; onGranularity: (value: string) => void; onCustomFrom: (value: string) => void; onCustomTo: (value: string) => void }) {
   const kpis = dashboard?.kpis?.current ?? {}; const changes = dashboard?.kpis?.changes ?? {}; const chart = dashboard?.chart; const chartCurrency = dashboard?.currency?.code ?? currency;
   const cards: Array<[string, string, typeof Package, boolean]> = [["Jami mijozlar", "customers", Users, false], ["Jami savdo", "revenue", BarChart3, true], ["Jami yaratilgan mahsulotlar", "products", Package, false], ["Jami sotilgan birliklar", "units", ShoppingBag, false], ["Asosiy mahsulot modellari", "baseProducts", Box, false], ["Buyurtmalar", "orders", ClipboardList, false], ["O‘rtacha chek", "averageOrderValue", BarChart3, true], ["Foyda", "profit", ArrowUp, true]];
   const current = chart?.current ?? []; const previous = chart?.previous ?? []; const labels = Array.from(new Set([...current.map((item) => item.label), ...previous.map((item) => item.label)])); const values = labels.map((label) => Math.max(current.find((item) => item.label === label)?.value ?? 0, previous.find((item) => item.label === label)?.value ?? 0)); const max = Math.max(1, ...values);
   const line = (items: Array<{ label: string; value: number }>) => labels.map((label, index) => `${labels.length < 2 ? 50 : (index / (labels.length - 1)) * 100},${92 - ((items.find((item) => item.label === label)?.value ?? 0) / max) * 80}`).join(" ");
   const chartFinancial = chart?.financial ?? false;
   return <section className="dashboard-overview">
-    <header className="dashboard-controls"><div><p className="ui-overline">REAL-TIME OVERVIEW</p><h2>Dashboard</h2></div><div className="dashboard-control-fields"><label>Valyuta<select value={currency} onChange={(event) => onCurrency(event.target.value)}>{["UZS", "USD", "EUR", "RUB", "KZT"].map((code) => <option key={code} value={code}>{code}</option>)}</select></label><label>Davr<select value={period} onChange={(event) => onPeriod(event.target.value)}>{DASHBOARD_PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}<option value="custom">Custom</option></select></label></div></header>
+    <header className="dashboard-controls"><div><p className="ui-overline">REAL-TIME OVERVIEW</p><h2>Dashboard</h2></div><div className="dashboard-control-fields"><label>Valyuta<select value={currency} onChange={(event) => onCurrency(event.target.value)}>{["UZS", "USD", "EUR", "RUB", "KZT"].map((code) => <option key={code} value={code}>{code}</option>)}</select></label><label>Davr<select value={period} onChange={(event) => onPeriod(event.target.value)}>{DASHBOARD_PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}<option value="custom">Custom</option></select></label>{period === "custom" && <><label>Boshlanish<input type="date" value={customFrom} onChange={(event) => onCustomFrom(event.target.value)} /></label><label>Tugash<input type="date" value={customTo} onChange={(event) => onCustomTo(event.target.value)} /></label></>}</div></header>
     {dashboard?.currency?.available === false && <p className="dashboard-rate-warning">{currency} kursi <b>currency-rates</b> sozlamasida kiritilmagan. Moliyaviy qiymatlar UZSda ko‘rsatilmoqda.</p>}
     <div className="dashboard-kpi-grid">{cards.map(([label, key, Icon, financial]) => { const change = changes[key]; return <Card className="dashboard-kpi" key={key}><CardContent><span><Icon size={17} />{label}</span><b>{financial ? dashboardMoney(kpis[key] ?? 0, chartCurrency) : new Intl.NumberFormat("uz-UZ").format(kpis[key] ?? 0)}</b><small className={change === null || change === undefined ? "" : change >= 0 ? "is-positive" : "is-negative"}>{change === null || change === undefined ? "Taqqoslash uchun ma’lumot yo‘q" : `${change >= 0 ? "+" : ""}${change.toFixed(1)}% · oldingi davrga nisbatan`}</small></CardContent></Card>; })}</div>
     <Card className="dashboard-chart-card"><CardHeader><div><p className="ui-overline">ANALYTICS TREND</p><CardTitle>{DASHBOARD_METRICS.find(([value]) => value === metric)?.[1] ?? "Analitika"}</CardTitle></div><div className="dashboard-chart-selects"><select value={metric} onChange={(event) => onMetric(event.target.value)}>{DASHBOARD_METRICS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><div>{[["daily", "Kunlik"], ["weekly", "Haftalik"], ["monthly", "Oylik"], ["yearly", "Yillik"]].map(([value, label]) => <button type="button" className={granularity === value ? "is-active" : ""} onClick={() => onGranularity(value)} key={value}>{label}</button>)}</div></div></CardHeader><CardContent><div className="dashboard-chart-summary"><span>Joriy davr<b>{chartFinancial ? dashboardMoney(chart?.currentTotal ?? 0, chartCurrency) : new Intl.NumberFormat("uz-UZ").format(chart?.currentTotal ?? 0)}</b></span><span>Oldingi davr<b>{chartFinancial ? dashboardMoney(chart?.previousTotal ?? 0, chartCurrency) : new Intl.NumberFormat("uz-UZ").format(chart?.previousTotal ?? 0)}</b></span><strong className={(chart?.change ?? 0) >= 0 ? "is-positive" : "is-negative"}>{chart?.change === null || chart?.change === undefined ? "—" : `${chart.change >= 0 ? "+" : ""}${chart.change.toFixed(1)}%`}</strong></div><div className="dashboard-chart-wrap"><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Joriy va oldingi davr trend chizig‘i"><line x1="0" x2="100" y1="92" y2="92" /><polyline className="dashboard-line dashboard-line--previous" points={line(previous)} /><polyline className="dashboard-line" points={line(current)} /></svg>{labels.length ? <div className="dashboard-chart-labels">{labels.map((label) => <span key={label}>{label.slice(5)}</span>)}</div> : <p>Tanlangan davrda haqiqiy ma’lumot yo‘q.</p>}</div><div className="dashboard-legend"><span><i /> Joriy davr</span><span><i /> Oldingi davr</span></div></CardContent></Card>
@@ -796,6 +796,8 @@ export default function AdminConsole() {
   const [dashboardPeriod, setDashboardPeriod] = useState("30d");
   const [dashboardMetric, setDashboardMetric] = useState("revenue");
   const [dashboardGranularity, setDashboardGranularity] = useState("daily");
+  const [dashboardFrom, setDashboardFrom] = useState("");
+  const [dashboardTo, setDashboardTo] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [transfers, setTransfers] = useState<InventoryTransfer[]>([]);
   const [productSubsection, setProductSubsection] = useState<"all" | "transfer">("all");
@@ -927,6 +929,8 @@ export default function AdminConsole() {
     async (t = tab) => {
       if (t === "dashboard") {
         const query = new URLSearchParams({ currency: dashboardCurrency, period: dashboardPeriod, metric: dashboardMetric, granularity: dashboardGranularity });
+        if (dashboardFrom) query.set("from", dashboardFrom);
+        if (dashboardTo) query.set("to", dashboardTo);
         setDashboard(
           await api<Record<string, unknown>>(`/admin/dashboard?${query.toString()}`, token),
         );
@@ -954,7 +958,7 @@ export default function AdminConsole() {
       if (t === "team") setUsers(await api("/admin/users", token));
       if (t === "audit") setAudit(await api("/admin/audit-logs", token));
     },
-    [catalog, dashboardCurrency, dashboardGranularity, dashboardMetric, dashboardPeriod, tab, token],
+    [catalog, dashboardCurrency, dashboardFrom, dashboardGranularity, dashboardMetric, dashboardPeriod, dashboardTo, tab, token],
   );
   useEffect(() => {
     const v = localStorage.getItem("siren-admin-token");
@@ -1448,7 +1452,7 @@ export default function AdminConsole() {
         <AdminToast message={notice} />
         <AdminToast message={error} tone="error" />
         <TabsContent value="dashboard">
-          <DashboardOverview dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} period={dashboardPeriod} metric={dashboardMetric} granularity={dashboardGranularity} onCurrency={setDashboardCurrency} onPeriod={setDashboardPeriod} onMetric={setDashboardMetric} onGranularity={setDashboardGranularity} />
+          <DashboardOverview dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} period={dashboardPeriod} metric={dashboardMetric} granularity={dashboardGranularity} customFrom={dashboardFrom} customTo={dashboardTo} onCurrency={setDashboardCurrency} onPeriod={setDashboardPeriod} onMetric={setDashboardMetric} onGranularity={setDashboardGranularity} onCustomFrom={setDashboardFrom} onCustomTo={setDashboardTo} />
         </TabsContent>
         <TabsContent value="products">
           {productView === "list" ? (
