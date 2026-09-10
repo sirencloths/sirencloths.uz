@@ -7433,7 +7433,7 @@ body {
   .custom-sections{gap:28px!important}
   .managed-section+.managed-section,.custom-section+.custom-section,.custom-banner-only+.custom-banner-only{margin-top:20px}
   .managed-section .collection-banner,.managed-section .promo-card,.managed-section .tactical-banner,.custom-section-banner,.custom-banner-only-slot{margin-bottom:20px}
-  .records-grid{grid-template-columns:1fr!important;gap:12px}
+  .records-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px}
   .record-card{grid-template-columns:60px minmax(0,1fr) auto;min-height:80px;gap:10px;padding:10px}
   .record-card img{width:60px;height:60px}.record-card h3{font-size:20px}.record-card p{font-size:12px}
   .siren-footer__inner{padding-inline:16px}.footer-ticker span{width:108px}.footer-ticker img{width:98px;height:auto}
