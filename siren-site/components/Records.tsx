@@ -33,10 +33,12 @@ export default function Records({ records = [] }: { records?: ApiMusicRecord[] }
     setPlayingId(record.id);
   };
 
+  const compactRecords = displayRecords.slice(0, 12);
+
   return <section className="records" id="records">
     <div className="records-heading"><h2>{t("records")}</h2><a href="#playlist-frame">{t("playlist")}</a></div>
     <div className="records-grid">
-      {displayRecords.map((record) => {
+      {compactRecords.map((record) => {
         const playing = record.id === playingId;
         return <article key={record.id} className={`record-card${playing ? " is-playing" : ""}`} style={{ "--record-tone": record.tone } as React.CSSProperties}>
           <button type="button" className="record-cover" aria-label={playing ? "Пауза" : t("playTrack")} aria-pressed={playing} disabled={!record.audioUrl} onClick={() => toggleRecord(record)}>
@@ -47,6 +49,6 @@ export default function Records({ records = [] }: { records?: ApiMusicRecord[] }
         </article>;
       })}
     </div>
-    <audio ref={audioRef} src={activeRecord?.audioUrl || ""} onEnded={() => setPlayingId(null)} />
+    {activeRecord && <audio ref={audioRef} src={activeRecord.audioUrl} onEnded={() => setPlayingId(null)} />}
   </section>;
 }
