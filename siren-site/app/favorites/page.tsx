@@ -53,7 +53,7 @@ export default function FavoritesPage() {
         <section className="favorites-list">
           <h1>{title} <span>({favorites.length})</span></h1>
           {favorites.length ? (
-            <div className="favorites-grid">{favorites.map((product) => <FavoriteCard key={product.id} product={product} />)}</div>
+            <div className="favorites-grid">{favorites.map((product) => <FavoriteCard key={`${product.id}:${product.colorSlug || product.color}`} product={product} />)}</div>
           ) : <p className="favorites-empty">{locale === "ru" ? "В избранном пока нет товаров" : t("notFound")}</p>}
         </section>
 
