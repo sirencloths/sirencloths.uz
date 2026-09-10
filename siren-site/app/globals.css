@@ -6921,9 +6921,10 @@ body {
 /* Embla loop clones need physical slide spacing: flex-gap can disappear at the last → first boundary. */
 @media(min-width:761px){.products--slider .products-track{column-gap:0!important;gap:0!important}.products--slider .products-slide{flex-basis:calc((100% - 128px) / 4)!important;margin-right:32px!important}}
 
-/* Embla's looping transform keeps per-slide margins more reliably than flex gap
-   on the narrow mobile product rail. */
-@media(max-width:760px){.products--slider .products-track{column-gap:0!important;gap:0!important}.products--slider .products-slide{flex-basis:calc(100% - 80px)!important;margin-right:16px!important}}
+/* Give every mobile carousel item its own trailing gutter.  This is deliberately
+   padding (not only flex-gap), so Embla preserves the whitespace where its last
+   loop clone meets the first card as well. */
+@media(max-width:760px){.products--slider .products-track{column-gap:0!important;gap:0!important}.products--slider .products-slide{box-sizing:border-box;flex-basis:calc(100% - 64px)!important;margin-right:0!important;padding-right:20px!important}}
 
 /* Product photography must start exactly where the compact mobile header ends.
    This selector deliberately matches the legacy high-specificity rule above. */
