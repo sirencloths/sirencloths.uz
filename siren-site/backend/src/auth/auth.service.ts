@@ -9,7 +9,7 @@ import { AuditLog, AuthOtp, Customer, CustomerAddress, User, UserRole } from '..
 import { EmailService } from './email.service';
 
 type OtpPurpose = 'registration' | 'password_reset' | 'password_change';
-type CustomerProfile = { firstName: string; lastName: string; phone: string; region: string; address?: string; notificationPreferences?: { blog?: boolean; discounts?: boolean } };
+type CustomerProfile = { firstName: string; lastName: string; phone: string; region: string; address?: string; notificationPreferences?: { blog?: boolean; discounts?: boolean; products?: boolean } };
 
 @Injectable()
 export class AuthService implements OnApplicationBootstrap {
@@ -154,6 +154,7 @@ export class AuthService implements OnApplicationBootstrap {
         notificationPreferences: {
           blog: Boolean(profile.notificationPreferences.blog),
           discounts: Boolean(profile.notificationPreferences.discounts),
+          products: Boolean(profile.notificationPreferences.products),
         },
       };
     }

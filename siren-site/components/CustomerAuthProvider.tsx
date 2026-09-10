@@ -4,7 +4,7 @@ import { createContext, FormEvent, ReactNode, useContext, useEffect, useMemo, us
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 const TOKEN_KEY = "siren-customer-token";
-type Customer = { id: string; email: string; firstName: string; lastName: string; phone?: string | null; region?: string | null; address?: string; emailVerifiedAt?: string | null; welcomeDiscountEligible?: boolean; welcomeDiscountPercent?: number; metadata?: { notificationPreferences?: { blog?: boolean; discounts?: boolean } } };
+type Customer = { id: string; email: string; firstName: string; lastName: string; phone?: string | null; region?: string | null; address?: string; emailVerifiedAt?: string | null; welcomeDiscountEligible?: boolean; welcomeDiscountPercent?: number; metadata?: { notificationPreferences?: { blog?: boolean; discounts?: boolean; products?: boolean } } };
 type Step = "email" | "password" | "otp" | "details" | "forgot" | "reset";
 type Context = { customer: Customer | null; loading: boolean; openAuth: () => void; signOut: () => void; refresh: () => Promise<void> };
 const CustomerAuthContext = createContext<Context | null>(null);

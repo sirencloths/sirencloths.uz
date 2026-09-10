@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { randomUUID } from 'node:crypto';
 import { Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, SiteSetting } from '../database/entities';
 
 const DEFAULT_NAVIGATION = [
@@ -60,7 +61,11 @@ export class CmsService {
   async updateBanner(id: string, input: Partial<Banner>) { const entity = await this.banners.preload({ id, ...input }); if (!entity) throw new NotFoundException('Banner not found'); return this.banners.save(entity); }
   async removeBanner(id: string) { await this.banners.delete(id); return { deleted: true }; }
   adminPosts() { return this.posts.find({ order: { updatedAt: 'DESC' } }); }
-  createPost(input: Partial<BlogPost>) { return this.posts.save(this.posts.create(input)); }
+  async createPost(input: Partial<BlogPost>) {
+    const post = await this.posts.save(this.posts.create(input));
+    if (post.isPublished) await this.appendAutomaticNotification({ kind: 'blog', title: post.title, text: post.excerpt || post.body.slice(0, 140), imageUrl: post.coverImageUrl || '', href: `/blog/${post.slug}` });
+    return post;
+  }
   async updatePost(id: string, input: Partial<BlogPost>) { const entity = await this.posts.preload({ id, ...input }); if (!entity) throw new NotFoundException('Blog post not found'); return this.posts.save(entity); }
   async removePost(id: string) { await this.posts.delete(id); return { deleted: true }; }
   adminLookbook() { return this.lookbook.find({ order: { position: 'ASC' } }); }
@@ -107,4 +112,10 @@ export class CmsService {
   async removeSection(id: string) { await this.sections.delete(id); return { deleted: true }; }
   settingsList() { return this.settings.find({ order: { key: 'ASC' } }); }
   async setSetting(key: string, value: Record<string, unknown>) { const current = await this.settings.findOneBy({ key }); return this.settings.save(current ? { ...current, value } : this.settings.create({ key, value })); }
+  private async appendAutomaticNotification(input: { kind: string; title: string; text: string; imageUrl: string; href: string }) {
+    const setting = await this.settings.findOneBy({ key: 'site-notifications' });
+    const items = Array.isArray(setting?.value?.items) ? setting.value.items : [];
+    const item = { id: randomUUID(), kind: input.kind, title: { ru: input.title, uz: input.title, en: input.title }, text: { ru: input.text, uz: input.text, en: input.text }, imageUrl: input.imageUrl, href: input.href, createdAt: new Date().toISOString(), isActive: true, clicks: 0, clickVisitorIds: [] };
+    await this.settings.save(setting ? { ...setting, value: { ...setting.value, items: [item, ...items] } } : this.settings.create({ key: 'site-notifications', value: { items: [item] } }));
+  }
 }

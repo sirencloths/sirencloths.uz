@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'node:crypto';
-import { AuditLog, Category, CollectionEntity, InventoryTransfer, OrderItem, Product, ProductGender, ProductStatus, ProductVariant } from '../database/entities';
+import { AuditLog, Category, CollectionEntity, InventoryTransfer, OrderItem, Product, ProductGender, ProductStatus, ProductVariant, SiteSetting } from '../database/entities';
 
 export type ProductInput = {
   slug: string; title: string; description?: string; status?: ProductStatus; price: string;
@@ -22,6 +22,7 @@ export class CatalogService {
     @InjectRepository(AuditLog) private readonly auditLogs: Repository<AuditLog>,
     @InjectRepository(Category) private readonly categories: Repository<Category>,
     @InjectRepository(CollectionEntity) private readonly collections: Repository<CollectionEntity>,
+    @InjectRepository(SiteSetting) private readonly settings: Repository<SiteSetting>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -83,7 +84,12 @@ export class CatalogService {
     const soldByProduct = new Map(soldRows.map((row) => [row.productId, Number(row.soldQuantity)]));
     return products.map((product) => ({ ...product, soldQuantity: soldByProduct.get(product.id) ?? 0 }));
   }
-  async createProduct(input: ProductInput) { await this.validateProductAssignment(input, true); return this.products.save(this.products.create({ ...input, media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} })); }
+  async createProduct(input: ProductInput) {
+    await this.validateProductAssignment(input, true);
+    const product = await this.products.save(this.products.create({ ...input, media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} }));
+    if (product.status === ProductStatus.ACTIVE) await this.appendProductNotification(product);
+    return product;
+  }
   async updateProduct(id: string, input: Partial<ProductInput>) {
     await this.validateProductAssignment(input, false); const product = await this.products.preload({ id, ...input });
     if (!product) throw new NotFoundException('Product not found');
@@ -119,6 +125,19 @@ export class CatalogService {
 
   async returnToOnline(items: Array<{ variantId: string; quantity: number }>, actorId?: string, note?: string) {
     return this.moveInventory(items, 'to_online', actorId, note);
+  }
+
+  private async appendProductNotification(product: Product) {
+    const setting = await this.settings.findOneBy({ key: 'site-notifications' });
+    const items = Array.isArray(setting?.value?.items) ? setting.value.items : [];
+    const imageUrl = [...(product.media ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? '';
+    const item = {
+      id: randomUUID(), kind: 'products',
+      title: { ru: `Новый товар: ${product.title}`, uz: `Yangi mahsulot: ${product.title}`, en: `New product: ${product.title}` },
+      text: { ru: 'Новый товар уже доступен в магазине.', uz: 'Yangi mahsulot endi do‘konda mavjud.', en: 'A new product is now available in the store.' },
+      imageUrl, href: `/products/${product.slug}`, createdAt: new Date().toISOString(), isActive: true, clicks: 0, clickVisitorIds: [],
+    };
+    await this.settings.save(this.settings.create({ ...(setting ?? {}), key: 'site-notifications', value: { items: [item, ...items] } }));
   }
 
   private async moveInventory(items: Array<{ variantId: string; quantity: number }>, direction: 'to_offline' | 'to_online', actorId?: string, note?: string) {

@@ -4,14 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLanguage } from "./LanguageProvider";
+import { useCustomerAuth } from "./CustomerAuthProvider";
 
 const marqueeItems = Array.from({ length: 8 });
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
-type StoreNotification = { id: string; title?: Record<string, string>; text?: Record<string, string>; imageUrl?: string; href?: string; createdAt?: string; clicks?: number };
+type StoreNotification = { id: string; kind?: "general" | "blog" | "discounts" | "products"; title?: Record<string, string>; text?: Record<string, string>; imageUrl?: string; href?: string; createdAt?: string; clicks?: number };
 const asset = (url?: string) => url?.startsWith("/uploads/") ? `${API.replace(/\/api$/, "")}${url}` : url || "";
 
 export default function TopBar() {
   const { language, locale, openLanguageSelector, t } = useLanguage();
+  const { customer } = useCustomerAuth();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoreNotification[]>([]);
   const [readAt, setReadAt] = useState<Record<string, string>>({});
@@ -35,7 +37,12 @@ export default function TopBar() {
   useEffect(() => { localStorage.setItem("siren-read-notifications", JSON.stringify(readAt)); }, [readAt]);
   const copy = (value?: Record<string, string>) => value?.[locale] || value?.ru || value?.en || value?.uz || "";
   const oneWeek = 7 * 24 * 60 * 60 * 1000;
-  const visibleItems = items.filter((item) => !readAt[item.id] || Date.now() - new Date(readAt[item.id]).getTime() < oneWeek);
+  const allowedItems = items.filter((item) => {
+    if (!customer || !item.kind || item.kind === "general") return true;
+    const preferences = customer.metadata?.notificationPreferences;
+    return item.kind === "blog" ? preferences?.blog === true : item.kind === "discounts" ? preferences?.discounts === true : preferences?.products === true;
+  });
+  const visibleItems = allowedItems.filter((item) => !readAt[item.id] || Date.now() - new Date(readAt[item.id]).getTime() < oneWeek);
   const unreadItems = visibleItems.filter((item) => !readAt[item.id]);
   const trackClick = (id: string) => { if (visitorId) void fetch(`${API}/content/notifications/${encodeURIComponent(id)}/click`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ visitorId }), keepalive: true }); };
 
