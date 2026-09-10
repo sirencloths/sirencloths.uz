@@ -33,7 +33,7 @@ export default function Records({ records = [] }: { records?: ApiMusicRecord[] }
     setPlayingId(record.id);
   };
 
-  const compactRecords = displayRecords.slice(0, 12);
+  const compactRecords = displayRecords.slice(0, 10);
 
   return <section className="records" id="records">
     <div className="records-heading"><h2>{t("records")}</h2><a href="#playlist-frame">{t("playlist")}</a></div>
