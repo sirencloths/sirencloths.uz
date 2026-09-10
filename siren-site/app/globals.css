@@ -7666,3 +7666,7 @@ body {
 /* The homepage collection campaign directly below the product rail is a true
    mobile full-bleed banner, independent of the collection column gutter. */
 @media(max-width:760px){.collection>.collection-banner{width:100vw!important;max-width:none!important;margin-right:calc(50% - 50vw)!important;margin-left:calc(50% - 50vw)!important}.collection>.collection-banner>img{display:block;width:100%!important;max-width:none!important}}
+
+/* Keep the operational desktop header available while an admin works through
+   long product, customer or order lists. Mobile already uses the sticky nav. */
+@media(min-width:861px){.admin-topbar{position:sticky;top:0;z-index:40;background:#f7f7f5;box-shadow:0 11px 16px -18px rgba(0,0,0,.38)}}
