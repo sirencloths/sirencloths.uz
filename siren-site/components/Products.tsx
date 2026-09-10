@@ -14,6 +14,7 @@ const RESUME_DELAY_MS = 3000;
 export default function Products({ products, id, ariaLabel, more = false, slider = false, heading }: Props) {
   const [remoteProducts, setRemoteProducts] = useState<Product[] | null>(null);
   const [api, setApi] = useState<CarouselApi>();
+  const [isMobile, setIsMobile] = useState(false);
   const resumeAt = useRef(0);
 
   const displayProducts = remoteProducts?.length ? remoteProducts : products;
@@ -30,6 +31,14 @@ export default function Products({ products, id, ariaLabel, more = false, slider
   }, []);
 
   useEffect(() => {
+    const query = window.matchMedia("(max-width: 760px)");
+    const syncViewport = () => setIsMobile(query.matches);
+    syncViewport();
+    query.addEventListener("change", syncViewport);
+    return () => query.removeEventListener("change", syncViewport);
+  }, []);
+
+  useEffect(() => {
     if (!api || !activeSlider) return;
     const timer = window.setInterval(() => {
       if (Date.now() >= resumeAt.current) api.scrollNext();
@@ -40,7 +49,7 @@ export default function Products({ products, id, ariaLabel, more = false, slider
   return <section className={`products${more ? " products--more" : ""}${activeSlider ? " products--slider" : ""}${slider && !activeSlider ? " products--short" : ""}`} id={id} aria-label={ariaLabel}>
     {activeSlider && <button className="slider-btn slider-btn--left" type="button" aria-label="Назад" onClick={() => api?.scrollPrev()}><Image src="/icons/arrow-right.svg" alt="" width={6} height={12} /></button>}
     {heading && <div className="section-heading recommendation-heading"><h2 style={{ fontSize: "40px" }}>{heading.title}</h2><a href={heading.href}>{heading.linkLabel}</a></div>}
-    {activeSlider ? <Carousel className="products-slider" opts={{ loop: true, align: "start", duration: 28 }} setApi={setApi} onPointerDown={() => { resumeAt.current = Date.now() + RESUME_DELAY_MS; }}>
+    {activeSlider ? <Carousel className="products-slider" opts={{ loop: true, align: isMobile ? "center" : "start", duration: 28 }} setApi={setApi} onPointerDown={() => { resumeAt.current = Date.now() + RESUME_DELAY_MS; }}>
       <CarouselContent className="products-track">
         {displayProducts.map((product) => <CarouselItem className="products-slide" key={product.cardId ?? product.id}><ProductCard product={product} /></CarouselItem>)}
       </CarouselContent>
