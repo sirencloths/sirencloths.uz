@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCart } from "./CartContext";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
@@ -45,7 +46,7 @@ export default function Header() {
       <nav className="nav" aria-label={t("home")}>
 
         {/* LOGO */}
-        <a className="nav-logo" href="/">
+        <Link className="nav-logo" href="/">
           <Image
             src="/icons/logo.svg"
             alt="SIREN"
@@ -53,7 +54,7 @@ export default function Header() {
             height={33}
             priority
           />
-        </a>
+        </Link>
 
         {/* NAVIGATION */}
         <ul className="nav-menu">
@@ -64,7 +65,7 @@ export default function Header() {
 
             return (
               <li key={link.href}>
-                <a
+                <Link
                   href={link.href}
                   className={
                     isActive
@@ -73,7 +74,7 @@ export default function Header() {
                   }
                 >
                   {link.translationKey ? t(link.translationKey) : link.label}
-                </a>
+                </Link>
               </li>
             );
           })}
@@ -102,7 +103,7 @@ export default function Header() {
                     : item.href;
 
             return (
-              <a
+              <Link
                 key={item.href}
                 href={href}
                 aria-label={t(item.label)}
@@ -139,7 +140,7 @@ export default function Header() {
                       {cartCount}
                     </span>
                   )}
-              </a>
+              </Link>
             );
           })}
         </div>
