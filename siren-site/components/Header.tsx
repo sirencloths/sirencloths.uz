@@ -8,7 +8,7 @@ import { useSearch } from "./SearchProvider";
 import { useEffect, useState } from "react";
 import { useCustomerAuth } from "./CustomerAuthProvider";
 
-type NavigationLink = { id: string; href: string; label: string; translationKey?: string; isActive?: boolean };
+type NavigationLink = { id: string; href: string; label: string; labels?: Partial<Record<"ru" | "uz" | "en", string>>; translationKey?: string; isActive?: boolean };
 
 const defaultNavLinks: NavigationLink[] = [
   { id: "shop", href: "/shop", label: "shop", translationKey: "shop", isActive: true },
@@ -27,10 +27,10 @@ const navIcons = [
 export default function Header() {
   const { cartCount, openCart } = useCart();
   const pathname = usePathname();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { isSearchOpen, toggleSearch } = useSearch();
   const { customer, openAuth } = useCustomerAuth();
-  const [navLinks, setNavLinks] = useState<NavigationLink[]>(defaultNavLinks);
+  const [navLinks, setNavLinks] = useState<NavigationLink[] | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function Header() {
       .then((items: NavigationLink[]) => {
         if (mounted && Array.isArray(items)) setNavLinks(items);
       })
-      .catch(() => undefined);
+      .catch(() => { if (mounted) setNavLinks(defaultNavLinks); });
     return () => { mounted = false; };
   }, []);
 
@@ -69,7 +69,7 @@ export default function Header() {
 
         {/* NAVIGATION */}
         <ul className="nav-menu">
-          {navLinks.map((link) => {
+          {(navLinks ?? []).map((link) => {
             const isActive = link.href === "/"
               ? pathname === "/"
               : pathname === link.href || pathname.startsWith(`${link.href}/`);
@@ -84,7 +84,7 @@ export default function Header() {
                       : "nav-link"
                   }
                 >
-                  {link.translationKey ? t(link.translationKey) : link.label}
+                  {link.translationKey ? t(link.translationKey) : link.labels?.[locale as "ru" | "uz" | "en"] || link.labels?.ru || link.labels?.en || link.label}
                 </a>
               </li>
             );
