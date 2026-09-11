@@ -1,0 +1,31 @@
+@media (max-width: 760px) {
+  .header .nav {
+    overflow: visible !important;
+  }
+
+  .header .nav .nav-menu {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .header .nav .nav-menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header .nav .nav-menu li {
+    flex: 0 0 auto !important;
+  }
+
+  .header .nav .nav-menu a {
+    font-size: 12px !important;
+    letter-spacing: 0 !important;
+    white-space: nowrap !important;
+  }
+}

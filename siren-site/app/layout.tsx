@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import "./header-mobile.css";
 import { CartProvider } from "@/components/CartContext";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { SearchProvider } from "@/components/SearchProvider";
