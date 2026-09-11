@@ -7,8 +7,9 @@
     display: flex !important;
     flex: 1 1 auto !important;
     min-width: 0 !important;
-    justify-content: flex-end !important;
+    justify-content: flex-start !important;
     gap: 8px !important;
+    margin-left: 8px !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
     scrollbar-width: none;
