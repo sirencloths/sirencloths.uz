@@ -1,14 +1,14 @@
 import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import { blogArticles } from "@/lib/data";
-import { getStorefrontPosts } from "@/lib/api";
+import { getStorefrontPosts, type ApiBlogPost } from "@/lib/api";
 
 const asset = (url?: string | null) => !url ? "/images/banner.jpg" : url.startsWith("http") ? url : `${(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "")}${url}`;
 const date = (value?: string | null) => value ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value)) : "";
 
 export default async function BlogPage() {
   const savedPosts = await getStorefrontPosts().catch(() => []);
-  const posts = savedPosts.length ? savedPosts : blogArticles.map((article) => ({ id: article.id, title: article.title, excerpt: article.body, body: article.body, coverImageUrl: article.cover, publishedAt: null }));
+  const posts: ApiBlogPost[] = savedPosts.length ? savedPosts : blogArticles.map((article) => ({ id: article.id, slug: article.id, title: article.title, excerpt: article.body, body: article.body, coverImageUrl: article.cover, publishedAt: null, seo: { galleryImageUrls: article.gallery } }));
 
   return (
     <>
@@ -22,16 +22,17 @@ export default async function BlogPage() {
         </div>
 
         <div className="blog-page-list">
-          {posts.map((article, index) => (
-            <article className={`blog-page-article${index % 2 ? " blog-page-article--reverse" : ""}`} key={article.id}>
-              <div className="blog-page-gallery"><img className="blog-page-cover" src={asset(article.coverImageUrl)} alt={article.title} /></div>
+          {posts.map((article, index) => {
+            const gallery = Array.isArray(article.seo?.galleryImageUrls) ? article.seo.galleryImageUrls.filter((image): image is string => typeof image === "string" && Boolean(image)) : [];
+            return <article className={`blog-page-article${index % 2 ? " blog-page-article--reverse" : ""}`} key={article.id}>
+              <div className="blog-page-gallery"><img className="blog-page-cover" src={asset(article.coverImageUrl)} alt={article.title} />{gallery.length > 0 && <div className="blog-page-thumbnails">{gallery.map((image, imageIndex) => <img key={`${image}-${imageIndex}`} src={asset(image)} alt={`${article.title} ${imageIndex + 1}`} loading="lazy" />)}</div>}</div>
               <div className="blog-page-copy">
                 <time>{date(article.publishedAt)}</time>
                 <h2>{article.title}</h2>
                 <p>{article.body || article.excerpt}</p>
               </div>
             </article>
-          ))}
+          })}
         </div>
       </main>
       <Footer />
