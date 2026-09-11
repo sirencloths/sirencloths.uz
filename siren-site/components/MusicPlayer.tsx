@@ -20,8 +20,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [playerVisible, setPlayerVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [requestPlay, setRequestPlay] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const autoPlayRef = useRef(false);
   const activeTrack = useMemo(() => tracks.find((track) => track.id === activeId) ?? null, [tracks, activeId]);
 
   useEffect(() => {
@@ -36,12 +36,12 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !activeTrack) return;
+    if (!audio || !activeTrack || !playerVisible) return;
     audio.load();
     setProgress(0);
     setDuration(0);
-    if (!requestPlay) setPlaying(false);
-  }, [activeTrack?.id, requestPlay]);
+    if (!autoPlayRef.current) setPlaying(false);
+  }, [activeTrack?.id, playerVisible]);
 
   const toggle = () => {
     const audio = audioRef.current;
@@ -52,15 +52,15 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const playTrack = (id: string) => {
     if (id === activeId && playerVisible) { toggle(); return; }
     setPlayerVisible(true);
+    autoPlayRef.current = true;
     setActiveId(id);
-    setRequestPlay(true);
   };
   const jump = (direction: -1 | 1) => {
     if (!tracks.length) return;
     const current = Math.max(0, tracks.findIndex((track) => track.id === activeId));
     const next = (current + direction + tracks.length) % tracks.length;
+    autoPlayRef.current = true;
     setActiveId(tracks[next].id);
-    setRequestPlay(true);
   };
   const closePlayer = () => {
     audioRef.current?.pause();
@@ -77,7 +77,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       <div className="global-player__timeline"><span>{formatTime(progress)}</span><input aria-label="Trek holati" type="range" min="0" max={duration || 0} value={Math.min(progress, duration || 0)} onChange={(event) => { const value = Number(event.target.value); if (audioRef.current) audioRef.current.currentTime = value; setProgress(value); }} /><span>{duration ? `-${formatTime(Math.max(duration - progress, 0))}` : "--:--"}</span></div>
       <div className="global-player__controls"><button type="button" aria-label="Oldingi trek" onClick={() => jump(-1)}><SkipBack size={28} fill="currentColor" /></button><button type="button" className="global-player__toggle" aria-label={playing ? "Pauza" : "Play"} aria-pressed={playing} onClick={toggle}>{playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}</button><button type="button" aria-label="Keyingi trek" onClick={() => jump(1)}><SkipForward size={28} fill="currentColor" /></button></div>
       {open && <div className="global-player__list">{tracks.map((track) => { const isActive = track.id === activeId; const isPlaying = isActive && playing; return <button type="button" key={track.id} className={`${isActive ? "is-active" : ""}${isPlaying ? " is-playing" : ""}`} onClick={() => { playTrack(track.id); setOpen(false); }}><Image src={asset(track.coverImageUrl)} alt="" width={36} height={36} /><span><b>{track.title}</b><small>{track.artist || "SIREN"}{track.genre ? ` · ${track.genre}` : ""}</small></span>{isPlaying && <i className="global-player__equalizer" aria-label="Ijro etilmoqda"><i /><i /><i /></i>}</button>; })}</div>}
-      <audio ref={audioRef} src={audioSource(activeTrack.audioUrl)} onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)} onCanPlay={() => { if (requestPlay) { setRequestPlay(false); void audioRef.current?.play().catch(() => setPlaying(false)); } }} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => jump(1)} />
+      <audio ref={audioRef} src={audioSource(activeTrack.audioUrl)} onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)} onCanPlay={() => { if (autoPlayRef.current) { autoPlayRef.current = false; void audioRef.current?.play().then(() => setPlaying(true)).catch(() => setPlaying(false)); } }} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => jump(1)} />
     </aside>}
   </MusicPlayerContext.Provider>;
 }
