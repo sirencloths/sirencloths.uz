@@ -12,7 +12,6 @@ import {
   type ReactNode,
 } from "react";
 import { heroProducts, type Product } from "@/lib/data";
-import { searchCategories } from "@/lib/search";
 import { useLanguage } from "./LanguageProvider";
 import { getStorefrontProducts, getStorefrontRandomProducts, storefrontAssetUrl, toStorefrontColorCards } from "@/lib/api";
 
@@ -84,6 +83,7 @@ export function SearchContents({
 }) {
   const { t } = useLanguage();
   const [query, setQuery] = useState("");
+  const [isInputActive, setIsInputActive] = useState(false);
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const [remoteProducts, setRemoteProducts] = useState<Product[] | null>(null);
   const [randomProducts, setRandomProducts] = useState<Product[] | null>(null);
@@ -107,7 +107,8 @@ export function SearchContents({
     .sort((left, right) => right.score - left.score)
     .map((item) => item.product)
     .slice(0, 8) : [];
-  const products = normalizedQuery ? filtered : (randomProducts?.length ? randomProducts : catalogue.slice(0, 4));
+  const recommendations = randomProducts?.length ? randomProducts : catalogue.slice(0, 4);
+  const relatedSearches = normalizedQuery ? getRelatedSearches(normalizedQuery, catalogue) : [];
   const saveQuery = (value: string) => {
     const clean = value.trim();
     if (!clean) return;
@@ -117,32 +118,48 @@ export function SearchContents({
       return next;
     });
   };
-  const history = recentQueries.length ? recentQueries : searchCategories;
+  const history = recentQueries;
 
   return (
     <>
         <label className="site-search-input">
           <Image src="/icons/search.svg" alt="" width={32} height={32} />
           <input
-            autoFocus
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onFocus={() => setIsInputActive(true)}
+            onChange={(event) => { setQuery(event.target.value); setIsInputActive(true); }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && query.trim()) { saveQuery(query); onSubmit?.(query.trim()); }
             }}
             placeholder={t("search")}
           />
         </label>
-        {!query && <div className="site-search-history"><p>ПОСЛЕДНИЕ ЗАПРОСЫ</p><div className="site-search-categories">{history.map((category) => <button key={category} type="button" onClick={() => { setQuery(category); saveQuery(category); }}>{category}<span>→</span></button>)}</div></div>}
-        <div className="site-search-products">
-          {products.map((product) => (
-            <Link href={`/products/${product.id}${product.colorSlug ? `?color=${encodeURIComponent(product.colorSlug)}` : ""}`} key={product.cardId ?? product.id} onClick={onProductClick} className="site-search-product">
+        {isInputActive && !query && history.length > 0 && <div className="site-search-history"><p>ПОСЛЕДНИЕ ЗАПРОСЫ</p><div className="site-search-categories">{history.map((category) => <button key={category} type="button" onClick={() => { setQuery(category); saveQuery(category); }}>{category}<span>→</span></button>)}</div></div>}
+        {isInputActive && Boolean(query) && relatedSearches.length > 0 && <div className="site-search-suggestions" aria-label="Варианты поиска">
+          {relatedSearches.map((suggestion) => <button key={suggestion} type="button" onClick={() => setQuery(suggestion)}>Возможно, вы искали: <strong>{suggestion}</strong></button>)}
+        </div>}
+        {isInputActive && Boolean(query) && filtered.length > 0 && <div className="site-search-products">
+          {filtered.map((product) => (
+            <Link href={`/products/${product.id}${product.colorSlug ? `?color=${encodeURIComponent(product.colorSlug)}` : ""}`} key={product.cardId ?? product.id} onClick={() => { saveQuery(query); onProductClick?.(); }} className="site-search-product">
               <SearchResultImage src={product.image} alt={product.title} />
               <strong>{product.title}</strong><span>{product.color === "GRAY" ? t("gray") : product.color}</span><b>{product.price}</b>
             </Link>
           ))}
-          {query && !products.length && <p className="site-search-empty">{t("notFound")}</p>}
         </div>
+        }
+        {isInputActive && Boolean(query) && !filtered.length && <section className="site-search-no-results">
+          <p className="site-search-empty">ВАШ ТОВАР НЕ НАЙДЕН</p>
+          <button type="button" className="site-search-back" onClick={() => setQuery("")}>НАЗАД</button>
+          <p className="site-search-recommendation-title">РЕКОМЕНДУЕМ</p>
+          <div className="site-search-products">
+            {recommendations.map((product) => (
+              <Link href={`/products/${product.id}${product.colorSlug ? `?color=${encodeURIComponent(product.colorSlug)}` : ""}`} key={product.cardId ?? product.id} onClick={() => { saveQuery(query); onProductClick?.(); }} className="site-search-product">
+                <SearchResultImage src={product.image} alt={product.title} />
+                <strong>{product.title}</strong><span>{product.color === "GRAY" ? t("gray") : product.color}</span><b>{product.price}</b>
+              </Link>
+            ))}
+          </div>
+        </section>}
     </>
   );
 }
@@ -151,6 +168,8 @@ const synonymGroups = [
   ["futbolka", "футболка", "майка", "майки", "tshirt", "t shirt", "tee", "top"],
   ["sviter", "свитер", "sweater", "sweat", "hoodie", "худи"],
   ["ishton", "shim", "jinsi", "jeans", "trouser", "pants", "брюки", "джинс", "штаны"],
+  ["tursik", "trusik", "trsik", "трусики", "белье", "бельё", "underwear"],
+  ["galstuk", "galsuk", "галстук", "babochka", "бабочка", "bow tie"],
   ["kok", "ko k", "blue", "синий", "голубой"],
   ["qora", "black", "черный", "чёрный"],
   ["oq", "white", "белый"],
@@ -161,6 +180,19 @@ const synonymGroups = [
 
 function normalize(value: string) {
   return value.toLocaleLowerCase("uz-UZ").replace(/[ʻ’'`]/g, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+function getRelatedSearches(query: string, catalogue: Product[]) {
+  const group = synonymGroups.find((items) => items.some((item) => {
+    const term = normalize(item);
+    return term === query || term.startsWith(query) || query.startsWith(term);
+  }));
+  if (!group) return [];
+  const available = group.filter((item) => {
+    const term = normalize(item);
+    return catalogue.some((product) => normalize(`${product.title} ${product.color} ${product.category ?? ""}`).includes(term));
+  });
+  return [...new Set(available)].slice(0, 2);
 }
 
 function productScore(product: Product, query: string) {
