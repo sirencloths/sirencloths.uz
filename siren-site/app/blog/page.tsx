@@ -1,5 +1,6 @@
 import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
+import BlogGallery from "@/components/BlogGallery";
 import { blogArticles } from "@/lib/data";
 import { getStorefrontPosts, type ApiBlogPost } from "@/lib/api";
 
@@ -25,7 +26,7 @@ export default async function BlogPage() {
           {posts.map((article, index) => {
             const gallery = Array.isArray(article.seo?.galleryImageUrls) ? article.seo.galleryImageUrls.filter((image): image is string => typeof image === "string" && Boolean(image)) : [];
             return <article className={`blog-page-article${index % 2 ? " blog-page-article--reverse" : ""}`} key={article.id}>
-              <div className="blog-page-gallery"><img className="blog-page-cover" src={asset(article.coverImageUrl)} alt={article.title} />{gallery.length > 0 && <div className="blog-page-thumbnails">{gallery.map((image, imageIndex) => <img key={`${image}-${imageIndex}`} src={asset(image)} alt={`${article.title} ${imageIndex + 1}`} loading="lazy" />)}</div>}</div>
+              <BlogGallery title={article.title} cover={asset(article.coverImageUrl)} images={gallery.map(asset)} />
               <div className="blog-page-copy">
                 <time>{date(article.publishedAt)}</time>
                 <h2>{article.title}</h2>
