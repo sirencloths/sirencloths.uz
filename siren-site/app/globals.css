@@ -1099,6 +1099,7 @@ button {
   .topbar-control--right { margin-right: clamp(8px, 3.6vw, 16px); }
   .topbar-control img { width: clamp(20px, 6vw, 26px); height: clamp(20px, 6vw, 26px); flex: 0 0 auto; }
   .topbar-control span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-news-wrap .cart-badge { position: static; flex: 0 0 auto; min-width: 15px; height: 15px; padding: 0 3px; font-size: 9px; }
 
   .header .nav { box-sizing: border-box; min-width: 0; min-height: 48px; height: 48px; padding: 0 clamp(10px, 4.5vw, 20px); overflow: hidden; }
   .nav-logo, .nav-logo img { width: clamp(60px, 18vw, 78px); height: auto; flex: 0 0 clamp(60px, 18vw, 78px); }
