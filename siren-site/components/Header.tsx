@@ -16,6 +16,15 @@ const defaultNavLinks: NavigationLink[] = [
   { id: "lookbook", href: "/lookbook", label: "lookbook", translationKey: "lookbook", isActive: true },
   { id: "blog", href: "/blog", label: "blog", translationKey: "blog", isActive: true },
 ];
+const navigationCacheKey = "siren-storefront-navigation";
+
+function cachedNavigation(): NavigationLink[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(navigationCacheKey) || "null");
+    return Array.isArray(value) ? value as NavigationLink[] : null;
+  } catch { return null; }
+}
 
 const navIcons = [
   { href: "/search", label: "search", icon: "/icons/search.svg" },
@@ -30,7 +39,7 @@ export default function Header() {
   const { t, locale } = useLanguage();
   const { isSearchOpen, toggleSearch } = useSearch();
   const { customer, openAuth } = useCustomerAuth();
-  const [navLinks, setNavLinks] = useState<NavigationLink[] | null>(null);
+  const [navLinks, setNavLinks] = useState<NavigationLink[] | null>(() => cachedNavigation());
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -38,7 +47,10 @@ export default function Header() {
     void fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"}/content/navigation`, { cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((items: NavigationLink[]) => {
-        if (mounted && Array.isArray(items)) setNavLinks(items);
+        if (mounted && Array.isArray(items)) {
+          setNavLinks(items);
+          localStorage.setItem(navigationCacheKey, JSON.stringify(items));
+        }
       })
       .catch(() => { if (mounted) setNavLinks(defaultNavLinks); });
     return () => { mounted = false; };
