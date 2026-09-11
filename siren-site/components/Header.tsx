@@ -29,19 +29,8 @@ export default function Header() {
   const { t } = useLanguage();
   const { isSearchOpen, toggleSearch } = useSearch();
   const { customer, openAuth } = useCustomerAuth();
-  const [navLinks, setNavLinks] = useState<NavigationLink[]>(defaultNavLinks);
+  const navLinks = defaultNavLinks;
   const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    void fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"}/content/navigation`, { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((items: NavigationLink[]) => {
-        if (mounted && Array.isArray(items)) setNavLinks(items);
-      })
-      .catch(() => undefined);
-    return () => { mounted = false; };
-  }, []);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 760px)");
