@@ -24,6 +24,7 @@ export type ApiMusicRecord = {
   id: string;
   title: string;
   artist: string;
+  genre: string;
   audioUrl: string;
   coverImageUrl?: string | null;
   position: number;

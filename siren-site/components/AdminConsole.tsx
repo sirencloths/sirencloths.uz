@@ -153,6 +153,7 @@ type MusicRecord = {
   id: string;
   title: string;
   artist: string;
+  genre: string;
   audioUrl: string;
   coverImageUrl?: string | null;
   position: number;
@@ -3475,6 +3476,7 @@ function RecordsManager({
 }) {
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
+  const [genre, setGenre] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [position, setPosition] = useState("0");
@@ -3502,6 +3504,7 @@ function RecordsManager({
         body: JSON.stringify({
           title: title.trim() || file?.name.replace(/\.[^.]+$/, "") || "Spotify trek",
           artist: artist.trim(),
+          genre: genre.trim(),
           audioUrl: uploaded.url,
           coverImageUrl: coverImageUrl.trim() || null,
           position: Number(position) || 0,
@@ -3510,6 +3513,7 @@ function RecordsManager({
       });
       setTitle("");
       setArtist("");
+      setGenre("");
       setCoverImageUrl("");
       setSpotifyUrl("");
       setPosition("0");
@@ -3558,6 +3562,9 @@ function RecordsManager({
               <Field label="Ijrochi / artist">
                 <input value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="SIREN" />
               </Field>
+              <Field label="Janr">
+                <input value={genre} onChange={(event) => setGenre(event.target.value)} placeholder="Masalan, Hip-hop" />
+              </Field>
               <Field label="Cover rasm URL (ixtiyoriy)">
                 <input value={coverImageUrl} onChange={(event) => setCoverImageUrl(event.target.value)} placeholder="https://..." />
               </Field>
@@ -3595,7 +3602,7 @@ function RecordsManager({
                   <div className="admin-record-icon"><Music2 size={18} /></div>
                   <div>
                     <strong>{record.title}</strong>
-                    <span>{record.artist || "Artist ko‘rsatilmagan"}</span>
+                    <span>{record.artist || "Artist ko‘rsatilmagan"}{record.genre ? ` · ${record.genre}` : ""}</span>
                     {isSpotifyUrl(record.audioUrl) ? <a className="admin-spotify-link" href={record.audioUrl} target="_blank" rel="noreferrer">Spotify’da ochish</a> : <audio controls preload="none" src={recordAssetUrl(record.audioUrl)} />}
                   </div>
                   <div className="admin-record-actions">

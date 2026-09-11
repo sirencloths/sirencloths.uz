@@ -14,8 +14,8 @@ const PauseIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 
 export default function Records({ records = [] }: { records?: ApiMusicRecord[] }) {
   const { t } = useLanguage();
   const displayRecords = useMemo(() => records.length
-    ? records.map((record, index) => ({ id: record.id, title: record.title, artist: record.artist || "SIREN", image: record.coverImageUrl || fallbackRecords[index % fallbackRecords.length].image, tone: recordTones[index % recordTones.length], audioUrl: record.audioUrl.startsWith("http") ? record.audioUrl : `${apiOrigin}${record.audioUrl}` }))
-    : fallbackRecords.map((record, index) => ({ ...record, id: `fallback-${index}`, artist: record.genre, tone: recordTones[index % recordTones.length], audioUrl: "" })), [records]);
+    ? records.map((record, index) => ({ id: record.id, title: record.title, artist: record.artist || "SIREN", genre: record.genre || "—", image: record.coverImageUrl || fallbackRecords[index % fallbackRecords.length].image, tone: recordTones[index % recordTones.length], audioUrl: record.audioUrl.startsWith("http") ? record.audioUrl : `${apiOrigin}${record.audioUrl}` }))
+    : fallbackRecords.map((record, index) => ({ ...record, id: `fallback-${index}`, artist: "SIREN", tone: recordTones[index % recordTones.length], audioUrl: "" })), [records]);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const activeRecord = displayRecords.find((record) => record.id === playingId) ?? null;
@@ -45,7 +45,7 @@ export default function Records({ records = [] }: { records?: ApiMusicRecord[] }
             <Image src={record.image} alt={`${record.title} cover`} width={480} height={480} />
             <span className="record-control">{playing ? <PauseIcon /> : <PlayIcon />}</span>
           </button>
-          <div className="record-copy"><small>{t("album")}</small><h3>{record.title}</h3><p>{record.artist}</p></div>
+          <div className="record-copy"><small>{record.artist}</small><h3>{record.title}</h3><p>{record.genre}</p></div>
         </article>;
       })}
     </div>

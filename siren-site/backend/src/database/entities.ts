@@ -279,6 +279,7 @@ export class MusicRecord {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column({ length: 180 }) title!: string;
   @Column({ length: 180, default: '' }) artist!: string;
+  @Column({ length: 120, default: '' }) genre!: string;
   @Column({ name: 'audio_url' }) audioUrl!: string;
   @Column({ name: 'cover_image_url', type: 'varchar', nullable: true }) coverImageUrl!: string | null;
   @Column({ type: 'int', default: 0 }) position!: number;
