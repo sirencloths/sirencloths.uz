@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useLayoutEffect, useState, type CSSProperties } from "react";
 import FixedTop from "@/components/FixedTop";
 import { SearchContents } from "@/components/SearchProvider";
 
 export default function SearchPage() {
-  const router = useRouter();
   const [headerBottom, setHeaderBottom] = useState<number | null>(null);
 
   useLayoutEffect(() => {
@@ -25,7 +23,7 @@ export default function SearchPage() {
       <FixedTop />
       <main className="search-page" style={headerBottom === null ? undefined : { "--search-page-header-bottom": `${headerBottom}px` } as CSSProperties}>
         <div className="search-page-content">
-          <SearchContents onSubmit={(query) => router.push(`/shop?q=${encodeURIComponent(query)}`)} />
+          <SearchContents />
         </div>
       </main>
     </>

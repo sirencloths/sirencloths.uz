@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import "./header-mobile.css";
 import "./home-mobile.css";
+import "./search-ui.css";
 import { CartProvider } from "@/components/CartContext";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { SearchProvider } from "@/components/SearchProvider";

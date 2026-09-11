@@ -84,6 +84,7 @@ export function SearchContents({
 }) {
   const { t } = useLanguage();
   const [query, setQuery] = useState("");
+  const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const [remoteProducts, setRemoteProducts] = useState<Product[] | null>(null);
   const [randomProducts, setRandomProducts] = useState<Product[] | null>(null);
   useEffect(() => {
@@ -92,16 +93,31 @@ export function SearchContents({
     void getStorefrontRandomProducts(4).then((items) => { if (mounted && items.length) setRandomProducts(toStorefrontColorCards(items).slice(0, 4)); }).catch(() => undefined);
     return () => { mounted = false; };
   }, []);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem("siren-recent-searches") ?? "[]");
+      if (Array.isArray(saved)) setRecentQueries(saved.filter((item): item is string => typeof item === "string").slice(0, 5));
+    } catch { /* A broken local value should never block search. */ }
+  }, []);
   const catalogue = remoteProducts?.length ? remoteProducts : heroProducts;
-  const normalizedQuery = query.trim().toLocaleLowerCase("uz-UZ");
-  const relatedTerms: Record<string, string[]> = {
-    "футболки": ["футбол", "t-shirt", "tee", "tank"],
-    "свитеры": ["свитер", "sweat", "hoodie", "sweater"],
-    "майки": ["майк", "tank", "top"],
-  };
-  const terms = relatedTerms[normalizedQuery] ?? [normalizedQuery];
-  const filtered = normalizedQuery ? catalogue.filter((product) => terms.some((term) => `${product.title} ${product.color} ${product.category ?? ""}`.toLocaleLowerCase("uz-UZ").includes(term))).slice(0, 4) : [];
+  const normalizedQuery = normalize(query);
+  const filtered = normalizedQuery ? catalogue
+    .map((product) => ({ product, score: productScore(product, normalizedQuery) }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .map((item) => item.product)
+    .slice(0, 8) : [];
   const products = normalizedQuery ? filtered : (randomProducts?.length ? randomProducts : catalogue.slice(0, 4));
+  const saveQuery = (value: string) => {
+    const clean = value.trim();
+    if (!clean) return;
+    setRecentQueries((current) => {
+      const next = [clean, ...current.filter((item) => normalize(item) !== normalize(clean))].slice(0, 5);
+      try { window.localStorage.setItem("siren-recent-searches", JSON.stringify(next)); } catch { /* Storage can be unavailable in private mode. */ }
+      return next;
+    });
+  };
+  const history = recentQueries.length ? recentQueries : searchCategories;
 
   return (
     <>
@@ -112,12 +128,12 @@ export function SearchContents({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && query.trim()) onSubmit?.(query.trim());
+              if (event.key === "Enter" && query.trim()) { saveQuery(query); onSubmit?.(query.trim()); }
             }}
             placeholder={t("search")}
           />
         </label>
-        {!query && <div className="site-search-history"><p>ПОСЛЕДНИЕ ЗАПРОСЫ</p><div className="site-search-categories">{searchCategories.map((category) => <button key={category} type="button" onClick={() => setQuery(category)}>{category}<span>→</span></button>)}</div></div>}
+        {!query && <div className="site-search-history"><p>ПОСЛЕДНИЕ ЗАПРОСЫ</p><div className="site-search-categories">{history.map((category) => <button key={category} type="button" onClick={() => { setQuery(category); saveQuery(category); }}>{category}<span>→</span></button>)}</div></div>}
         <div className="site-search-products">
           {products.map((product) => (
             <Link href={`/products/${product.id}${product.colorSlug ? `?color=${encodeURIComponent(product.colorSlug)}` : ""}`} key={product.cardId ?? product.id} onClick={onProductClick} className="site-search-product">
@@ -129,6 +145,35 @@ export function SearchContents({
         </div>
     </>
   );
+}
+
+const synonymGroups = [
+  ["futbolka", "футболка", "майка", "майки", "tshirt", "t shirt", "tee", "top"],
+  ["sviter", "свитер", "sweater", "sweat", "hoodie", "худи"],
+  ["ishton", "shim", "jinsi", "jeans", "trouser", "pants", "брюки", "джинс", "штаны"],
+  ["kok", "ko k", "blue", "синий", "голубой"],
+  ["qora", "black", "черный", "чёрный"],
+  ["oq", "white", "белый"],
+  ["qizil", "red", "красный"],
+  ["yashil", "green", "зеленый", "зелёный"],
+  ["binafsha", "purple", "фиолетовый"],
+];
+
+function normalize(value: string) {
+  return value.toLocaleLowerCase("uz-UZ").replace(/[ʻ’'`]/g, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+function productScore(product: Product, query: string) {
+  const haystack = normalize(`${product.title} ${product.color} ${product.category ?? ""}`);
+  const queryTerms = query.split(" ").filter(Boolean);
+  let score = 0;
+  for (const term of queryTerms) {
+    if (haystack.includes(term)) score += 12;
+    const group = synonymGroups.find((items) => items.some((item) => normalize(item) === term || normalize(item).startsWith(term)));
+    if (group?.some((item) => haystack.includes(normalize(item)))) score += 9;
+    if (haystack.split(" ").some((word) => word.startsWith(term) || term.startsWith(word))) score += 4;
+  }
+  return score;
 }
 
 function SearchResultImage({ src, alt }: { src: string; alt: string }) {
