@@ -44,7 +44,6 @@ export class CmsService {
           id: String(value.id ?? ''),
           href: String(value.href ?? '/'),
           label: String(value.label ?? ''),
-          labels: value.labels && typeof value.labels === 'object' ? Object.fromEntries(Object.entries(value.labels as Record<string, unknown>).filter(([locale, label]) => ['ru', 'uz', 'en'].includes(locale) && typeof label === 'string')) : undefined,
           translationKey: typeof value.translationKey === 'string' ? value.translationKey : undefined,
           isActive: true,
           isBuiltIn: value.isBuiltIn === true,

@@ -192,7 +192,6 @@ type NavigationItem = {
   id: string;
   href: string;
   label: string;
-  labels?: Partial<Record<"ru" | "uz" | "en", string>>;
   translationKey?: string;
   isActive: boolean;
   isBuiltIn?: boolean;
@@ -2165,7 +2164,7 @@ function PagesManager({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
-  const [editingLabels, setEditingLabels] = useState({ ru: "", uz: "", en: "" });
+  const [editingLabel, setEditingLabel] = useState("");
 
   const loadNavigation = useCallback(async () => {
     const settings = await api<SiteSetting[]>("/admin/content/settings", token);
@@ -2203,10 +2202,9 @@ function PagesManager({
   };
 
   const renameLink = async (item: NavigationItem) => {
-    const labels = Object.fromEntries(Object.entries(editingLabels).map(([locale, label]) => [locale, label.trim()]).filter(([, label]) => Boolean(label))) as NavigationItem["labels"];
-    const label = labels?.ru || labels?.uz || labels?.en;
-    if (!label) return setMessage("Navbar nomini kamida bitta tilda kiriting.");
-    const next = links.map((link) => link.id === item.id ? { ...link, label, labels, translationKey: undefined } : link);
+    const label = editingLabel.trim();
+    if (!label) return setMessage("Navbar nomini kiriting.");
+    const next = links.map((link) => link.id === item.id ? { ...link, label, translationKey: undefined } : link);
     setBusy(true);
     setMessage("");
     try {
@@ -2284,9 +2282,9 @@ function PagesManager({
               return (
               <div className="pages-manager-row" key={item.id}>
                 <small>{String(index + 1).padStart(2, "0")}</small>
-                <div>{isEditing ? <div className="pages-manager-edit"><input autoFocus value={editingLabels.ru} placeholder="Ruscha" onChange={(event) => setEditingLabels({ ...editingLabels, ru: event.target.value })} onKeyDown={(event) => { if (event.key === "Escape") setEditingLinkId(null); }} /><input value={editingLabels.uz} placeholder="O‘zbekcha" onChange={(event) => setEditingLabels({ ...editingLabels, uz: event.target.value })} onKeyDown={(event) => { if (event.key === "Escape") setEditingLinkId(null); }} /><input value={editingLabels.en} placeholder="Inglizcha" onChange={(event) => setEditingLabels({ ...editingLabels, en: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") void renameLink(item); if (event.key === "Escape") setEditingLinkId(null); }} /><Button type="button" size="sm" disabled={busy} onClick={() => void renameLink(item)}>SAQLASH</Button><Button type="button" size="sm" variant="outline" onClick={() => setEditingLinkId(null)}>BEKOR</Button></div> : <><strong>{item.label.toUpperCase()}</strong><span>{item.href} · DEFAULT: {defaultLabel.toUpperCase()}</span></>}</div>
+                <div>{isEditing ? <div className="pages-manager-edit"><input autoFocus value={editingLabel} onChange={(event) => setEditingLabel(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void renameLink(item); if (event.key === "Escape") setEditingLinkId(null); }} /><Button type="button" size="sm" disabled={busy} onClick={() => void renameLink(item)}>SAQLASH</Button><Button type="button" size="sm" variant="outline" onClick={() => setEditingLinkId(null)}>BEKOR</Button></div> : <><strong>{item.label.toUpperCase()}</strong><span>{item.href} · DEFAULT: {defaultLabel.toUpperCase()}</span></>}</div>
                 <Badge variant={item.isActive ? "success" : "warning"}>{item.isActive ? "KO‘RINADI" : "KO‘RINMAYDI"}</Badge>
-                {!isEditing && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { setEditingLinkId(item.id); setEditingLabels({ ru: item.labels?.ru || item.label, uz: item.labels?.uz || item.label, en: item.labels?.en || item.label }); }}>NOMINI EDIT</Button>}
+                {!isEditing && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { setEditingLinkId(item.id); setEditingLabel(item.label); }}>NOMINI EDIT</Button>}
                 <Button type="button" variant={item.isActive ? "outline" : "default"} size="sm" disabled={busy} onClick={() => void toggle(item)}>
                   {item.isActive ? "YASHIRISH" : "KO‘RSATISH"}
                 </Button>

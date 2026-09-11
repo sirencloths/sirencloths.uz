@@ -8,7 +8,7 @@ import { useSearch } from "./SearchProvider";
 import { useEffect, useState } from "react";
 import { useCustomerAuth } from "./CustomerAuthProvider";
 
-type NavigationLink = { id: string; href: string; label: string; labels?: Partial<Record<"ru" | "uz" | "en", string>>; translationKey?: string; isActive?: boolean };
+type NavigationLink = { id: string; href: string; label: string; translationKey?: string; isActive?: boolean };
 
 const defaultNavLinks: NavigationLink[] = [
   { id: "shop", href: "/shop", label: "shop", translationKey: "shop", isActive: true },
@@ -16,16 +16,6 @@ const defaultNavLinks: NavigationLink[] = [
   { id: "lookbook", href: "/lookbook", label: "lookbook", translationKey: "lookbook", isActive: true },
   { id: "blog", href: "/blog", label: "blog", translationKey: "blog", isActive: true },
 ];
-const navigationCacheKey = "siren-storefront-navigation";
-
-function cachedNavigation(): NavigationLink[] | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(navigationCacheKey) || "null");
-    return Array.isArray(value) ? value as NavigationLink[] : null;
-  } catch { return null; }
-}
-
 const navIcons = [
   { href: "/search", label: "search", icon: "/icons/search.svg" },
   { href: "/favorites", label: "favorites", icon: "/icons/heart.svg" },
@@ -36,10 +26,10 @@ const navIcons = [
 export default function Header() {
   const { cartCount, openCart } = useCart();
   const pathname = usePathname();
-  const { t, locale } = useLanguage();
+  const { t } = useLanguage();
   const { isSearchOpen, toggleSearch } = useSearch();
   const { customer, openAuth } = useCustomerAuth();
-  const [navLinks, setNavLinks] = useState<NavigationLink[] | null>(() => cachedNavigation());
+  const [navLinks, setNavLinks] = useState<NavigationLink[]>(defaultNavLinks);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -47,12 +37,9 @@ export default function Header() {
     void fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"}/content/navigation`, { cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((items: NavigationLink[]) => {
-        if (mounted && Array.isArray(items)) {
-          setNavLinks(items);
-          localStorage.setItem(navigationCacheKey, JSON.stringify(items));
-        }
+        if (mounted && Array.isArray(items)) setNavLinks(items);
       })
-      .catch(() => { if (mounted) setNavLinks(defaultNavLinks); });
+      .catch(() => undefined);
     return () => { mounted = false; };
   }, []);
 
@@ -81,7 +68,7 @@ export default function Header() {
 
         {/* NAVIGATION */}
         <ul className="nav-menu">
-          {(navLinks ?? []).map((link) => {
+          {navLinks.map((link) => {
             const isActive = link.href === "/"
               ? pathname === "/"
               : pathname === link.href || pathname.startsWith(`${link.href}/`);
@@ -96,7 +83,7 @@ export default function Header() {
                       : "nav-link"
                   }
                 >
-                  {link.translationKey ? t(link.translationKey) : link.labels?.[locale as "ru" | "uz" | "en"] || link.labels?.ru || link.labels?.en || link.label}
+                  {link.translationKey ? t(link.translationKey) : link.label}
                 </a>
               </li>
             );
