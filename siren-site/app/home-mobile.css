@@ -1,0 +1,8 @@
+@media (max-width: 760px) {
+  /* Only the middle (MERCH) homepage banner is inset from the viewport. */
+  .promo-card--small {
+    width: calc(100% - 32px) !important;
+    max-width: none !important;
+    margin-inline: auto !important;
+  }
+}
