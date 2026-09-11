@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { ListMusic, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getStorefrontRecords, type ApiMusicRecord } from "@/lib/api";
 
@@ -16,6 +17,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [open, setOpen] = useState(false);
+  const [playerVisible, setPlayerVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [requestPlay, setRequestPlay] = useState(false);
@@ -50,7 +52,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     else { audio.pause(); setPlaying(false); }
   };
   const playTrack = (id: string) => {
-    if (id === activeId) { toggle(); return; }
+    if (id === activeId && playerVisible) { toggle(); return; }
+    setPlayerVisible(true);
     setActiveId(id);
     setRequestPlay(true);
   };
@@ -65,10 +68,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   return <MusicPlayerContext.Provider value={{ activeId, playing, playTrack, toggle }}>
     {children}
-    {activeTrack && <aside className="global-player" aria-label="Musiqa pleyeri">
-      <div className="global-player__track"><Image src={asset(activeTrack.coverImageUrl)} alt="" width={58} height={58} /><div><b>{activeTrack.title}</b><span>{activeTrack.artist || "SIREN"}</span></div><button type="button" className="global-player__menu" aria-label="Treklar ro‘yxati" aria-expanded={open} onClick={() => setOpen((value) => !value)}>☰</button></div>
+    {activeTrack && playerVisible && <aside className="global-player" aria-label="Musiqa pleyeri">
+      <div className="global-player__track"><Image src={asset(activeTrack.coverImageUrl)} alt="" width={58} height={58} /><div><b>{activeTrack.title}</b><span>{activeTrack.artist || "SIREN"}</span></div><button type="button" className="global-player__menu" aria-label="Treklar ro‘yxati" aria-expanded={open} onClick={() => setOpen((value) => !value)}><ListMusic size={20} strokeWidth={2} /></button></div>
       <div className="global-player__timeline"><span>{formatTime(progress)}</span><input aria-label="Trek holati" type="range" min="0" max={duration || 0} value={Math.min(progress, duration || 0)} onChange={(event) => { const value = Number(event.target.value); if (audioRef.current) audioRef.current.currentTime = value; setProgress(value); }} /><span>{duration ? `-${formatTime(Math.max(duration - progress, 0))}` : "--:--"}</span></div>
-      <div className="global-player__controls"><button type="button" aria-label="Oldingi trek" onClick={() => jump(-1)}>‹‹</button><button type="button" className="global-player__toggle" aria-label={playing ? "Pauza" : "Play"} aria-pressed={playing} onClick={toggle}>{playing ? "Ⅱ" : "▶"}</button><button type="button" aria-label="Keyingi trek" onClick={() => jump(1)}>››</button></div>
+      <div className="global-player__controls"><button type="button" aria-label="Oldingi trek" onClick={() => jump(-1)}><SkipBack size={28} fill="currentColor" /></button><button type="button" className="global-player__toggle" aria-label={playing ? "Pauza" : "Play"} aria-pressed={playing} onClick={toggle}>{playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}</button><button type="button" aria-label="Keyingi trek" onClick={() => jump(1)}><SkipForward size={28} fill="currentColor" /></button></div>
       {open && <div className="global-player__list">{tracks.map((track) => <button type="button" key={track.id} className={track.id === activeId ? "is-active" : ""} onClick={() => { playTrack(track.id); setOpen(false); }}><Image src={asset(track.coverImageUrl)} alt="" width={36} height={36} /><span><b>{track.title}</b><small>{track.artist || "SIREN"}{track.genre ? ` · ${track.genre}` : ""}</small></span></button>)}</div>}
       <audio ref={audioRef} src={audioSource(activeTrack.audioUrl)} onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => jump(1)} />
     </aside>}
