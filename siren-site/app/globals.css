@@ -7444,6 +7444,8 @@ body:has(.music-room) .global-player,body:has(.music-room) .mobile-bottom-nav{di
 /* Secondary banner readability layer: a hero-style shadow lives inside each image, not on the letters. */
 .collection-banner,.promo-card,.tactical-banner,.custom-section-banner,.custom-banner-only-slot{isolation:isolate}.collection-banner::after,.promo-card::after,.tactical-banner::after,.custom-section-banner::after,.custom-banner-only-slot::after{position:absolute;z-index:1;inset:0;content:"";pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,.42) 34%,rgba(0,0,0,.1) 63%,transparent 84%)}.collection-banner .banner-copy,.promo-card .banner-copy,.tactical-banner-copy,.custom-section-copy,.custom-banner-only-copy{z-index:2}.custom-section-shade{background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,.42) 34%,rgba(0,0,0,.1) 63%,transparent 84%)}
 @media(max-width:760px){.promo-card--small{width:calc(100% - 32px)!important;margin-inline:auto!important;max-width:none!important}}
+/* Mobile header: align the links to the right when they fit; allow a natural horizontal swipe when they do not. */
+@media(max-width:760px){.header .nav{overflow:visible!important}.nav-menu{justify-content:flex-end!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none;-webkit-overflow-scrolling:touch}.nav-menu::-webkit-scrollbar{display:none}.nav-menu a{font-size:12px!important;letter-spacing:0!important}}
 .product-actions{gap:clamp(10px,2vw,26px)}
 .add-to-cart-btn{width:auto;min-width:0;flex:1;font-size:clamp(16px,2vw,28px);white-space:normal}
 .product-favorite-btn{flex:0 0 70px}
