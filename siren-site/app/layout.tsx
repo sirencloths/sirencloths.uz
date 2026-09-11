@@ -8,6 +8,7 @@ import { FavoriteProvider } from "@/components/FavoriteContext";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import CartDrawer from "@/components/CartDrawer";
 import { CustomerAuthProvider } from "@/components/CustomerAuthProvider";
+import { MusicPlayerProvider } from "@/components/MusicPlayer";
 
 const gilroy = localFont({
   src: "../public/fonts/Gilroy-Extrabold.ttf",
@@ -29,7 +30,7 @@ export default function RootLayout({
     <html lang="ru" className={gilroy.variable}>
       <body>
         <LanguageProvider>
-          <FavoriteProvider><SearchProvider><CustomerAuthProvider><CartProvider>{children}<CartDrawer /><MobileBottomNav /><aside className="site-test-notice" role="status">САЙТ ТЕСТИРУЕТСЯ</aside></CartProvider></CustomerAuthProvider></SearchProvider></FavoriteProvider>
+          <FavoriteProvider><SearchProvider><CustomerAuthProvider><CartProvider><MusicPlayerProvider>{children}<CartDrawer /><MobileBottomNav /><aside className="site-test-notice" role="status">САЙТ ТЕСТИРУЕТСЯ</aside></MusicPlayerProvider></CartProvider></CustomerAuthProvider></SearchProvider></FavoriteProvider>
         </LanguageProvider>
       </body>
     </html>
