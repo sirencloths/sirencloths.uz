@@ -1,33 +1,34 @@
-"use client";
-
-import Image from "next/image";
 import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import { blogArticles } from "@/lib/data";
-import { useLanguage } from "@/components/LanguageProvider";
+import { getStorefrontPosts } from "@/lib/api";
 
-export default function BlogPage() {
-  const { t } = useLanguage();
+const asset = (url?: string | null) => !url ? "/images/banner.jpg" : url.startsWith("http") ? url : `${(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "")}${url}`;
+const date = (value?: string | null) => value ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value)) : "";
+
+export default async function BlogPage() {
+  const savedPosts = await getStorefrontPosts().catch(() => []);
+  const posts = savedPosts.length ? savedPosts : blogArticles.map((article) => ({ id: article.id, title: article.title, excerpt: article.body, body: article.body, coverImageUrl: article.cover, publishedAt: null }));
 
   return (
     <>
       <FixedTop />
       <main className="blog-page">
         <div className="blog-page-heading">
-          <h1>{t("blog")}</h1>
+          <h1>БЛОГ</h1>
           <div className="blog-page-breadcrumb">
-            <a href="/">{t("home")}</a><span>&gt;</span><span>{t("blog")}</span>
+            <a href="/">ГЛАВНАЯ</a><span>&gt;</span><span>БЛОГ</span>
           </div>
         </div>
 
         <div className="blog-page-list">
-          {blogArticles.map((article, index) => (
+          {posts.map((article, index) => (
             <article className={`blog-page-article${index % 2 ? " blog-page-article--reverse" : ""}`} key={article.id}>
-              <BlogGallery article={article} />
+              <div className="blog-page-gallery"><img className="blog-page-cover" src={asset(article.coverImageUrl)} alt={article.title} /></div>
               <div className="blog-page-copy">
-                <time>{t("articleDate")}</time>
-                <h2>{t("articleTitle")}</h2>
-                <p>{t("articleBody")}</p>
+                <time>{date(article.publishedAt)}</time>
+                <h2>{article.title}</h2>
+                <p>{article.body || article.excerpt}</p>
               </div>
             </article>
           ))}
@@ -35,22 +36,5 @@ export default function BlogPage() {
       </main>
       <Footer />
     </>
-  );
-}
-
-function BlogGallery({ article }: { article: (typeof blogArticles)[number] }) {
-  return (
-    <div className="blog-page-gallery">
-      <a href={`/blog/${article.id}/0`}>
-        <Image className="blog-page-cover" src={article.cover} alt={article.title} width={620} height={330} />
-      </a>
-      <div className="blog-page-thumbnails">
-        {article.gallery.map((image, index) => (
-          <a href={`/blog/${article.id}/${index + 1}`} key={`${article.id}-${image}`}>
-            <Image src={image} alt={`${article.title} ${index + 1}`} width={200} height={130} />
-          </a>
-        ))}
-      </div>
-    </div>
   );
 }

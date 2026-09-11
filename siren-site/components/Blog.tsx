@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getStorefrontPosts, type ApiBlogPost } from "@/lib/api";
 import { useLanguage } from "./LanguageProvider";
@@ -16,18 +17,18 @@ export default function Blog() {
     void getStorefrontPosts().then(setPosts).catch(() => setPosts([]));
   }, []);
 
-  const published = posts?.slice(0, 4) ?? [];
+  const published = posts?.slice(0, 2) ?? [];
 
   if (published.length) {
     return (
       <section className="blog" id="blog">
-        <div className="section-heading blog-heading"><h2>{t("blog")}</h2><a href="/blog">{t("go")}</a></div>
+        <div className="section-heading blog-heading"><h2>{t("blog")}</h2><Link href="/blog">{t("go")}</Link></div>
         <div className="blog-grid">
           {published.map((post, index) => (
-            <a className={`blog-card ${index === 0 ? "blog-card--image blog-card--hero" : "blog-card--article"}`} href="/blog" key={post.id}>
+            <Link className="blog-card blog-card--article" href="/blog" key={post.id}>
               <img src={imageSource(post.coverImageUrl)} alt={post.title} />
-              {index < 3 && <div className={`blog-copy${index === 0 ? " blog-copy--mobile" : ""}`}><time>{displayDate(post.publishedAt)}</time><h3>{post.title}</h3><p>{post.excerpt || post.body}</p><span>{typeof post.seo?.textLinkLabel === "string" && post.seo.textLinkLabel || t("readMore")}</span></div>}
-            </a>
+              <div className="blog-copy"><time>{displayDate(post.publishedAt)}</time><h3>{post.title}</h3><p>{post.excerpt || post.body}</p><span>{typeof post.seo?.textLinkLabel === "string" && post.seo.textLinkLabel || t("readMore")}</span></div>
+            </Link>
           ))}
         </div>
       </section>
