@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Pause, Play } from "lucide-react";
 import { useMemo } from "react";
 import { records as fallbackRecords } from "@/lib/data";
@@ -20,7 +21,7 @@ export default function Records({ records = [] }: { records?: ApiMusicRecord[] }
   const compactRecords = displayRecords.slice(0, 10);
 
   return <section className="records" id="records">
-    <div className="records-heading"><h2>{t("records")}</h2><a href="#playlist-frame">{t("playlist")}</a></div>
+    <div className="records-heading"><h2>{t("records")}</h2><Link href="/records">{t("playlist")}</Link></div>
     <div className="records-grid">
       {compactRecords.map((record) => {
         const isPlaying = record.id === activeId && playing;

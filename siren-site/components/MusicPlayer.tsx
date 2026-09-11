@@ -9,7 +9,7 @@ const apiOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api
 const asset = (url?: string | null) => url?.startsWith("/uploads/") ? `${apiOrigin}${url}` : url || "/images/p1.jpg";
 const audioSource = (url: string) => url.startsWith("http") ? url : `${apiOrigin}${url}`;
 
-type MusicPlayerValue = { activeId: string | null; playing: boolean; playTrack: (id: string) => void; toggle: () => void };
+type MusicPlayerValue = { activeId: string | null; playing: boolean; playTrack: (id: string) => void; toggle: () => void; jump: (direction: -1 | 1) => void };
 const MusicPlayerContext = createContext<MusicPlayerValue | null>(null);
 
 export function MusicPlayerProvider({ children }: { children: ReactNode }) {
@@ -70,7 +70,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   };
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 
-  return <MusicPlayerContext.Provider value={{ activeId, playing, playTrack, toggle }}>
+  return <MusicPlayerContext.Provider value={{ activeId, playing, playTrack, toggle, jump }}>
     {children}
     {activeTrack && playerVisible && <aside className="global-player" aria-label="Musiqa pleyeri">
       <div className="global-player__track"><Image src={asset(activeTrack.coverImageUrl)} alt="" width={58} height={58} /><div><b>{activeTrack.title}</b><span>{activeTrack.artist || "SIREN"}</span></div><div className="global-player__header-actions"><button type="button" className="global-player__menu" aria-label="Treklar ro‘yxati" aria-expanded={open} onClick={() => setOpen((value) => !value)}><ListMusic size={20} strokeWidth={2} /></button><button type="button" className="global-player__close" aria-label="Pleyerni yopish" onClick={closePlayer}><X size={18} strokeWidth={2.5} /></button></div></div>
