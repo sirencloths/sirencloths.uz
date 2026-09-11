@@ -7,9 +7,9 @@
     display: flex !important;
     flex: 1 1 auto !important;
     min-width: 0 !important;
-    justify-content: flex-start !important;
-    gap: 8px !important;
-    margin-left: 8px !important;
+    justify-content: space-between !important;
+    gap: clamp(7px, 2vw, 12px) !important;
+    margin-left: clamp(8px, 2.5vw, 14px) !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
     scrollbar-width: none;
@@ -25,7 +25,7 @@
   }
 
   .header .nav .nav-menu a {
-    font-size: 12px !important;
+    font-size: clamp(11px, 3vw, 13px) !important;
     letter-spacing: 0 !important;
     white-space: nowrap !important;
   }
