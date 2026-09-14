@@ -8,7 +8,7 @@ export type ApiProduct = {
   price: string;
   currencyCode: string;
   media: Array<{ url: string; alt?: string; position?: number }>;
-  variants: Array<{ id: string; sku: string; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity: number; isActive?: boolean; attributes?: Record<string, unknown> }>;
+  variants: Array<{ id: string; sku: string; color?: string | null; size?: string | null; price?: string | null; originalPrice?: string; discountPercent?: number; discountEndsAt?: string; inventoryQuantity: number; isActive?: boolean; attributes?: Record<string, unknown> }>;
   category?: { name: string } | null;
   metadata?: { article?: string; sizeGuideImageUrl?: string };
   gender?: "male" | "female" | "unisex";
@@ -250,6 +250,8 @@ export function toStorefrontColorCards(products: ApiProduct[]): StorefrontProduc
       const images = colorImages.length ? colorImages : fallbackImages.slice(0, 1);
       const usableVariants = variants.filter((variant) => variant.isActive !== false);
       const prices = usableVariants.map((variant) => Number(variant.price)).filter((value) => Number.isFinite(value) && value > 0);
+      const discounted = usableVariants.filter((variant) => variant.discountPercent && variant.discountEndsAt && new Date(variant.discountEndsAt).valueOf() > Date.now());
+      const bestDiscount = discounted.sort((left, right) => Number(left.price) - Number(right.price))[0];
       const rawColor = representative.color || "Default";
       return {
         id: product.slug,
@@ -263,6 +265,9 @@ export function toStorefrontColorCards(products: ApiProduct[]): StorefrontProduc
         available: usableVariants.some((variant) => variant.inventoryQuantity > 0),
         availableSizes: usableVariants.filter((variant) => variant.inventoryQuantity > 0).map((variant) => variant.size || "").filter(Boolean),
         price: formatStorePrice(prices.length ? String(Math.min(...prices)) : storefrontProductPrice(product), product.currencyCode),
+        oldPrice: bestDiscount?.originalPrice ? formatStorePrice(bestDiscount.originalPrice, product.currencyCode) : undefined,
+        discountPercent: bestDiscount?.discountPercent,
+        discountEndsAt: bestDiscount?.discountEndsAt,
         category: product.category?.name,
       };
     });

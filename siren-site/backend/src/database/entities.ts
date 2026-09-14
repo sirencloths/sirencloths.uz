@@ -323,8 +323,23 @@ export class InventoryTransfer {
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
 }
 
+@Entity('product_discounts')
+@Index(['productId', 'color', 'size'])
+export class ProductDiscount {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'product_id', type: 'uuid' }) productId!: string;
+  @ManyToOne(() => Product, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'product_id' }) product!: Product;
+  @Column({ type: 'varchar', length: 100, nullable: true }) color!: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) size!: string | null;
+  @Column({ type: 'int' }) percent!: number;
+  @Column({ name: 'ends_at', type: 'timestamptz' }) endsAt!: Date;
+  @Column({ name: 'is_active', default: true }) isActive!: boolean;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
 export const entities = [
   User, Category, CollectionEntity, Product, ProductVariant, Customer, AuthOtp,
   CustomerAddress, Order, OrderItem, Banner, Page, PageSection, BlogPost,
-  LookbookEntry, MusicRecord, SiteSetting, AuditLog, InventoryTransfer,
+  LookbookEntry, MusicRecord, SiteSetting, AuditLog, InventoryTransfer, ProductDiscount,
 ];

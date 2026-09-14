@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { IsArray, IsBoolean, IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID, Matches, Min, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID, Matches, Max, Min, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { CurrentUser } from '../auth/jwt.strategy';
 import { Roles, RolesGuard } from '../auth/roles.guard';
@@ -38,6 +38,13 @@ class InventoryMoveItemDto {
 class InventoryMoveDto {
   @IsArray() items!: InventoryMoveItemDto[];
   @IsOptional() @IsString() note?: string;
+}
+class DiscountDto {
+  @IsUUID() productId!: string;
+  @IsOptional() @IsString() color?: string | null;
+  @IsOptional() @IsString() size?: string | null;
+  @IsInt() @Min(1) @Max(99) percent!: number;
+  @IsDateString() endsAt!: string;
 }
 class TaxonomyDto {
   @IsString() slug!: string;
@@ -82,6 +89,9 @@ export class AdminCatalogController {
   @Post('products/:id/variants') createVariant(@Param('id') id: string, @Body() body: VariantDto) { return this.catalog.createVariant(id, body); }
   @Patch('variants/:id') updateVariant(@Param('id') id: string, @Body() body: Partial<VariantDto>) { return this.catalog.updateVariant(id, body); }
   @Delete('variants/:id') removeVariant(@Param('id') id: string) { return this.catalog.removeVariant(id); }
+  @Get('discounts') discounts() { return this.catalog.listDiscounts(); }
+  @Post('discounts') discount(@Body() body: DiscountDto, @CurrentUser() actor: { id: string }) { return this.catalog.createDiscount(body, actor.id); }
+  @Delete('discounts/:id') removeDiscount(@Param('id') id: string, @CurrentUser() actor: { id: string }) { return this.catalog.removeDiscount(id, actor.id); }
   @Get('transfers') transfers() { return this.catalog.transferHistory(); }
   @Post('transfers') transfer(@Body() body: InventoryMoveDto, @CurrentUser() actor: { id: string }) { return this.catalog.transferToOffline(body.items, actor.id, body.note); }
   @Post('transfers/return') returnToOnline(@Body() body: InventoryMoveDto, @CurrentUser() actor: { id: string }) { return this.catalog.returnToOnline(body.items, actor.id, body.note); }

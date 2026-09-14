@@ -55,7 +55,7 @@ type Tab =
   | "orders"
   | "delivery"
   | "customers"
-  | "promos"
+  | "discounts"
   | "partners"
   | "finance"
   | "currencies"
@@ -847,6 +847,17 @@ function DashboardOverview({ dashboard, currency, period, metric, granularity, c
   </section>;
 }
 
+type ProductDiscountRecord = { id: string; productId: string; color?: string | null; size?: string | null; percent: number; endsAt: string; isActive: boolean; product?: Pick<Product, "title" | "metadata"> };
+function DiscountManager({ token, products, onNotice }: { token: string; products: Product[]; onNotice: (message: string) => void }) {
+  const [items, setItems] = useState<ProductDiscountRecord[]>([]); const [productId, setProductId] = useState(""); const [scope, setScope] = useState<"sku" | "color" | "size">("sku"); const [color, setColor] = useState(""); const [size, setSize] = useState(""); const [percent, setPercent] = useState(10); const [endsAt, setEndsAt] = useState(""); const [saving, setSaving] = useState(false);
+  const selectedProduct = products.find((product) => product.id === productId); const colors = [...new Set(selectedProduct?.variants.map((variant) => variant.color || "Rangsiz") ?? [])]; const sizes = [...new Set((selectedProduct?.variants ?? []).filter((variant) => !color || (variant.color || "Rangsiz") === color).map((variant) => variant.size || "ONE SIZE"))];
+  const load = useCallback(async () => setItems(await api<ProductDiscountRecord[]>("/admin/catalog/discounts", token)), [token]);
+  useEffect(() => { void load().catch(() => undefined); }, [load]);
+  const submit = async (event: FormEvent) => { event.preventDefault(); if (!productId || !endsAt) return; setSaving(true); try { await api("/admin/catalog/discounts", token, { method: "POST", body: JSON.stringify({ productId, color: scope === "sku" ? null : color, size: scope === "size" ? size : null, percent, endsAt: new Date(endsAt).toISOString() }) }); await load(); onNotice("Chegirma saytda faollashtirildi."); } finally { setSaving(false); } };
+  const remove = async (id: string) => { await api(`/admin/catalog/discounts/${id}`, token, { method: "DELETE" }); await load(); onNotice("Chegirma olib tashlandi."); };
+  return <section className="discount-manager"><Card><CardHeader><div><p className="ui-overline">SKU DISCOUNTS</p><CardTitle>Chegirma qo‘shish</CardTitle><CardDescription>SKU, SKU + rang yoki SKU + rang + razmerga foizli aksiya bering.</CardDescription></div></CardHeader><CardContent><form className="ui-form ui-form-grid" onSubmit={submit}><Field label="Mahsulot / SKU"><select required value={productId} onChange={(event) => { setProductId(event.target.value); setColor(""); setSize(""); }}><option value="">Tanlang</option>{products.map((product) => <option key={product.id} value={product.id}>{product.metadata?.article || product.title} · {product.title}</option>)}</select></Field><Field label="Chegirma darajasi"><select value={scope} onChange={(event) => { setScope(event.target.value as "sku" | "color" | "size"); setColor(""); setSize(""); }}><option value="sku">SKU — barcha rang va razmer</option><option value="color">SKU + rang</option><option value="size">SKU + rang + razmer</option></select></Field>{scope !== "sku" && <Field label="Rang"><select required value={color} onChange={(event) => { setColor(event.target.value); setSize(""); }}><option value="">Rangni tanlang</option>{colors.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>}{scope === "size" && <Field label="Razmer"><select required value={size} onChange={(event) => setSize(event.target.value)}><option value="">Razmerni tanlang</option>{sizes.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>}<Field label="Chegirma foizi"><input type="number" min="1" max="99" value={percent} onChange={(event) => setPercent(Math.max(1, Math.min(99, Number(event.target.value))))} /></Field><Field label="Aksiya tugashi"><input required type="datetime-local" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} /></Field><Button disabled={saving}>{saving ? "Saqlanmoqda…" : "Chegirmani faollashtirish"}</Button></form></CardContent></Card><Card><CardHeader><CardTitle>Faol va rejalashtirilgan aksiyalar</CardTitle></CardHeader><CardContent><div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th>Mahsulot</th><th>Daraja</th><th>Foiz</th><th>Tugaydi</th><th>Holat</th><th /></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{item.product?.metadata?.article || item.product?.title || item.productId}</td><td>{item.size ? `SKU + ${item.color} + ${item.size}` : item.color ? `SKU + ${item.color}` : "SKU"}</td><td><b>−{item.percent}%</b></td><td>{new Intl.DateTimeFormat("uz-UZ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.endsAt))}</td><td>{new Date(item.endsAt) > new Date() && item.isActive ? "Faol" : "Tugagan"}</td><td><Button type="button" size="sm" variant="outline" onClick={() => void remove(item.id)}>O‘chirish</Button></td></tr>)}{!items.length && <tr><td colSpan={6}><Empty>Chegirma yo‘q.</Empty></td></tr>}</tbody></table></div></CardContent></Card></section>;
+}
+
 export default function AdminConsole() {
   const [token, setToken] = useState("");
   const [email, setEmail] = useState("");
@@ -1020,7 +1031,7 @@ export default function AdminConsole() {
           await api<Record<string, unknown>>(`/admin/dashboard?${query.toString()}`, token),
         );
       }
-      if (t === "products" || t === "catalog") await catalog();
+      if (t === "products" || t === "catalog" || t === "discounts") await catalog();
       if (t === "orders") setOrders(await api<Order[]>("/admin/orders", token));
       if (t === "customers") setCustomers(await api<CustomerRecord[]>("/admin/customers", token));
       if (t === "pages") setPages(await api<CmsPage[]>("/admin/content/pages", token));
@@ -1470,7 +1481,7 @@ export default function AdminConsole() {
     ["orders", "Buyurtmalar", ShoppingBag],
     ["delivery", "Yetkazib berish", ClipboardList],
     ["customers", "Mijozlar", Users],
-    ["promos", "Promokodlar", Tags],
+    ["discounts", "Chegirmalar", Tags],
     ["partners", "Hamkorlar", Crown],
     ["finance", "Moliya", BarChart3],
     ["currencies", "Valyutalar", RefreshCw],
@@ -2010,7 +2021,7 @@ export default function AdminConsole() {
         </TabsContent>
         <TabsContent value="delivery"><AdminModulePage config={adminModules.delivery} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
         <TabsContent value="customers"><AdminModulePage config={adminModules.customers} customers={customers} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
-        <TabsContent value="promos"><AdminModulePage config={adminModules.promos} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
+        <TabsContent value="discounts"><DiscountManager token={token} products={products} onNotice={setNotice} /></TabsContent>
         <TabsContent value="partners"><AdminModulePage config={adminModules.partners} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
         <TabsContent value="finance"><AdminModulePage config={adminModules.finance} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
         <TabsContent value="currencies"><AdminModulePage config={adminModules.currencies} loading={loading} error={error} onNotify={setNotice} /></TabsContent>

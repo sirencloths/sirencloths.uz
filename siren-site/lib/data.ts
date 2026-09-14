@@ -11,6 +11,9 @@ export type Product = {
   available?: boolean;
   availableSizes?: string[];
   price: string;
+  oldPrice?: string;
+  discountPercent?: number;
+  discountEndsAt?: string;
   category?: string;
 };
 
