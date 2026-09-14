@@ -7,12 +7,12 @@ import AddToCartButton from "@/components/AddToCartButton";
 import { useLanguage } from "./LanguageProvider";
 import { useFavorites } from "./FavoriteContext";
 
-type Variant = { id: string; sku: string; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity: number; isActive?: boolean; attributes?: Record<string, unknown> };
-type Props = { id: string; title: string; price: string; image: string; variants: Variant[]; initialColor?: string; sizeGuideImageUrl?: string };
+type Variant = { id: string; sku: string; color?: string | null; size?: string | null; price?: string | null; originalPrice?: string; discountPercent?: number; discountEndsAt?: string; inventoryQuantity: number; isActive?: boolean; attributes?: Record<string, unknown> };
+type Props = { id: string; title: string; price: string; currencyCode: string; image: string; variants: Variant[]; initialColor?: string; sizeGuideImageUrl?: string };
 
 const swatch = (color: string) => ({ black: "#111", white: "#fff", gray: "#8b8b8b", blue: "#1769aa", green: "#0b7a3a", red: "#b91c1c", brown: "#704214", pink: "#db5b82", cream: "#f4ead2" }[color.toLowerCase()] ?? "#d8d8d4");
 
-export default function ProductDetailClient({ id, title, price, image, variants, initialColor, sizeGuideImageUrl }: Props) {
+export default function ProductDetailClient({ id, title, price, currencyCode, image, variants, initialColor, sizeGuideImageUrl }: Props) {
   const { t } = useLanguage();
   const { isFavorite, toggleFavorite } = useFavorites();
   const searchParams = useSearchParams();
@@ -30,13 +30,23 @@ export default function ProductDetailClient({ id, title, price, image, variants,
   const [selectedSize, setSelectedSize] = useState(sizes[0] ?? "ONE SIZE");
   useEffect(() => setSelectedSize(sizes[0] ?? "ONE SIZE"), [selectedColor]);
   const selectedVariant = sizeVariants.find((variant) => (variant.size || "ONE SIZE") === selectedSize) ?? usableVariants[0];
+  const [remaining, setRemaining] = useState("");
+  useEffect(() => {
+    const endsAt = selectedVariant?.discountEndsAt;
+    if (!endsAt) { setRemaining(""); return; }
+    const update = () => { const milliseconds = new Date(endsAt).valueOf() - Date.now(); if (milliseconds <= 0) { setRemaining(""); return; } const seconds = Math.floor(milliseconds / 1000); setRemaining(`${Math.floor(seconds / 86400)}K ${String(Math.floor(seconds % 86400 / 3600)).padStart(2, "0")}:${String(Math.floor(seconds % 3600 / 60)).padStart(2, "0")}`); };
+    update(); const timer = window.setInterval(update, 30_000); return () => window.clearInterval(timer);
+  }, [selectedVariant?.discountEndsAt]);
   const available = !selectedVariant || selectedVariant.inventoryQuantity > 0;
   const selectedColorImages = sizeVariants.flatMap((variant) => Array.isArray(variant.attributes?.images) ? variant.attributes.images.filter((item): item is string => typeof item === "string" && Boolean(item.trim())) : []);
   const selectedImage = selectedColorImages[0] || image;
   const favoriteProduct = { id, title, price, image: selectedImage, alt: title, color: selectedColor.toUpperCase(), colorSlug: selectedColor.toLocaleLowerCase("uz-UZ").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "default" };
   const chooseColor = (color: string) => { setSelectedColor(color); window.dispatchEvent(new CustomEvent("siren-product-color-change", { detail: { productId: id, color } })); };
+  const displayPrice = selectedVariant?.price ? `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Number(selectedVariant.price)).replace(/\u00A0/g, ".")} ${currencyCode === "UZS" ? "СУМ" : currencyCode}` : price;
+  const oldPrice = selectedVariant?.originalPrice ? `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Number(selectedVariant.originalPrice)).replace(/\u00A0/g, ".")} ${currencyCode === "UZS" ? "СУМ" : currencyCode}` : "";
 
   return <>
+    <div className="product-detail-pricing"><p className={`product-detail-price${selectedVariant?.discountPercent ? " is-sale" : ""}`}>{displayPrice}</p>{oldPrice && <del>{oldPrice}</del>}{remaining && <small>AKSIYA TUGASHIGA: {remaining}</small>}</div>
     {colors.length > 0 && <div className="product-colors"><div className="product-colors-label"><span>{t("chooseColor")}</span><strong>{selectedColor}</strong></div><div className="product-color-list">{colors.map((color) => <button key={color} type="button" className={`product-color ${selectedColor === color ? "product-color--selected" : ""}`} style={{ backgroundColor: swatch(color) }} aria-label={color} onClick={() => chooseColor(color)} />)}</div></div>}
     {sizes.length > 0 && <div className="product-sizes"><div className="product-sizes-top"><div className="product-sizes-label"><span>{t("chooseSize")}</span><strong>{selectedSize}</strong></div>{sizeGuideImageUrl && <a className="size-guide-link" href={sizeGuideImageUrl} target="_blank" rel="noreferrer">{t("sizeHelp")}</a>}</div><div className="product-size-list">{sizes.map((size) => { const sizeVariant = sizeVariants.find((variant) => (variant.size || "ONE SIZE") === size); const inStock = Boolean(sizeVariant && sizeVariant.inventoryQuantity > 0); return <button key={size} type="button" disabled={!inStock} className={`product-size ${selectedSize === size ? "product-size--selected" : ""} ${!inStock ? "product-size--disabled" : ""}`} onClick={() => setSelectedSize(size)}>{size}</button>; })}</div></div>}
     <p className={`product-availability ${available ? "is-available" : "is-unavailable"}`}>{available ? "Mavjud" : "Hozircha qolmagan"}</p>

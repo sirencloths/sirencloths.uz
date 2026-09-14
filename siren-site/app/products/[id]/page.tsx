@@ -37,9 +37,8 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
       <div className="product-detail-info">
         <div className="product-detail-breadcrumb"><a href="/"><T text="home" /></a><span>&gt;</span><span>{title}</span></div>
         <h1 className="product-detail-title">{title}</h1>
-        <p className="product-detail-price">{price}</p>
         {article && <p className="product-detail-sku">ARTIKUL: {article}</p>}
-        <ProductDetailClient id={apiProduct?.id ?? legacy!.id} title={title} price={price} image={image} variants={variants} initialColor={initialColor} sizeGuideImageUrl={apiProduct?.metadata?.sizeGuideImageUrl} />
+        <ProductDetailClient id={apiProduct?.id ?? legacy!.id} title={title} price={price} currencyCode={apiProduct?.currencyCode ?? "UZS"} image={image} variants={variants} initialColor={initialColor} sizeGuideImageUrl={apiProduct?.metadata?.sizeGuideImageUrl} />
         <ProductInfoAccordion description={apiProduct?.description} article={article} />
       </div>
     </main>
