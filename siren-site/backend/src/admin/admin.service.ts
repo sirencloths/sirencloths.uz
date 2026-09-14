@@ -45,6 +45,27 @@ export class AdminService {
     for (const code of supportedCurrencies) { const candidate = raw[code]; const rate = numberOf(typeof candidate === 'string' || typeof candidate === 'number' ? candidate : null); if (rate > 0) rates[code] = rate; }
     return rates;
   }
+  async currencyRates(refresh = false) {
+    const setting = await this.settings.findOneBy({ key: 'currency-rates' });
+    const stored = setting?.value ?? {}; const updatedAt = typeof stored.updatedAt === 'string' ? stored.updatedAt : null;
+    const stale = !updatedAt || Date.now() - new Date(updatedAt).valueOf() > 60 * 60 * 1000;
+    if (refresh || stale) {
+      try {
+        const response = await fetch('https://open.er-api.com/v6/latest/USD');
+        if (!response.ok) throw new Error(`Rate source responded ${response.status}`);
+        const body = await response.json() as { result?: string; time_last_update_utc?: string; rates?: Record<string, number> };
+        const usdBase = Number(body.rates?.UZS); if (!Number.isFinite(usdBase) || usdBase <= 0) throw new Error('UZS rate unavailable');
+        const rates: Record<string, number> = { UZS: 1, USD: usdBase };
+        for (const code of ['EUR', 'RUB', 'KZT']) { const rate = Number(body.rates?.[code]); if (Number.isFinite(rate) && rate > 0) rates[code] = usdBase / rate; }
+        const value = { rates, updatedAt: new Date().toISOString(), source: 'open.er-api.com', sourceUpdatedAt: body.time_last_update_utc ?? null };
+        await this.settings.save(this.settings.create({ ...(setting ?? {}), key: 'currency-rates', value }));
+        return { ...value, live: true };
+      } catch (error) {
+        if (refresh && !Object.keys((stored.rates as Record<string, unknown>) ?? {}).length) throw new NotFoundException('Kurs manbasiga ulanib bo‘lmadi. Internet aloqasini tekshiring.');
+      }
+    }
+    const rates = await this.rates(); return { rates, updatedAt, source: typeof stored.source === 'string' ? stored.source : 'Saqlangan kurslar', sourceUpdatedAt: stored.sourceUpdatedAt ?? null, live: false };
+  }
   private convert(value: number, currency: string, rates: Record<string, number | null>) { const rate = rates[currency]; return rate ? value / rate : value; }
   private profit(order: Order, products: Map<string, Product>) { return (order.items ?? []).reduce((total, item) => { const product = item.productId ? products.get(item.productId) : undefined; const variant = product?.variants?.find((entry) => entry.id === item.variantId); const cost = numberOf(variant?.attributes?.costPrice as string) + numberOf(variant?.attributes?.expensePrice as string); return total + numberOf(item.totalPrice) - cost * item.quantity; }, 0); }
   private summary(orders: Order[], customers: Customer[], products: Product[], range: { start: Date; end: Date }, productMap: Map<string, Product>) {

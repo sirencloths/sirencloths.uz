@@ -32,6 +32,8 @@ export class AdminController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) { return this.admin.dashboard({ period, metric, granularity, currency, from, to }); }
+  @Get('currencies') currencies() { return this.admin.currencyRates(); }
+  @Post('currencies/refresh') refreshCurrencies() { return this.admin.currencyRates(true); }
   @Get('audit-logs') logs() { return this.admin.logs(); }
   @Roles(UserRole.SUPER_ADMIN)
   @Get('users') users() { return this.admin.listUsers(); }
