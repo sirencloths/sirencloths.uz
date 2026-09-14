@@ -23,6 +23,7 @@ import {
   Package,
   Palette,
   Plus,
+  Printer,
   RefreshCw,
   Settings2,
   ShieldCheck,
@@ -568,6 +569,43 @@ function SelectionCheckbox({ checked, indeterminate = false, disabled = false, o
 }
 const offlineOf = (variant: Variant) => Math.max(0, Number(variant.offlineInventoryQuantity ?? 0));
 const physicalOf = (variant: Variant) => Math.max(0, variant.inventoryQuantity) + offlineOf(variant);
+const ean13Parity = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"];
+const ean13Digits = {
+  L: ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"],
+  G: ["0100111", "0110011", "0011011", "0100001", "0011101", "0111001", "0000101", "0010001", "0001001", "0010111"],
+  R: ["1110010", "1100110", "1101100", "1000010", "1011100", "1001110", "1010000", "1000100", "1001000", "1110100"],
+} as const;
+const labelEscape = (value: string) => value.replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" })[character] ?? character);
+function ean13BarcodeSvg(ean13: string) {
+  if (!/^\d{13}$/.test(ean13)) return "";
+  const digits = ean13.split("").map(Number);
+  const pattern = `101${digits.slice(1, 7).map((digit, index) => ean13Digits[ean13Parity[digits[0]][index] as "L" | "G"][digit]).join("")}01010${digits.slice(7).map((digit) => ean13Digits.R[digit]).join("")}101`;
+  const bars: string[] = [];
+  let start = -1;
+  for (let index = 0; index <= pattern.length; index += 1) {
+    if (pattern[index] === "1" && start < 0) start = index;
+    if ((pattern[index] !== "1" || index === pattern.length) && start >= 0) {
+      const guard = start < 3 || (start < 50 && index > 45) || start >= 92;
+      bars.push(`<rect x="${start}" y="0" width="${index - start}" height="${guard ? 54 : 45}" />`);
+      start = -1;
+    }
+  }
+  return `<svg class="thermal-barcode" viewBox="0 0 95 66" role="img" aria-label="EAN-13 ${ean13}" preserveAspectRatio="none"><rect width="95" height="66" fill="#fff" />${bars.join("")}<text x="47.5" y="64" text-anchor="middle">${ean13}</text></svg>`;
+}
+type ThermalLabel = { title: string; sku: string; color: string; size: string; price: string; barcode: string; quantity: number };
+function printThermalLabels(labels: ThermalLabel[]) {
+  const copies = labels.flatMap((label) => Array.from({ length: label.quantity }, () => label));
+  if (!copies.length) return false;
+  const popup = window.open("", "_blank", "width=440,height=620");
+  if (!popup) return false;
+  popup.opener = null;
+  const markup = copies.map((label) => `<article class="label"><h1>${labelEscape(label.title)}</h1><p class="variant">${labelEscape(label.color)} · ${labelEscape(label.size)}</p><p class="sku">SKU: ${labelEscape(label.sku)}</p><p class="price">${labelEscape(label.price)}</p>${ean13BarcodeSvg(label.barcode)}</article>`).join("");
+  popup.document.open();
+  popup.document.write(`<!doctype html><html><head><title>SIREN yorliqlari</title><style>@page{size:58mm 40mm;margin:0}*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font-family:Arial,sans-serif}.label{width:58mm;height:40mm;padding:3mm;overflow:hidden;page-break-after:always;break-after:page}.label:last-child{page-break-after:auto;break-after:auto}h1{margin:0;overflow:hidden;font-size:11pt;line-height:1.1;white-space:nowrap;text-overflow:ellipsis}.variant,.sku,.price{margin:1.2mm 0 0;font-size:7.5pt;font-weight:700}.sku{font-size:6.5pt}.price{font-size:10pt}.thermal-barcode{display:block;width:50mm;height:15mm;margin:1.5mm auto 0}.thermal-barcode text{font-family:Arial,sans-serif;font-size:8px;letter-spacing:1.2px}@media screen{body{padding:12px;background:#ddd}.label{margin:0 auto 12px;background:#fff;box-shadow:0 1px 5px #999}}</style></head><body>${markup}</body></html>`);
+  popup.document.close();
+  window.setTimeout(() => { popup.focus(); popup.print(); }, 250);
+  return true;
+}
 const productVariantGroups = (product: Product) => {
   const groups = new Map<string, Variant[]>();
   product.variants.forEach((variant) => {
@@ -631,6 +669,16 @@ function ProductInventoryWorkspace({ products, categories, transfers, token, onE
     return next;
   });
   const selectionSummary = selectedIds.reduce((sum, id) => sum + Math.max(0, selected[id]), 0);
+  const printLabels = () => {
+    const labels = selectedIds.flatMap((id) => {
+      const product = products.find((entry) => entry.variants.some((variant) => variant.id === id));
+      const variant = product?.variants.find((entry) => entry.id === id);
+      if (!product || !variant || !variant.barcode) return [];
+      return [{ title: product.title, sku: variant.sku, color: variant.color || "Rangsiz", size: variant.size || "ONE SIZE", price: money(amountOf(variant.price || product.price), product.currencyCode), barcode: variant.barcode, quantity: selected[id] }];
+    });
+    if (!labels.length) { onNotice("Chop etish uchun EAN-13 kodi bor variantni tanlang."); return; }
+    if (!printThermalLabels(labels)) onNotice("Print oynasi bloklandi. Brauzerda pop-upga ruxsat bering.");
+  };
   const submit = async () => {
     setSubmitting(true);
     try {
@@ -670,7 +718,7 @@ function ProductInventoryWorkspace({ products, categories, transfers, token, onE
       })}
       {!filtered.length && <tr><td colSpan={12}><Empty>Qidiruv yoki filter bo‘yicha mahsulot topilmadi.</Empty></td></tr>}
     </tbody></table></div>
-    <div className="inventory-bulk-bar"><div><b>{selectedIds.length} variant tanlandi</b><span>{selectionSummary} dona Offline Sales ga o‘tkaziladi</span></div><Button disabled={!selectedIds.length || submitting} onClick={() => setConfirming(true)}>Transfer</Button></div>
+    <div className="inventory-bulk-bar"><div><b>{selectedIds.length} variant tanlandi</b><span>{selectionSummary} dona Offline Sales ga o‘tkaziladi</span></div><div className="inventory-actions"><Button type="button" variant="outline" disabled={!selectedIds.length} onClick={printLabels}><Printer size={15} /> Yorliq chop etish</Button><Button disabled={!selectedIds.length || submitting} onClick={() => setConfirming(true)}>Transfer</Button></div></div>
     {confirming && <div className="inventory-confirm-backdrop" role="presentation" onMouseDown={() => setConfirming(false)}><section className="inventory-confirm" role="dialog" aria-modal="true" aria-label="Offline transfer tasdiqlash" onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">TRANSFER TO OFFLINE SALES</p><h3>Transferni tasdiqlang</h3><p>{selectedIds.length} variant, jami <b>{selectionSummary} dona</b>. Fizik qoldiq o‘zgarmaydi: birliklar faqat Online dan Offline Sales ga o‘tadi.</p><div className="inventory-confirm-items">{selectedIds.map((id) => { const product = products.find((entry) => entry.variants.some((variant) => variant.id === id)); const variant = product?.variants.find((entry) => entry.id === id); return <span key={id}>{product?.title} · {variant?.color || "Rangsiz"} / {variant?.size || "ONE SIZE"} × {selected[id]}</span>; })}</div><Field label="Izoh (ixtiyoriy)"><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Offline savdo nuqtasi" /></Field><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setConfirming(false)}>Bekor qilish</Button><Button disabled={submitting} onClick={() => void submit()}>{submitting ? "Tekshirilmoqda…" : "Transferni tasdiqlash"}</Button></div></section></div>}
   </section>;
 }
