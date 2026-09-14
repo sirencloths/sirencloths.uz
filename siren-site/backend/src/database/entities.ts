@@ -78,6 +78,7 @@ export class CollectionEntity {
 export class Product {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Index({ unique: true }) @Column({ length: 220 }) slug!: string;
+  @Index({ unique: true }) @Column({ name: 'ean13', type: 'varchar', length: 13, nullable: true }) ean13!: string | null;
   @Column({ length: 220 }) title!: string;
   @Column({ type: 'text', default: '' }) description!: string;
   @Column({ type: 'enum', enum: ProductStatus, default: ProductStatus.DRAFT }) status!: ProductStatus;

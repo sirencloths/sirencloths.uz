@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { AuditLog, Category, CollectionEntity, InventoryTransfer, OrderItem, Product, ProductGender, ProductStatus, ProductVariant, SiteSetting } from '../database/entities';
 
 export type ProductInput = {
@@ -26,7 +26,10 @@ export class CatalogService {
     private readonly dataSource: DataSource,
   ) {}
 
-  publicProducts() { return this.products.find({ where: { status: ProductStatus.ACTIVE }, relations: { variants: true, category: true }, order: { createdAt: 'DESC' } }); }
+  async publicProducts() {
+    const products = await this.products.find({ where: { status: ProductStatus.ACTIVE }, relations: { variants: true, category: true }, order: { createdAt: 'DESC' } });
+    return this.ensureEan13(products);
+  }
   async publicListing(query: { category?: string; gender?: string; colors?: string; sizes?: string; minPrice?: string; maxPrice?: string; sort?: string }) {
     const genders = this.csv(query.gender); const colors = this.csv(query.colors); const sizes = this.csv(query.sizes);
     if (genders.some((value) => !Object.values(ProductGender).includes(value as ProductGender))) throw new BadRequestException('Invalid gender filter');
@@ -63,6 +66,7 @@ export class CatalogService {
   async publicProduct(slug: string) {
     const product = await this.products.findOne({ where: { slug, status: ProductStatus.ACTIVE }, relations: { variants: true, category: true } });
     if (!product) throw new NotFoundException('Product not found');
+    await this.ensureEan13([product]);
     product.variants = product.variants.filter((variant) => variant.isActive);
     return product;
   }
@@ -82,11 +86,12 @@ export class CatalogService {
         .getRawMany<{ productId: string; soldQuantity: string }>(),
     ]);
     const soldByProduct = new Map(soldRows.map((row) => [row.productId, Number(row.soldQuantity)]));
+    await this.ensureEan13(products);
     return products.map((product) => ({ ...product, soldQuantity: soldByProduct.get(product.id) ?? 0 }));
   }
   async createProduct(input: ProductInput) {
     await this.validateProductAssignment(input, true);
-    const product = await this.products.save(this.products.create({ ...input, media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} }));
+    const product = await this.products.save(this.products.create({ ...input, ean13: await this.generateEan13(), media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} }));
     if (product.status === ProductStatus.ACTIVE) await this.appendProductNotification(product);
     return product;
   }
@@ -211,6 +216,28 @@ export class CatalogService {
   async removeCollection(id: string) { await this.collections.delete(id); return { deleted: true }; }
 
   private async productOrFail(id: string) { const product = await this.products.findOneBy({ id }); if (!product) throw new NotFoundException('Product not found'); return product; }
+  private ean13CheckDigit(base: string) {
+    const sum = base.split('').reduce((total, digit, index) => total + Number(digit) * (index % 2 === 0 ? 1 : 3), 0);
+    return String((10 - (sum % 10)) % 10);
+  }
+  private async generateEan13() {
+    // 478 is the Uzbekistan GS1 prefix; nine random digits plus a calculated
+    // checksum make a standards-compliant, system-unique EAN-13 number.
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const base = `478${randomInt(0, 1_000_000_000).toString().padStart(9, '0')}`;
+      const ean13 = `${base}${this.ean13CheckDigit(base)}`;
+      if (!(await this.products.exists({ where: { ean13 } }))) return ean13;
+    }
+    throw new BadRequestException('Yangi EAN-13 kod yaratib bo‘lmadi. Qayta urinib ko‘ring.');
+  }
+  private async ensureEan13(products: Product[]) {
+    for (const product of products) {
+      if (/^\d{13}$/.test(product.ean13 ?? '')) continue;
+      product.ean13 = await this.generateEan13();
+      await this.products.save(product);
+    }
+    return products;
+  }
   private normalizedVariantAttributes(attributes: Record<string, unknown> | undefined) {
     const next = { ...(attributes ?? {}) };
     if (Array.isArray(next.images)) {
