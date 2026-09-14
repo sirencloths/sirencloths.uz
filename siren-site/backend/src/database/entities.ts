@@ -78,7 +78,6 @@ export class CollectionEntity {
 export class Product {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Index({ unique: true }) @Column({ length: 220 }) slug!: string;
-  @Index({ unique: true }) @Column({ name: 'ean13', type: 'varchar', length: 13, nullable: true }) ean13!: string | null;
   @Column({ length: 220 }) title!: string;
   @Column({ type: 'text', default: '' }) description!: string;
   @Column({ type: 'enum', enum: ProductStatus, default: ProductStatus.DRAFT }) status!: ProductStatus;
@@ -103,7 +102,7 @@ export class ProductVariant {
   @Column({ name: 'product_id', type: 'uuid' }) productId!: string;
   @ManyToOne(() => Product, (product) => product.variants, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'product_id' }) product!: Product;
   @Column({ length: 120 }) sku!: string;
-  @Column({ type: 'varchar', nullable: true, length: 120 }) barcode!: string | null;
+  @Index({ unique: true }) @Column({ type: 'varchar', nullable: true, length: 13 }) barcode!: string | null;
   @Column({ length: 180, default: '' }) name!: string;
   @Column({ type: 'varchar', nullable: true, length: 100 }) color!: string | null;
   @Column({ type: 'varchar', nullable: true, length: 30 }) size!: string | null;

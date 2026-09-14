@@ -28,7 +28,7 @@ export class CatalogService {
 
   async publicProducts() {
     const products = await this.products.find({ where: { status: ProductStatus.ACTIVE }, relations: { variants: true, category: true }, order: { createdAt: 'DESC' } });
-    return this.ensureEan13(products);
+    return this.ensureVariantEan13(products);
   }
   async publicListing(query: { category?: string; gender?: string; colors?: string; sizes?: string; minPrice?: string; maxPrice?: string; sort?: string }) {
     const genders = this.csv(query.gender); const colors = this.csv(query.colors); const sizes = this.csv(query.sizes);
@@ -66,7 +66,7 @@ export class CatalogService {
   async publicProduct(slug: string) {
     const product = await this.products.findOne({ where: { slug, status: ProductStatus.ACTIVE }, relations: { variants: true, category: true } });
     if (!product) throw new NotFoundException('Product not found');
-    await this.ensureEan13([product]);
+    await this.ensureVariantEan13([product]);
     product.variants = product.variants.filter((variant) => variant.isActive);
     return product;
   }
@@ -86,12 +86,12 @@ export class CatalogService {
         .getRawMany<{ productId: string; soldQuantity: string }>(),
     ]);
     const soldByProduct = new Map(soldRows.map((row) => [row.productId, Number(row.soldQuantity)]));
-    await this.ensureEan13(products);
+    await this.ensureVariantEan13(products);
     return products.map((product) => ({ ...product, soldQuantity: soldByProduct.get(product.id) ?? 0 }));
   }
   async createProduct(input: ProductInput) {
     await this.validateProductAssignment(input, true);
-    const product = await this.products.save(this.products.create({ ...input, ean13: await this.generateEan13(), media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} }));
+    const product = await this.products.save(this.products.create({ ...input, media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} }));
     if (product.status === ProductStatus.ACTIVE) await this.appendProductNotification(product);
     return product;
   }
@@ -107,10 +107,11 @@ export class CatalogService {
     await this.productOrFail(productId);
     const inventoryQuantity = input.inventoryQuantity ?? 0;
     const attributes = this.normalizedVariantAttributes(input.attributes);
-    return this.variants.save(this.variants.create({ productId, ...input, name: input.name ?? '', inventoryQuantity, totalInventoryAdded: inventoryQuantity, isActive: input.isActive ?? true, attributes }));
+    return this.variants.save(this.variants.create({ productId, ...input, barcode: await this.generateEan13(), name: input.name ?? '', inventoryQuantity, totalInventoryAdded: inventoryQuantity, isActive: input.isActive ?? true, attributes }));
   }
   async updateVariant(id: string, input: Partial<VariantInput>) {
-    const variant = await this.variants.preload({ id, ...input, ...(input.attributes ? { attributes: this.normalizedVariantAttributes(input.attributes) } : {}) });
+    const { barcode: _barcode, ...changes } = input;
+    const variant = await this.variants.preload({ id, ...changes, ...(changes.attributes ? { attributes: this.normalizedVariantAttributes(changes.attributes) } : {}) });
     if (!variant) throw new NotFoundException('Variant not found');
     return this.variants.save(variant);
   }
@@ -226,15 +227,22 @@ export class CatalogService {
     for (let attempt = 0; attempt < 100; attempt += 1) {
       const base = `478${randomInt(0, 1_000_000_000).toString().padStart(9, '0')}`;
       const ean13 = `${base}${this.ean13CheckDigit(base)}`;
-      if (!(await this.products.exists({ where: { ean13 } }))) return ean13;
+      if (!(await this.variants.exists({ where: { barcode: ean13 } }))) return ean13;
     }
     throw new BadRequestException('Yangi EAN-13 kod yaratib bo‘lmadi. Qayta urinib ko‘ring.');
   }
-  private async ensureEan13(products: Product[]) {
+  private isEan13(value: string | null | undefined) {
+    if (!/^\d{13}$/.test(value ?? '')) return false;
+    const base = value!.slice(0, 12);
+    return this.ean13CheckDigit(base) === value!.slice(-1);
+  }
+  private async ensureVariantEan13(products: Product[]) {
     for (const product of products) {
-      if (/^\d{13}$/.test(product.ean13 ?? '')) continue;
-      product.ean13 = await this.generateEan13();
-      await this.products.save(product);
+      for (const variant of product.variants ?? []) {
+        if (this.isEan13(variant.barcode)) continue;
+        variant.barcode = await this.generateEan13();
+        await this.variants.save(variant);
+      }
     }
     return products;
   }
