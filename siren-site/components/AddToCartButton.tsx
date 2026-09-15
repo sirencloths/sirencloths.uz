@@ -13,6 +13,7 @@ type Props = {
   image: string;
   color: string;
   size: string;
+  isSale?: boolean;
 };
 
 export default function AddToCartButton({
@@ -22,6 +23,7 @@ export default function AddToCartButton({
   image,
   color,
   size,
+  isSale = false,
 }: Props) {
   const { addToCart, openCart } = useCart();
   const { t } = useLanguage();
@@ -50,6 +52,7 @@ export default function AddToCartButton({
       image,
       color,
       size,
+      isSale,
     });
 
     setAdded(true);

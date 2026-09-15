@@ -16,6 +16,7 @@ export type CartItem = {
   image: string;
   color: string;
   size: string;
+  isSale?: boolean;
   quantity: number;
 };
 
@@ -94,6 +95,7 @@ export function CartProvider({
             ? {
                 ...p,
                 quantity: p.quantity + 1,
+                isSale: p.isSale || item.isSale,
               }
             : p
         );

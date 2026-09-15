@@ -11,45 +11,62 @@ type Variant = { id: string; sku: string; color?: string | null; size?: string |
 type Props = { id: string; title: string; price: string; currencyCode: string; image: string; variants: Variant[]; initialColor?: string; sizeGuideImageUrl?: string };
 
 const swatch = (color: string) => ({ black: "#111", white: "#fff", gray: "#8b8b8b", blue: "#1769aa", green: "#0b7a3a", red: "#b91c1c", brown: "#704214", pink: "#db5b82", cream: "#f4ead2" }[color.toLowerCase()] ?? "#d8d8d4");
+const optionKey = (value?: string | null, fallback = "default") => (value || fallback).trim().toLocaleLowerCase("uz-UZ");
+const optionLabel = (value?: string | null, fallback = "ONE SIZE") => value?.trim() || fallback;
+const colorSwatch = (color: string) => swatch(({ qora: "black", oq: "white", kulrang: "gray", "ko'k": "blue", yashil: "green", qizil: "red", jigarrang: "brown" }[optionKey(color)] ?? color));
 
 export default function ProductDetailClient({ id, title, price, currencyCode, image, variants, initialColor, sizeGuideImageUrl }: Props) {
   const { t } = useLanguage();
   const { isFavorite, toggleFavorite } = useFavorites();
   const searchParams = useSearchParams();
   const usableVariants = variants.filter((variant) => variant.isActive !== false);
-  const colors = [...new Set(usableVariants.map((variant) => variant.color || "Default"))];
-  const [selectedColor, setSelectedColor] = useState(() => colors.find((color) => color === initialColor) ?? colors[0] ?? "Default");
+  const colors = useMemo(() => Array.from(new Map(usableVariants.map((variant) => {
+    const label = optionLabel(variant.color, "Default");
+    return [optionKey(variant.color), label] as const;
+  })).entries()).map(([key, label]) => ({ key, label })), [usableVariants]);
+  const [selectedColor, setSelectedColor] = useState(() => {
+    const requested = optionKey(initialColor);
+    const hasStock = (colorKey: string) => usableVariants.some((variant) => optionKey(variant.color) === colorKey && variant.inventoryQuantity > 0);
+    return colors.find((color) => color.key === requested && hasStock(color.key))?.key ?? colors.find((color) => hasStock(color.key))?.key ?? colors.find((color) => color.key === requested)?.key ?? colors[0]?.key ?? "default";
+  });
+  const requestedColor = searchParams.get("color")?.trim().toLocaleLowerCase("uz-UZ") ?? "";
+  const [handledRequestedColor, setHandledRequestedColor] = useState<string | null>(null);
+  const colorSignature = colors.map((color) => color.key).join("|");
   useEffect(() => {
-    const requested = searchParams.get("color")?.trim().toLocaleLowerCase("uz-UZ");
-    if (!requested) return;
-    const matchingColor = colors.find((color) => color.toLocaleLowerCase("uz-UZ").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") === requested);
-    if (matchingColor) setSelectedColor(matchingColor);
-  }, [searchParams, colors.join("|")]);
-  const sizeVariants = useMemo(() => usableVariants.filter((variant) => (variant.color || "Default") === selectedColor), [usableVariants, selectedColor]);
-  const sizes = [...new Set(sizeVariants.map((variant) => variant.size || "ONE SIZE"))];
-  const [selectedSize, setSelectedSize] = useState(sizes[0] ?? "ONE SIZE");
-  useEffect(() => setSelectedSize(sizes[0] ?? "ONE SIZE"), [selectedColor]);
-  const selectedVariant = sizeVariants.find((variant) => (variant.size || "ONE SIZE") === selectedSize) ?? usableVariants[0];
+    if (!requestedColor || handledRequestedColor === requestedColor) return;
+    const matchingColor = colors.find((color) => color.key === requestedColor || color.key.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") === requestedColor);
+    if (matchingColor) setSelectedColor(matchingColor.key);
+    setHandledRequestedColor(requestedColor);
+  }, [requestedColor, handledRequestedColor, colorSignature]);
+  const sizeVariants = useMemo(() => usableVariants.filter((variant) => optionKey(variant.color) === selectedColor), [usableVariants, selectedColor]);
+  const sizes = useMemo(() => Array.from(new Map(sizeVariants.map((variant) => {
+    const label = optionLabel(variant.size);
+    return [optionKey(variant.size, "one size"), label] as const;
+  })).entries()).map(([key, label]) => ({ key, label })), [sizeVariants]);
+  const [selectedSize, setSelectedSize] = useState("one size");
+  const selectedSizeOption = sizes.find((size) => size.key === selectedSize) ?? sizes.find((size) => sizeVariants.some((variant) => optionKey(variant.size, "one size") === size.key && variant.inventoryQuantity > 0)) ?? sizes[0];
+  const selectedVariant = sizeVariants.find((variant) => optionKey(variant.size, "one size") === selectedSizeOption?.key) ?? sizeVariants.find((variant) => variant.inventoryQuantity > 0) ?? sizeVariants[0] ?? usableVariants[0];
   const [remaining, setRemaining] = useState("");
   useEffect(() => {
     const endsAt = selectedVariant?.discountEndsAt;
     if (!endsAt) { setRemaining(""); return; }
-    const update = () => { const milliseconds = new Date(endsAt).valueOf() - Date.now(); if (milliseconds <= 0) { setRemaining(""); return; } const seconds = Math.floor(milliseconds / 1000); setRemaining(`${Math.floor(seconds / 86400)}K ${String(Math.floor(seconds % 86400 / 3600)).padStart(2, "0")}:${String(Math.floor(seconds % 3600 / 60)).padStart(2, "0")}`); };
-    update(); const timer = window.setInterval(update, 30_000); return () => window.clearInterval(timer);
+    const update = () => { const milliseconds = new Date(endsAt).valueOf() - Date.now(); if (milliseconds <= 0) { setRemaining(""); return; } const seconds = Math.floor(milliseconds / 1000); const hours = Math.floor(seconds / 3600); const minutes = Math.floor(seconds % 3600 / 60); setRemaining(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`); };
+    update(); const timer = window.setInterval(update, 1_000); return () => window.clearInterval(timer);
   }, [selectedVariant?.discountEndsAt]);
   const available = !selectedVariant || selectedVariant.inventoryQuantity > 0;
   const selectedColorImages = sizeVariants.flatMap((variant) => Array.isArray(variant.attributes?.images) ? variant.attributes.images.filter((item): item is string => typeof item === "string" && Boolean(item.trim())) : []);
   const selectedImage = selectedColorImages[0] || image;
-  const favoriteProduct = { id, title, price, image: selectedImage, alt: title, color: selectedColor.toUpperCase(), colorSlug: selectedColor.toLocaleLowerCase("uz-UZ").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "default" };
-  const chooseColor = (color: string) => { setSelectedColor(color); window.dispatchEvent(new CustomEvent("siren-product-color-change", { detail: { productId: id, color } })); };
+  const selectedColorLabel = colors.find((color) => color.key === selectedColor)?.label ?? "Default";
+  const favoriteProduct = { id, title, price, image: selectedImage, alt: title, color: selectedColorLabel.toUpperCase(), colorSlug: selectedColor || "default" };
+  const chooseColor = (color: { key: string; label: string }) => { setSelectedColor(color.key); window.dispatchEvent(new CustomEvent("siren-product-color-change", { detail: { productId: id, color: color.label } })); };
   const displayPrice = selectedVariant?.price ? `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Number(selectedVariant.price)).replace(/\u00A0/g, ".")} ${currencyCode === "UZS" ? "СУМ" : currencyCode}` : price;
   const oldPrice = selectedVariant?.originalPrice ? `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Number(selectedVariant.originalPrice)).replace(/\u00A0/g, ".")} ${currencyCode === "UZS" ? "СУМ" : currencyCode}` : "";
 
   return <>
-    <div className="product-detail-pricing"><p className={`product-detail-price${selectedVariant?.discountPercent ? " is-sale" : ""}`}>{displayPrice}</p>{oldPrice && <del>{oldPrice}</del>}{remaining && <small>AKSIYA TUGASHIGA: {remaining}</small>}</div>
-    {colors.length > 0 && <div className="product-colors"><div className="product-colors-label"><span>{t("chooseColor")}</span><strong>{selectedColor}</strong></div><div className="product-color-list">{colors.map((color) => <button key={color} type="button" className={`product-color ${selectedColor === color ? "product-color--selected" : ""}`} style={{ backgroundColor: swatch(color) }} aria-label={color} onClick={() => chooseColor(color)} />)}</div></div>}
-    {sizes.length > 0 && <div className="product-sizes"><div className="product-sizes-top"><div className="product-sizes-label"><span>{t("chooseSize")}</span><strong>{selectedSize}</strong></div>{sizeGuideImageUrl && <a className="size-guide-link" href={sizeGuideImageUrl} target="_blank" rel="noreferrer">{t("sizeHelp")}</a>}</div><div className="product-size-list">{sizes.map((size) => { const sizeVariant = sizeVariants.find((variant) => (variant.size || "ONE SIZE") === size); const inStock = Boolean(sizeVariant && sizeVariant.inventoryQuantity > 0); return <button key={size} type="button" disabled={!inStock} className={`product-size ${selectedSize === size ? "product-size--selected" : ""} ${!inStock ? "product-size--disabled" : ""}`} onClick={() => setSelectedSize(size)}>{size}</button>; })}</div></div>}
+    <div className="product-detail-pricing"><p className={`product-detail-price${selectedVariant?.discountPercent ? " is-sale" : ""}`}>{displayPrice}</p>{oldPrice && <del>{oldPrice}</del>}{remaining && <small>CHEGIRMA TUGASHIGA: {remaining}</small>}</div>
+    {colors.length > 0 && <div className="product-colors"><div className="product-colors-label"><span>{t("chooseColor")}</span><strong>{selectedColorLabel}</strong></div><div className="product-color-list">{colors.map((color) => { const inStock = usableVariants.some((variant) => optionKey(variant.color) === color.key && variant.inventoryQuantity > 0); const isSelected = selectedColor === color.key; return <button key={color.key} type="button" disabled={!inStock} className={`product-color ${isSelected ? "product-color--selected" : ""} ${!inStock ? "product-color--disabled" : ""}`} style={{ backgroundColor: colorSwatch(color.label), ...(isSelected ? { outline: "3px solid #000", outlineOffset: "2px", border: "1px solid #b0b0b0" } : {}) }} aria-label={color.label} aria-pressed={isSelected} onClick={() => chooseColor(color)} />; })}</div></div>}
+    {sizes.length > 0 && <div className="product-sizes"><div className="product-sizes-top"><div className="product-sizes-label"><span>{t("chooseSize")}</span><strong>{selectedSizeOption?.label ?? "ONE SIZE"}</strong></div>{sizeGuideImageUrl && <a className="size-guide-link" href={sizeGuideImageUrl} target="_blank" rel="noreferrer">{t("sizeHelp")}</a>}</div><div className="product-size-list">{sizes.map((size) => { const sizeVariant = sizeVariants.find((variant) => optionKey(variant.size, "one size") === size.key); const inStock = Boolean(sizeVariant && sizeVariant.inventoryQuantity > 0); return <button key={size.key} type="button" disabled={!inStock} className={`product-size ${selectedSizeOption?.key === size.key ? "product-size--selected" : ""} ${!inStock ? "product-size--disabled" : ""}`} onClick={() => setSelectedSize(size.key)}>{size.label}</button>; })}</div></div>}
     <p className={`product-availability ${available ? "is-available" : "is-unavailable"}`}>{available ? "Mavjud" : "Hozircha qolmagan"}</p>
-    <div className="product-actions"><AddToCartButton id={selectedVariant?.sku ?? id} title={title} price={selectedVariant?.price || price} image={selectedImage} color={selectedColor} size={selectedSize} /><button type="button" className={`product-favorite-btn${isFavorite(favoriteProduct) ? " is-liked" : ""}`} aria-label={t("favoriteAdd")} aria-pressed={isFavorite(favoriteProduct)} onClick={() => toggleFavorite(favoriteProduct)}><Image src={isFavorite(favoriteProduct) ? "/icons/heart-filled.svg" : "/icons/heart.svg"} alt="" width={28} height={28} /></button></div>
+    <div className="product-actions"><AddToCartButton id={selectedVariant?.id ?? id} title={title} price={selectedVariant?.price || price} image={selectedImage} color={selectedColorLabel} size={selectedSizeOption?.label ?? "ONE SIZE"} isSale={Boolean(selectedVariant?.discountPercent)} /><button type="button" className={`product-favorite-btn${isFavorite(favoriteProduct) ? " is-liked" : ""}`} aria-label={t("favoriteAdd")} aria-pressed={isFavorite(favoriteProduct)} onClick={() => toggleFavorite(favoriteProduct)}><Image src={isFavorite(favoriteProduct) ? "/icons/heart-filled.svg" : "/icons/heart.svg"} alt="" width={28} height={28} /></button></div>
   </>;
 }

@@ -24,7 +24,7 @@ function DiscountTimer({ endsAt }: { endsAt: string }) {
     };
     update(); const timer = window.setInterval(update, 30_000); return () => window.clearInterval(timer);
   }, [endsAt]);
-  return remaining ? <small className="product-card-timer">AKSIYA · {remaining}</small> : null;
+  return remaining ? <small className="product-card-timer">CHEGIRMA · {remaining}</small> : null;
 }
 
 export default function ProductCard({ product, small = false }: Props) {

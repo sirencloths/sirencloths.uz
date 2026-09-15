@@ -6,6 +6,7 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS registration_source varchar(80) N
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS welcome_discount_eligible boolean NOT NULL DEFAULT false;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS welcome_discount_percent integer NOT NULL DEFAULT 0;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS welcome_discount_expires_at timestamptz;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS welcome_discount_used_at timestamptz;
 
 CREATE TABLE IF NOT EXISTS auth_otps (

@@ -44,8 +44,9 @@ class DiscountDto {
   @IsOptional() @IsString() color?: string | null;
   @IsOptional() @IsString() size?: string | null;
   @IsInt() @Min(1) @Max(99) percent!: number;
-  @IsDateString() endsAt!: string;
+  @IsOptional() @IsDateString() endsAt?: string | null;
 }
+class DiscountStatusDto { @IsBoolean() isActive!: boolean; }
 class TaxonomyDto {
   @IsString() slug!: string;
   @IsString() name!: string;
@@ -91,6 +92,7 @@ export class AdminCatalogController {
   @Delete('variants/:id') removeVariant(@Param('id') id: string) { return this.catalog.removeVariant(id); }
   @Get('discounts') discounts() { return this.catalog.listDiscounts(); }
   @Post('discounts') discount(@Body() body: DiscountDto, @CurrentUser() actor: { id: string }) { return this.catalog.createDiscount(body, actor.id); }
+  @Patch('discounts/:id') updateDiscount(@Param('id') id: string, @Body() body: DiscountStatusDto, @CurrentUser() actor: { id: string }) { return this.catalog.setDiscountActive(id, body.isActive, actor.id); }
   @Delete('discounts/:id') removeDiscount(@Param('id') id: string, @CurrentUser() actor: { id: string }) { return this.catalog.removeDiscount(id, actor.id); }
   @Get('transfers') transfers() { return this.catalog.transferHistory(); }
   @Post('transfers') transfer(@Body() body: InventoryMoveDto, @CurrentUser() actor: { id: string }) { return this.catalog.transferToOffline(body.items, actor.id, body.note); }

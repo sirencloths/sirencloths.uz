@@ -4,7 +4,7 @@ import { createContext, FormEvent, ReactNode, useContext, useEffect, useMemo, us
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 const TOKEN_KEY = "siren-customer-token";
-type Customer = { id: string; email: string; firstName: string; lastName: string; phone?: string | null; region?: string | null; address?: string; emailVerifiedAt?: string | null; welcomeDiscountEligible?: boolean; welcomeDiscountPercent?: number; metadata?: { notificationPreferences?: { blog?: boolean; discounts?: boolean; products?: boolean } } };
+type Customer = { id: string; email: string; firstName: string; lastName: string; phone?: string | null; region?: string | null; address?: string; emailVerifiedAt?: string | null; welcomeDiscountEligible?: boolean; welcomeDiscountPercent?: number; welcomeDiscountExpiresAt?: string | null; metadata?: { notificationPreferences?: { blog?: boolean; discounts?: boolean; products?: boolean } } };
 type Step = "email" | "password" | "otp" | "details" | "forgot" | "reset";
 type Context = { customer: Customer | null; loading: boolean; openAuth: () => void; signOut: () => void; refresh: () => Promise<void> };
 const CustomerAuthContext = createContext<Context | null>(null);
@@ -22,6 +22,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [isOpen, setOpen] = useState(false);
+  const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
   const refresh = async () => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) { setCustomer(null); return; }
@@ -29,20 +30,37 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   };
   useEffect(() => { void refresh().finally(() => setLoading(false)); }, []);
   useEffect(() => {
-    if (!loading && !customer && !sessionStorage.getItem("siren-auth-dismissed")) {
+    if (!isAdminRoute && !loading && !customer && !sessionStorage.getItem("siren-auth-dismissed")) {
       const id = window.setTimeout(() => setOpen(true), 850);
       return () => window.clearTimeout(id);
     }
-  }, [loading, customer]);
+  }, [isAdminRoute, loading, customer]);
   const signOut = () => { localStorage.removeItem(TOKEN_KEY); setCustomer(null); };
   const value = useMemo(() => ({ customer, loading, openAuth: () => setOpen(true), signOut, refresh }), [customer, loading]);
-  return <CustomerAuthContext.Provider value={value}>{children}{isOpen && <AuthModal onClose={() => { sessionStorage.setItem("siren-auth-dismissed", "1"); setOpen(false); }} onAuthenticated={(result) => { localStorage.setItem(TOKEN_KEY, result.accessToken); setCustomer(result.customer); setOpen(false); }} />}</CustomerAuthContext.Provider>;
+  return <CustomerAuthContext.Provider value={value}>{children}{!isAdminRoute && <WelcomeDiscountTimer customer={customer} onExpired={refresh} />}{!isAdminRoute && isOpen && <AuthModal onClose={() => { sessionStorage.setItem("siren-auth-dismissed", "1"); setOpen(false); }} onAuthenticated={(result) => { localStorage.setItem(TOKEN_KEY, result.accessToken); setCustomer(result.customer); setOpen(false); }} />}</CustomerAuthContext.Provider>;
 }
 export const useCustomerAuth = () => {
   const context = useContext(CustomerAuthContext);
   if (!context) throw new Error("useCustomerAuth must be used inside CustomerAuthProvider");
   return context;
 };
+
+function WelcomeDiscountTimer({ customer, onExpired }: { customer: Customer | null; onExpired: () => Promise<void> }) {
+  const expiresAt = customer?.welcomeDiscountExpiresAt;
+  const [remaining, setRemaining] = useState("");
+  useEffect(() => {
+    if (!customer?.welcomeDiscountEligible || !expiresAt) { setRemaining(""); return; }
+    const update = () => {
+      const seconds = Math.max(0, Math.ceil((new Date(expiresAt).valueOf() - Date.now()) / 1000));
+      if (!seconds) { setRemaining(""); void onExpired(); return; }
+      const hours = Math.floor(seconds / 3600); const minutes = Math.floor(seconds % 3600 / 60); const secs = seconds % 60;
+      setRemaining(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`);
+    };
+    update(); const timer = window.setInterval(update, 1000); return () => window.clearInterval(timer);
+  }, [customer?.id, customer?.welcomeDiscountEligible, expiresAt, onExpired]);
+  if (!customer?.welcomeDiscountEligible || !remaining) return null;
+  return <aside className="welcome-discount-timer" role="status" aria-label="Welcome chegirma taymeri"><span>WELCOME</span><b>−{customer.welcomeDiscountPercent || 15}%</b><time>{remaining}</time><a href="/shop">XARID QILISH</a></aside>;
+}
 
 function AuthModal({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (result: { accessToken: string; customer: Customer }) => void }) {
   const [step, setStep] = useState<Step>("email");

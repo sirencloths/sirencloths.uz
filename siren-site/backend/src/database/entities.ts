@@ -13,6 +13,7 @@ import {
 export enum UserRole {
   SUPER_ADMIN = 'super_admin',
   ADMIN = 'admin',
+  CASHIER = 'cashier',
   EDITOR = 'editor',
   FULFILLMENT = 'fulfillment',
   ANALYST = 'analyst',
@@ -34,6 +35,7 @@ export enum OrderStatus {
   CANCELLED = 'cancelled',
   REFUNDED = 'refunded',
 }
+export enum PartnerType { SPONSOR = 'sponsor', INFLUENCER = 'influencer', REFERRAL = 'referral', AFFILIATE = 'affiliate' }
 
 @Entity('users')
 export class User {
@@ -133,6 +135,7 @@ export class Customer {
   @Column({ name: 'is_active', default: true }) isActive!: boolean;
   @Column({ name: 'welcome_discount_eligible', default: false }) welcomeDiscountEligible!: boolean;
   @Column({ name: 'welcome_discount_percent', type: 'int', default: 0 }) welcomeDiscountPercent!: number;
+  @Column({ name: 'welcome_discount_expires_at', type: 'timestamptz', nullable: true }) welcomeDiscountExpiresAt!: Date | null;
   @Column({ name: 'welcome_discount_used_at', type: 'timestamptz', nullable: true }) welcomeDiscountUsedAt!: Date | null;
   @Column({ type: 'jsonb', default: () => "'{}'" }) metadata!: Record<string, unknown>;
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
@@ -323,6 +326,71 @@ export class InventoryTransfer {
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
 }
 
+// Offline shop sales are deliberately independent from web orders: their stock
+// comes from the offline allocation and they are reconciled per cashier/day.
+@Entity('offline_sales')
+export class OfflineSale {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index({ unique: true }) @Column({ name: 'receipt_number', type: 'bigint', generated: 'increment' }) receiptNumber!: string;
+  @Index({ unique: true }) @Column({ name: 'receipt_barcode', type: 'varchar', length: 13, nullable: true }) receiptBarcode!: string | null;
+  @Column({ name: 'cashier_id', type: 'uuid' }) cashierId!: string;
+  @ManyToOne(() => User, { onDelete: 'RESTRICT' }) @JoinColumn({ name: 'cashier_id' }) cashier!: User;
+  @Column({ name: 'payment_method', length: 32 }) paymentMethod!: string;
+  @Column({ name: 'currency_code', length: 3, default: 'UZS' }) currencyCode!: string;
+  @Column({ name: 'subtotal_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) subtotalAmount!: string;
+  @Column({ name: 'discount_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) discountAmount!: string;
+  @Column({ name: 'total_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) totalAmount!: string;
+  @Column({ name: 'is_voided', default: false }) isVoided!: boolean;
+  @Column({ name: 'void_reason', type: 'text', nullable: true }) voidReason!: string | null;
+  @OneToMany(() => OfflineSaleItem, (item) => item.sale, { cascade: true }) items!: OfflineSaleItem[];
+  @OneToMany(() => OfflineSaleNote, (note) => note.sale, { cascade: true }) notes!: OfflineSaleNote[];
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
+@Entity('offline_sale_items')
+export class OfflineSaleItem {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'sale_id', type: 'uuid' }) saleId!: string;
+  @ManyToOne(() => OfflineSale, (sale) => sale.items, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'sale_id' }) sale!: OfflineSale;
+  @Column({ name: 'product_id', type: 'uuid' }) productId!: string;
+  @Column({ name: 'variant_id', type: 'uuid' }) variantId!: string;
+  @Column({ name: 'title_snapshot', length: 220 }) titleSnapshot!: string;
+  @Column({ name: 'sku_snapshot', length: 120 }) skuSnapshot!: string;
+  @Column({ name: 'barcode_snapshot', type: 'varchar', length: 13, nullable: true }) barcodeSnapshot!: string | null;
+  @Column({ name: 'image_url', type: 'varchar', nullable: true }) imageUrl!: string | null;
+  @Column({ type: 'int' }) quantity!: number;
+  @Column({ name: 'unit_price', type: 'numeric', precision: 12, scale: 2 }) unitPrice!: string;
+  @Column({ name: 'total_price', type: 'numeric', precision: 12, scale: 2 }) totalPrice!: string;
+}
+
+@Entity('offline_sale_notes')
+export class OfflineSaleNote {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'sale_id', type: 'uuid' }) saleId!: string;
+  @ManyToOne(() => OfflineSale, (sale) => sale.notes, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'sale_id' }) sale!: OfflineSale;
+  @Column({ name: 'author_id', type: 'uuid' }) authorId!: string;
+  @Column({ type: 'text', default: '' }) body!: string;
+  @Column({ name: 'image_url', type: 'varchar', nullable: true }) imageUrl!: string | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+}
+
+@Entity('offline_daily_reports')
+@Index(['cashierId', 'reportDate'], { unique: true })
+export class OfflineDailyReport {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'cashier_id', type: 'uuid' }) cashierId!: string;
+  @ManyToOne(() => User, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'cashier_id' }) cashier!: User;
+  @Column({ name: 'report_date', type: 'date' }) reportDate!: string;
+  @Column({ name: 'cash_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) cashAmount!: string;
+  @Column({ name: 'card_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) cardAmount!: string;
+  @Column({ name: 'click_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) clickAmount!: string;
+  @Column({ name: 'payme_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) paymeAmount!: string;
+  @Column({ type: 'text', nullable: true }) note!: string | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
 @Entity('product_discounts')
 @Index(['productId', 'color', 'size'])
 export class ProductDiscount {
@@ -332,14 +400,54 @@ export class ProductDiscount {
   @Column({ type: 'varchar', length: 100, nullable: true }) color!: string | null;
   @Column({ type: 'varchar', length: 30, nullable: true }) size!: string | null;
   @Column({ type: 'int' }) percent!: number;
-  @Column({ name: 'ends_at', type: 'timestamptz' }) endsAt!: Date;
+  // A discount can be permanent. A null expiry is deliberately shown without
+  // a storefront countdown.
+  @Column({ name: 'ends_at', type: 'timestamptz', nullable: true }) endsAt!: Date | null;
   @Column({ name: 'is_active', default: true }) isActive!: boolean;
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
 }
 
+@Entity('partners')
+export class Partner {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ length: 180 }) name!: string;
+  @Column({ type: 'enum', enum: PartnerType }) type!: PartnerType;
+  @Column({ type: 'varchar', nullable: true, length: 255 }) email!: string | null;
+  @Column({ type: 'varchar', nullable: true, length: 50 }) phone!: string | null;
+  @Column({ type: 'varchar', nullable: true, length: 255 }) social!: string | null;
+  @Index({ unique: true }) @Column({ name: 'promo_code', type: 'varchar', nullable: true, length: 60 }) promoCode!: string | null;
+  @Column({ name: 'discount_percent', type: 'int', default: 0 }) discountPercent!: number;
+  @Column({ name: 'product_ids', type: 'jsonb', default: () => "'[]'" }) productIds!: string[];
+  @Column({ name: 'per_customer_limit', type: 'int', nullable: true }) perCustomerLimit!: number | null;
+  @Column({ name: 'is_active', default: true }) isActive!: boolean;
+  @Column({ name: 'archived_at', type: 'timestamptz', nullable: true }) archivedAt!: Date | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+@Entity('partner_promo_usages')
+@Index(['partnerId', 'customerId'])
+export class PartnerPromoUsage {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'partner_id', type: 'uuid' }) partnerId!: string;
+  @Column({ name: 'customer_id', type: 'uuid', nullable: true }) customerId!: string | null;
+  @Column({ name: 'order_id', type: 'uuid', nullable: true }) orderId!: string | null;
+  @Column({ name: 'discount_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) discountAmount!: string;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+}
+@Entity('partner_comments')
+@Index(['partnerId', 'createdAt'])
+export class PartnerComment {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'partner_id', type: 'uuid' }) partnerId!: string;
+  @ManyToOne(() => Partner, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'partner_id' }) partner!: Partner;
+  @Column({ name: 'author_id', type: 'uuid', nullable: true }) authorId!: string | null;
+  @Column({ type: 'text' }) body!: string;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+}
+
 export const entities = [
   User, Category, CollectionEntity, Product, ProductVariant, Customer, AuthOtp,
   CustomerAddress, Order, OrderItem, Banner, Page, PageSection, BlogPost,
-  LookbookEntry, MusicRecord, SiteSetting, AuditLog, InventoryTransfer, ProductDiscount,
+  LookbookEntry, MusicRecord, SiteSetting, AuditLog, InventoryTransfer, OfflineSale, OfflineSaleItem, OfflineSaleNote, OfflineDailyReport, ProductDiscount, Partner, PartnerPromoUsage, PartnerComment,
 ];

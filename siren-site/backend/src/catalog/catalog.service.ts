@@ -11,7 +11,7 @@ export type ProductInput = {
 };
 export type VariantInput = { sku: string; name?: string; barcode?: string | null; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity?: number; isActive?: boolean; attributes?: Record<string, unknown> };
 export type TaxonomyInput = { slug: string; name: string; description?: string | null; imageUrl?: string | null; heroImageUrl?: string | null; position?: number; isVisible?: boolean };
-export type DiscountInput = { productId: string; color?: string | null; size?: string | null; percent: number; endsAt: string };
+export type DiscountInput = { productId: string; color?: string | null; size?: string | null; percent: number; endsAt?: string | null };
 
 @Injectable()
 export class CatalogService {
@@ -30,7 +30,14 @@ export class CatalogService {
 
   async publicProducts() {
     const products = await this.products.find({ where: { status: ProductStatus.ACTIVE }, relations: { variants: true, category: true }, order: { createdAt: 'DESC' } });
-    return this.applyDiscounts(await this.ensureVariantEan13(products));
+    const discounted = await this.applyDiscounts(await this.ensureVariantEan13(products));
+    // This endpoint also drives the home page and search, so sale-first order
+    // must live here rather than only in the listing endpoint.
+    return discounted.sort((left, right) => {
+      const leftDiscounted = left.variants.some((variant) => Boolean((variant as unknown as { discountPercent?: number }).discountPercent));
+      const rightDiscounted = right.variants.some((variant) => Boolean((variant as unknown as { discountPercent?: number }).discountPercent));
+      return Number(rightDiscounted) - Number(leftDiscounted);
+    });
   }
   async publicListing(query: { category?: string; gender?: string; colors?: string; sizes?: string; minPrice?: string; maxPrice?: string; sort?: string }) {
     const genders = this.csv(query.gender); const colors = this.csv(query.colors); const sizes = this.csv(query.sizes);
@@ -119,21 +126,29 @@ export class CatalogService {
   }
   async removeVariant(id: string) { await this.variants.delete(id); return { deleted: true }; }
 
-  listDiscounts() { return this.discounts.find({ relations: { product: true }, order: { endsAt: 'ASC' } }); }
+  listDiscounts() { return this.discounts.find({ relations: { product: true }, order: { isActive: 'DESC', createdAt: 'DESC' } }); }
   async createDiscount(input: DiscountInput, actorId?: string) {
     const product = await this.productOrFail(input.productId);
     const color = input.color?.trim() || null, size = input.size?.trim() || null;
-    const percent = Math.round(Number(input.percent)); const endsAt = new Date(input.endsAt);
+    const percent = Math.round(Number(input.percent));
+    const endsAt = input.endsAt?.trim() ? new Date(input.endsAt) : null;
     if (!Number.isInteger(percent) || percent < 1 || percent > 99) throw new BadRequestException('Chegirma foizi 1 dan 99 gacha bo‘lishi kerak.');
-    if (Number.isNaN(endsAt.valueOf()) || endsAt <= new Date()) throw new BadRequestException('Aksiya tugash vaqti kelajakda bo‘lishi kerak.');
+    if (endsAt && (Number.isNaN(endsAt.valueOf()) || endsAt <= new Date())) throw new BadRequestException('Aksiya tugash vaqti kelajakda bo‘lishi kerak.');
     const variants = await this.variants.find({ where: { productId: product.id } });
     const matches = variants.filter((variant) => (!color || variant.color === color) && (!size || variant.size === size));
     if (!matches.length) throw new BadRequestException('Tanlangan SKU, rang yoki razmer uchun variant topilmadi.');
     const discount = await this.discounts.save(this.discounts.create({ productId: product.id, color, size, percent, endsAt, isActive: true }));
-    await this.auditLogs.save(this.auditLogs.create({ actorId: actorId ?? null, action: 'created', entityType: 'product_discount', entityId: discount.id, payload: { productId: product.id, color, size, percent, endsAt: endsAt.toISOString() } }));
+    await this.auditLogs.save(this.auditLogs.create({ actorId: actorId ?? null, action: 'created', entityType: 'product_discount', entityId: discount.id, payload: { productId: product.id, color, size, percent, endsAt: endsAt?.toISOString() ?? null } }));
     return discount;
   }
   async removeDiscount(id: string, actorId?: string) { const discount = await this.discounts.findOneBy({ id }); if (!discount) throw new NotFoundException('Chegirma topilmadi.'); await this.discounts.delete(id); await this.auditLogs.save(this.auditLogs.create({ actorId: actorId ?? null, action: 'deleted', entityType: 'product_discount', entityId: id, payload: {} })); return { deleted: true }; }
+  async setDiscountActive(id: string, isActive: boolean, actorId?: string) {
+    const discount = await this.discounts.preload({ id, isActive });
+    if (!discount) throw new NotFoundException('Chegirma topilmadi.');
+    const saved = await this.discounts.save(discount);
+    await this.auditLogs.save(this.auditLogs.create({ actorId: actorId ?? null, action: isActive ? 'activated' : 'deactivated', entityType: 'product_discount', entityId: id, payload: { isActive } }));
+    return saved;
+  }
 
   async transferHistory() {
     return this.transfers.find({
@@ -266,13 +281,13 @@ export class CatalogService {
   }
   private async applyDiscounts(products: Product[]) {
     const now = new Date(); const active = await this.discounts.find({ where: { isActive: true } });
-    const valid = active.filter((discount) => discount.endsAt > now);
+    const valid = active.filter((discount) => !discount.endsAt || discount.endsAt > now);
     return products.map((product) => ({ ...product, variants: product.variants.map((variant) => {
       const matching = valid.filter((discount) => discount.productId === product.id && (!discount.color || discount.color === variant.color) && (!discount.size || discount.size === variant.size));
       const discount = matching.sort((left, right) => ((Number(Boolean(right.color)) + Number(Boolean(right.size))) - (Number(Boolean(left.color)) + Number(Boolean(left.size)))) || right.percent - left.percent)[0];
       if (!discount) return variant;
       const original = Number(variant.price ?? product.price);
-      return { ...variant, price: String(Math.round(original * (100 - discount.percent) / 100)), originalPrice: String(original), discountPercent: discount.percent, discountEndsAt: discount.endsAt.toISOString() };
+      return { ...variant, price: String(Math.round(original * (100 - discount.percent) / 100)), originalPrice: String(original), discountPercent: discount.percent, discountEndsAt: discount.endsAt?.toISOString() };
     }) })) as Product[];
   }
   private normalizedVariantAttributes(attributes: Record<string, unknown> | undefined) {

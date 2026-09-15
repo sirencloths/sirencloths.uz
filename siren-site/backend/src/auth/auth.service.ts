@@ -96,6 +96,7 @@ export class AuthService implements OnApplicationBootstrap {
       email: payload.email, passwordHash, firstName: profile.firstName.trim(), lastName: profile.lastName.trim(),
       phone: this.normalizePhone(profile.phone), region: profile.region.trim(), emailVerifiedAt: new Date(), lastLoginAt: new Date(),
       registrationSource: 'website', isActive: true, welcomeDiscountEligible: true, welcomeDiscountPercent: 15,
+      welcomeDiscountExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
     const saved = await this.customers.save(customer);
     await this.saveDefaultAddress(saved.id, profile.region, profile.address);
@@ -138,8 +139,12 @@ export class AuthService implements OnApplicationBootstrap {
 
   async customerMe(id: string) {
     const customer = await this.customers.findOneByOrFail({ id });
+    if (customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt && this.welcomeDiscountExpiresAt(customer) <= new Date()) {
+      customer.welcomeDiscountEligible = false;
+      await this.customers.save(customer);
+    }
     const address = await this.addresses.findOne({ where: { customerId: id, isDefault: true }, order: { updatedAt: 'DESC' } });
-    return { ...this.sanitizeCustomer(customer), address: address?.line1 ?? '', region: customer.region ?? address?.city ?? '' };
+    return { ...this.sanitizeCustomer(customer), welcomeDiscountExpiresAt: customer.welcomeDiscountEligible ? this.welcomeDiscountExpiresAt(customer) : null, address: address?.line1 ?? '', region: customer.region ?? address?.city ?? '' };
   }
 
   async updateCustomer(id: string, profile: Partial<CustomerProfile>) {
@@ -193,6 +198,11 @@ export class AuthService implements OnApplicationBootstrap {
   }
 
   private signCustomer(customer: Customer) { return this.jwt.signAsync({ sub: customer.id, email: customer.email, kind: 'customer' }, { expiresIn: '12h' }); }
+  private welcomeDiscountExpiresAt(customer: Customer) {
+    // Existing accounts created before this field was introduced get a
+    // deterministic expiry from their registration timestamp, never a new 24h window.
+    return customer.welcomeDiscountExpiresAt ?? new Date(customer.createdAt.getTime() + 24 * 60 * 60 * 1000);
+  }
   private normalizeEmail(value: string) {
     const email = value.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Enter a valid email address');

@@ -250,7 +250,7 @@ export function toStorefrontColorCards(products: ApiProduct[]): StorefrontProduc
       const images = colorImages.length ? colorImages : fallbackImages.slice(0, 1);
       const usableVariants = variants.filter((variant) => variant.isActive !== false);
       const prices = usableVariants.map((variant) => Number(variant.price)).filter((value) => Number.isFinite(value) && value > 0);
-      const discounted = usableVariants.filter((variant) => variant.discountPercent && variant.discountEndsAt && new Date(variant.discountEndsAt).valueOf() > Date.now());
+      const discounted = usableVariants.filter((variant) => variant.discountPercent && (!variant.discountEndsAt || new Date(variant.discountEndsAt).valueOf() > Date.now()));
       const bestDiscount = discounted.sort((left, right) => Number(left.price) - Number(right.price))[0];
       const rawColor = representative.color || "Default";
       return {
