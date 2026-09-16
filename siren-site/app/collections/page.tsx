@@ -8,6 +8,7 @@ import CollectionsCarousel from "@/components/CollectionsCarousel";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useEffect, useState } from "react";
 import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
+import Link from "next/link";
 
 export default function CollectionsPage() {
   const { t } = useLanguage();
@@ -25,7 +26,7 @@ export default function CollectionsPage() {
           <h1>{t("collections")}</h1>
 
           <div className="collections-page-breadcrumb">
-            <a href="/">{t("home")}</a>
+            <Link href="/">{t("home")}</Link>
             <span>&gt;</span>
             <span>{t("collections")}</span>
           </div>
@@ -67,7 +68,7 @@ function CollectionFeature({
 }) {
   return (
     <div className={`collections-page-feature ${className}`}>
-      <a href="#" className="collections-page-feature-link">
+      <Link href="/shop" className="collections-page-feature-link">
         <Image
           src={image}
           alt={title}
@@ -80,7 +81,7 @@ function CollectionFeature({
           <strong>{title}</strong>
           <span>{go}</span>
         </div>
-      </a>
+      </Link>
     </div>
   );
 }

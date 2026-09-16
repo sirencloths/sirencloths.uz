@@ -1,6 +1,8 @@
 "use client";
 
 import { CSSProperties, ElementType, FormEvent, Fragment, ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import Link from "next/link";
 import {
   Archive,
   ArrowDown,
@@ -9,6 +11,7 @@ import {
   Bell,
   Box,
   CalendarDays,
+  CheckCheck,
   ChevronRight,
   ClipboardList,
   Crown,
@@ -25,6 +28,7 @@ import {
   Printer,
   RefreshCw,
   Download,
+  Eye,
   Search,
   Settings2,
   SlidersHorizontal,
@@ -38,6 +42,8 @@ import {
   Users,
 } from "lucide-react";
 import { isSpotifyUrl } from "@/lib/spotify";
+
+declare global { interface HTMLElement { readonly cells: HTMLCollectionOf<HTMLTableCellElement>; } }
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -57,7 +63,7 @@ import TailAdminGridIcon from "./tailadmin/icons/GridIcon";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./tailadmin/ui/table";
 import { OfflineCashier, OfflineInventory, OfflineReports, OfflineSales } from "./OfflineShopWorkspace";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+const API = process.env.NEXT_PUBLIC_API_URL ?? (typeof window === "undefined" ? "http://localhost:4000/api" : `${window.location.protocol}//${window.location.hostname}:4000/api`);
 type Tab =
   | "dashboard"
   | "products"
@@ -116,8 +122,14 @@ type CustomerRecord = {
   emailVerifiedAt?: string | null; welcomeDiscountEligible?: boolean; welcomeDiscountPercent?: number;
   totalOrders: number; totalSpent: number;
 };
+type CustomerDetail = CustomerRecord & {
+  paidOrders: number; averageOrder: number; lastOrderAt?: string | null;
+  addresses: Array<{ id: string; country?: string; city?: string; line1?: string; line2?: string; postalCode?: string; isDefault?: boolean }>;
+  orders: Array<{ id: string; orderNumber: string; status: string; paymentStatus: string; fulfillmentStatus?: string; totalAmount: string; currencyCode?: string; paymentMethod?: string | null; shippingAddress?: { country?: string; city?: string; address?: string }; note?: string | null; createdAt: string; items: Array<{ title: string; sku?: string | null; quantity: number; unitPrice: string }> }>;
+};
 type Product = {
   id: string;
+  createdAt?: string;
   title: string;
   slug: string;
   description: string;
@@ -134,6 +146,7 @@ type Product = {
     views?: number;
     sizeGuideImageUrl?: string;
     article?: string;
+    fiscal?: { ikpuCode?: string; packageCode?: string; unitCode?: string; vatPercent?: number };
     translations?: {
       titleUz?: string;
       titleRu?: string;
@@ -156,7 +169,7 @@ type Order = {
   discountAmount?: string;
   shippingAmount?: string;
   paymentMethod?: string | null; shippingAddress?: { country?: string; city?: string; address?: string }; note?: string | null;
-  customer?: { email?: string; firstName?: string; lastName?: string; phone?: string } | null;
+  customer?: { id?: string; email?: string; firstName?: string; lastName?: string; phone?: string } | null;
   items?: Array<{ titleSnapshot: string; skuSnapshot?: string | null; quantity: number; unitPrice: string; imageUrl?: string | null }>;
   createdAt: string;
 };
@@ -385,6 +398,10 @@ const blankProduct = () => ({
   gender: "unisex" as "male" | "female" | "unisex",
   inventoryQuantity: 0,
   sizeGuideImageUrl: "",
+  ikpuCode: "",
+  packageCode: "",
+  unitCode: "",
+  vatPercent: 0,
 });
 const newCharacteristicId = () => `characteristic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const blankVariant = () => ({
@@ -467,6 +484,53 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       {children}
     </label>
   );
+}
+type FiscalIkpuOption = { code: string; name: string; category: string };
+type FiscalPackage = { code: string; label: string; unitCode: string; unitName: string };
+type FiscalFieldsValue = { ikpuCode: string; packageCode: string; unitCode: string; vatPercent: number };
+function FiscalCatalogPicker({ token, categoryName, productTitle, value, onChange }: { token: string; categoryName: string; productTitle: string; value: FiscalFieldsValue; onChange: (next: FiscalFieldsValue) => void }) {
+  const suggestedQuery = [categoryName, productTitle].filter(Boolean).join(' ').trim();
+  const [query, setQuery] = useState(suggestedQuery);
+  const [options, setOptions] = useState<FiscalIkpuOption[]>([]);
+  const [packages, setPackages] = useState<FiscalPackage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  useEffect(() => { setQuery(suggestedQuery); }, [suggestedQuery]);
+  const find = async () => {
+    if (query.trim().length < 2) { setMessage('Qidirish uchun kamida 2 ta belgi yozing.'); return; }
+    setLoading(true); setMessage('');
+    try {
+      const result = await api<FiscalIkpuOption[]>(`/admin/catalog/fiscal/ikpu?query=${encodeURIComponent(query.trim())}`, token);
+      setOptions(result);
+      setMessage(result.length ? `${result.length} ta rasmiy IKPU topildi.` : 'Mos IKPU topilmadi. Mahsulot turini aniqroq yozing.');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'IKPU katalogidan qidirib bo‘lmadi.'); }
+    finally { setLoading(false); }
+  };
+  const loadPackages = async (code: string) => {
+    if (!code) { setPackages([]); return; }
+    setLoading(true); setMessage('');
+    try {
+      const result = await api<FiscalIkpuOption & { packages: FiscalPackage[] }>(`/admin/catalog/fiscal/ikpu/${encodeURIComponent(code)}`, token);
+      setPackages(result.packages);
+      setOptions((current) => current.some((item) => item.code === result.code) ? current : [{ code: result.code, name: result.name, category: result.category }, ...current]);
+      if (!result.packages.length) setMessage('Bu IKPU uchun rasmiy qadoq kodi topilmadi.');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Qadoq kodlarini olib bo‘lmadi.'); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { if (value.ikpuCode) void loadPackages(value.ikpuCode); else setPackages([]); }, [value.ikpuCode]);
+  return <>
+    <div className="product-fiscal-search">
+      <Field label="Mahsulot kategoriyasi"><div className="product-fiscal-category">{categoryName || 'Avval kategoriya tanlang'}</div></Field>
+      <Field label="Rasmiy katalogdan IKPU qidirish"><div className="product-fiscal-search-input"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Masalan: futbolka, krossovka" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void find(); } }} /><Button type="button" size="sm" onClick={() => void find()} disabled={loading}>{loading ? 'Qidirilmoqda…' : 'Qidirish'}</Button></div></Field>
+    </div>
+    {message && <p className="product-fiscal-message" role="status">{message}</p>}
+    <div className="ui-form-grid product-fiscal-grid">
+      <Field label="IKPU kodi"><select value={value.ikpuCode} onChange={(event) => { const code = event.target.value; onChange({ ...value, ikpuCode: code, packageCode: '', unitCode: '' }); }}><option value="">Rasmiy katalogdan IKPU tanlang</option>{options.map((item) => <option key={item.code} value={item.code}>{item.code} — {item.name}</option>)}</select><small>Faqat rasmiy katalogdan tanlangan kod Payme fiskal chekiga yuboriladi.</small></Field>
+      <Field label="Qadoq kodi"><select value={value.packageCode} disabled={!value.ikpuCode || loading} onChange={(event) => { const selected = packages.find((item) => item.code === event.target.value); onChange({ ...value, packageCode: event.target.value, unitCode: selected?.unitCode ?? '' }); }}><option value="">{value.ikpuCode ? 'Qadoq turini tanlang' : 'Avval IKPU tanlang'}</option>{packages.map((item) => <option key={item.code} value={item.code}>{item.code} — {item.label}</option>)}</select><small>Tanlangan IKPU uchun rasmiy katalogdagi qadoqlar.</small></Field>
+      <Field label="O‘lchov birligi kodi"><input value={value.unitCode} readOnly placeholder="Qadoq tanlanganda to‘ladi" /><small>{packages.find((item) => item.code === value.packageCode)?.unitName || 'Katalogdagi o‘lchov birligi avtomatik to‘ladi.'}</small></Field>
+      <Field label="QQS foizi"><select value={value.vatPercent} onChange={(event) => onChange({ ...value, vatPercent: Number(event.target.value) })}><option value={0}>QQSsiz — 0%</option><option value={12}>12%</option></select></Field>
+    </div>
+  </>;
 }
 const colorChoices = ["Black", "White", "Gray", "Blue", "Green", "Red", "Brown", "Pink"];
 const namedColors = ["AliceBlue","AntiqueWhite","Aqua","Aquamarine","Azure","Beige","Bisque","Black","BlanchedAlmond","Blue","BlueViolet","Brown","BurlyWood","CadetBlue","Chartreuse","Chocolate","Coral","CornflowerBlue","Cornsilk","Crimson","Cyan","DarkBlue","DarkCyan","DarkGoldenRod","DarkGray","DarkGreen","DarkKhaki","DarkMagenta","DarkOliveGreen","DarkOrange","DarkOrchid","DarkRed","DarkSalmon","DarkSeaGreen","DarkSlateBlue","DarkSlateGray","DarkTurquoise","DarkViolet","DeepPink","DeepSkyBlue","DimGray","DodgerBlue","FireBrick","FloralWhite","ForestGreen","Fuchsia","Gainsboro","GhostWhite","Gold","GoldenRod","Gray","Green","GreenYellow","HoneyDew","HotPink","IndianRed","Indigo","Ivory","Khaki","Lavender","LavenderBlush","LawnGreen","LemonChiffon","LightBlue","LightCoral","LightCyan","LightGoldenRodYellow","LightGray","LightGreen","LightPink","LightSalmon","LightSeaGreen","LightSkyBlue","LightSlateGray","LightSteelBlue","LightYellow","Lime","LimeGreen","Linen","Magenta","Maroon","MediumAquaMarine","MediumBlue","MediumOrchid","MediumPurple","MediumSeaGreen","MediumSlateBlue","MediumSpringGreen","MediumTurquoise","MediumVioletRed","MidnightBlue","MintCream","MistyRose","Moccasin","NavajoWhite","Navy","OldLace","Olive","OliveDrab","Orange","OrangeRed","Orchid","PaleGoldenRod","PaleGreen","PaleTurquoise","PaleVioletRed","PapayaWhip","PeachPuff","Peru","Pink","Plum","PowderBlue","Purple","RebeccaPurple","Red","RosyBrown","RoyalBlue","SaddleBrown","Salmon","SandyBrown","SeaGreen","SeaShell","Sienna","Silver","SkyBlue","SlateBlue","SlateGray","Snow","SpringGreen","SteelBlue","Tan","Teal","Thistle","Tomato","Turquoise","Violet","Wheat","White","WhiteSmoke","Yellow","YellowGreen"];
@@ -657,7 +721,7 @@ export function InventoryProductTable({ products, categories, openProducts, open
     return { checked: valid.length > 0 && count === valid.length, indeterminate: count > 0 && count < valid.length, disabled: valid.length === 0 };
   };
   const visibleValid = products.flatMap((product) => product.variants).filter(isValid);
-  return <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th><SelectionCheckbox label="Ko‘rinib turgan barcha variantlarni tanlash" checked={visibleValid.length > 0 && visibleValid.every((variant) => selected[variant.id] !== undefined)} indeterminate={visibleValid.some((variant) => selected[variant.id] !== undefined) && !visibleValid.every((variant) => selected[variant.id] !== undefined)} disabled={!visibleValid.length} onChange={(checked) => setVariants(visibleValid, checked)} /></th><th>Mahsulot / variant</th><th>SKU</th><th>EAN-13 shtrix kodi</th><th>Kategoriya</th><th>Narx</th><th>Jami qoldiq</th><th>Online</th><th>Offline</th><th>Holat</th><th>Yangilangan</th><th>Amallar</th></tr></thead><tbody>
+  return <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th><SelectionCheckbox label="Ko‘rinib turgan barcha variantlarni tanlash" checked={visibleValid.length > 0 && visibleValid.every((variant) => selected[variant.id] !== undefined)} indeterminate={visibleValid.some((variant) => selected[variant.id] !== undefined) && !visibleValid.every((variant) => selected[variant.id] !== undefined)} disabled={!visibleValid.length} onChange={(checked) => setVariants(visibleValid, checked)} /></th><th>Mahsulot / variant</th><th>SKU</th><th>EAN-13 shtrix kodi</th><th>Kategoriya</th><th>Narx</th><th>Jami qoldiq</th><th>Online</th><th>Offline</th><th>Holat</th><th>Yaratilgan</th><th>Amallar</th></tr></thead><tbody>
     {products.map((product) => {
       const groups = productVariantGroups(product);
       const variants = product.variants;
@@ -666,7 +730,7 @@ export function InventoryProductTable({ products, categories, openProducts, open
       const online = variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0);
       const offline = variants.reduce((sum, variant) => sum + offlineOf(variant), 0);
       const price = variants.map((variant) => amountOf(variant.price)).filter(Boolean);
-      return <Fragment key={product.id}><tr className="inventory-row inventory-row--product"><td><SelectionCheckbox label={`${product.title} barcha variantlarini tanlash`} {...productState} onChange={(checked) => setVariants(variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleProduct(product.id)} aria-expanded={openProducts.has(product.id)}>{openProducts.has(product.id) ? "▼" : "▶"}</button><div className="inventory-product-cell"><div className="inventory-thumb"><AdminProductImageRotator product={product} /></div><span><b>{product.title}</b><small>{product.metadata?.article || variants[0]?.sku || "SKU yo‘q"}</small></span></div></td><td>{product.metadata?.article || "—"}</td><td>—</td><td>{categories.find((category) => category.id === product.categoryId)?.name ?? "—"}</td><td>{money(price.length ? Math.min(...price) : amountOf(product.price), product.currencyCode)}</td><td>{physical}</td><td>{online}</td><td>{offline}</td><td><Badge variant={flavor(product.status)}>{product.status}</Badge></td><td>Hozir</td><td><div className="inventory-actions"><Button size="sm" variant="outline" onClick={() => onEdit(product)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => onInspect(product)}>Ma’lumot</Button></div></td></tr>
+      return <Fragment key={product.id}><tr className="inventory-row inventory-row--product"><td><SelectionCheckbox label={`${product.title} barcha variantlarini tanlash`} {...productState} onChange={(checked) => setVariants(variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleProduct(product.id)} aria-expanded={openProducts.has(product.id)}>{openProducts.has(product.id) ? "▼" : "▶"}</button><div className="inventory-product-cell"><div className="inventory-thumb"><AdminProductImageRotator product={product} /></div><span><b>{product.title}</b><small>{product.metadata?.article || variants[0]?.sku || "SKU yo‘q"}</small></span></div></td><td>{product.metadata?.article || "—"}</td><td>—</td><td>{categories.find((category) => category.id === product.categoryId)?.name ?? "—"}</td><td>{money(price.length ? Math.min(...price) : amountOf(product.price), product.currencyCode)}</td><td>{physical}</td><td>{online}</td><td>{offline}</td><td><Badge variant={flavor(product.status)}>{product.status}</Badge></td><td>{readableDate(product.createdAt)}</td><td><div className="inventory-actions"><Button size="sm" variant="outline" onClick={() => onEdit(product)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => onInspect(product)}>Ma’lumot</Button></div></td></tr>
         {openProducts.has(product.id) && groups.map((group) => { const colorKey = `${product.id}:${group.key}`; const colorState = selectionLine(group.variants); const colorPhysical = group.variants.reduce((sum, variant) => sum + physicalOf(variant), 0); const colorOnline = group.variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0); const colorOffline = group.variants.reduce((sum, variant) => sum + offlineOf(variant), 0); return <Fragment key={colorKey}><tr className="inventory-row inventory-row--color"><td><SelectionCheckbox label={`${group.color} barcha razmerlarini tanlash`} {...colorState} onChange={(checked) => setVariants(group.variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleColor(colorKey)} aria-expanded={openColors.has(colorKey)}>{openColors.has(colorKey) ? "▼" : "▶"}</button><span className="inventory-color-name"><i style={{ backgroundColor: colorHex(group.color) }} />{group.color}</span></td><td>—</td><td>—</td><td>Rang</td><td>—</td><td>{colorPhysical}</td><td>{colorOnline}</td><td>{colorOffline}</td><td>—</td><td>—</td><td /></tr>
           {openColors.has(colorKey) && group.variants.map((variant) => { const active = isValid(variant); const value = selected[variant.id]; return <tr className={`inventory-row inventory-row--size ${active ? "" : "is-disabled"}`} key={variant.id}><td><SelectionCheckbox label={`${group.color} ${variant.size || "ONE SIZE"} ni tanlash`} checked={value !== undefined} disabled={!active} onChange={(checked) => setVariants([variant], checked)} /></td><td><span className="inventory-size-name">{variant.size || "ONE SIZE"}</span></td><td>{variant.sku || "—"}</td><td>{variant.barcode || "Yaratilmoqda…"}</td><td>Razmer</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{physicalOf(variant)}</td><td>{variant.inventoryQuantity}</td><td>{offlineOf(variant)}</td><td>{variant.isActive ? "Active" : "Faol emas"}</td><td>—</td><td>{value !== undefined ? <label className="inventory-qty"><span>{selectionLabel}</span><input type="number" min="1" max={variant.inventoryQuantity} value={value} onChange={(event) => onQuantityChange(variant, Number(event.target.value) || 1)} /></label> : <span className="inventory-unavailable">{active ? "Tanlang" : "Mavjud emas"}</span>}</td></tr>; })}</Fragment>; })}</Fragment>;
     })}
@@ -764,7 +828,7 @@ function ProductInventoryWorkspace({ products, categories, transfers, token, onE
         <select value={sizeFilter} onChange={(event) => setSizeFilter(event.target.value)}><option value="">Barcha razmer</option>{allSizes.map((size) => <option key={size} value={size}>{size}</option>)}</select>
       </div></details>
     </div>
-    <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th><SelectionCheckbox label="Ko‘rinib turgan barcha variantlarni tanlash" checked={visibleValid.length > 0 && visibleValid.every((variant) => selected[variant.id] !== undefined)} indeterminate={visibleValid.some((variant) => selected[variant.id] !== undefined) && !visibleValid.every((variant) => selected[variant.id] !== undefined)} disabled={!visibleValid.length} onChange={(checked) => setVariants(visibleValid, checked)} /></th><th>Mahsulot / variant</th><th>SKU</th><th>EAN-13 shtrix kodi</th><th>Kategoriya</th><th>Narx</th><th>Jami qoldiq</th><th>Online</th><th>Offline</th><th>Holat</th><th>Yangilangan</th><th>Amallar</th></tr></thead><tbody>
+    <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th><SelectionCheckbox label="Ko‘rinib turgan barcha variantlarni tanlash" checked={visibleValid.length > 0 && visibleValid.every((variant) => selected[variant.id] !== undefined)} indeterminate={visibleValid.some((variant) => selected[variant.id] !== undefined) && !visibleValid.every((variant) => selected[variant.id] !== undefined)} disabled={!visibleValid.length} onChange={(checked) => setVariants(visibleValid, checked)} /></th><th>Mahsulot / variant</th><th>SKU</th><th>EAN-13 shtrix kodi</th><th>Kategoriya</th><th>Narx</th><th>Jami qoldiq</th><th>Online</th><th>Offline</th><th>Holat</th><th>Yaratilgan</th><th>Amallar</th></tr></thead><tbody>
       {filtered.map((product) => {
         const groups = productVariantGroups(product);
         const variants = product.variants;
@@ -773,7 +837,7 @@ function ProductInventoryWorkspace({ products, categories, transfers, token, onE
         const online = variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0);
         const offline = variants.reduce((sum, variant) => sum + offlineOf(variant), 0);
         const price = variants.map((variant) => amountOf(variant.price)).filter(Boolean);
-        return <Fragment key={product.id}><tr className="inventory-row inventory-row--product"><td><SelectionCheckbox label={`${product.title} barcha variantlarini tanlash`} {...productState} onChange={(checked) => setVariants(variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenProducts, product.id)} aria-expanded={openProducts.has(product.id)}>{openProducts.has(product.id) ? "▼" : "▶"}</button><div className="inventory-product-cell"><div className="inventory-thumb"><AdminProductImageRotator product={product} /></div><span><b>{product.title}</b><small>{product.metadata?.article || variants[0]?.sku || "SKU yo‘q"}</small></span></div></td><td>{product.metadata?.article || "—"}</td><td>—</td><td>{categories.find((category) => category.id === product.categoryId)?.name ?? "—"}</td><td>{money(price.length ? Math.min(...price) : amountOf(product.price), product.currencyCode)}</td><td>{physical}</td><td>{online}</td><td>{offline}</td><td><Badge variant={flavor(product.status)}>{product.status}</Badge></td><td>Hozir</td><td><div className="inventory-actions"><Button size="sm" variant="outline" onClick={() => onEdit(product)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => onInspect(product)}>Ma’lumot</Button></div></td></tr>
+        return <Fragment key={product.id}><tr className="inventory-row inventory-row--product"><td><SelectionCheckbox label={`${product.title} barcha variantlarini tanlash`} {...productState} onChange={(checked) => setVariants(variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenProducts, product.id)} aria-expanded={openProducts.has(product.id)}>{openProducts.has(product.id) ? "▼" : "▶"}</button><div className="inventory-product-cell"><div className="inventory-thumb"><AdminProductImageRotator product={product} /></div><span><b>{product.title}</b><small>{product.metadata?.article || variants[0]?.sku || "SKU yo‘q"}</small></span></div></td><td>{product.metadata?.article || "—"}</td><td>—</td><td>{categories.find((category) => category.id === product.categoryId)?.name ?? "—"}</td><td>{money(price.length ? Math.min(...price) : amountOf(product.price), product.currencyCode)}</td><td>{physical}</td><td>{online}</td><td>{offline}</td><td><Badge variant={flavor(product.status)}>{product.status}</Badge></td><td>{readableDate(product.createdAt)}</td><td><div className="inventory-actions"><Button size="sm" variant="outline" onClick={() => onEdit(product)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => onInspect(product)}>Ma’lumot</Button></div></td></tr>
           {openProducts.has(product.id) && groups.map((group) => { const colorKey = `${product.id}:${group.key}`; const colorState = selectionLine(group.variants); const colorPhysical = group.variants.reduce((sum, variant) => sum + physicalOf(variant), 0); const colorOnline = group.variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0); const colorOffline = group.variants.reduce((sum, variant) => sum + offlineOf(variant), 0); return <Fragment key={colorKey}><tr className="inventory-row inventory-row--color"><td><SelectionCheckbox label={`${group.color} barcha razmerlarini tanlash`} {...colorState} onChange={(checked) => setVariants(group.variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenColors, colorKey)} aria-expanded={openColors.has(colorKey)}>{openColors.has(colorKey) ? "▼" : "▶"}</button><span className="inventory-color-name"><i style={{ backgroundColor: colorHex(group.color) }} />{group.color}</span></td><td>—</td><td>—</td><td>Rang</td><td>—</td><td>{colorPhysical}</td><td>{colorOnline}</td><td>{colorOffline}</td><td>—</td><td>—</td><td /></tr>
             {openColors.has(colorKey) && group.variants.map((variant) => { const active = isValid(variant); const value = selected[variant.id]; return <tr className={`inventory-row inventory-row--size ${active ? "" : "is-disabled"}`} key={variant.id}><td><SelectionCheckbox label={`${group.color} ${variant.size || "ONE SIZE"} ni tanlash`} checked={value !== undefined} disabled={!active} onChange={(checked) => setVariants([variant], checked)} /></td><td><span className="inventory-size-name">{variant.size || "ONE SIZE"}</span></td><td>{variant.sku || "—"}</td><td>{variant.barcode || "Yaratilmoqda…"}</td><td>Razmer</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{physicalOf(variant)}</td><td>{variant.inventoryQuantity}</td><td>{offlineOf(variant)}</td><td>{variant.isActive ? "Active" : "Faol emas"}</td><td>—</td><td>{value !== undefined ? <label className="inventory-qty"><span>Transfer</span><input type="number" min="1" max={variant.inventoryQuantity} value={value} onChange={(event) => setSelected((current) => ({ ...current, [variant.id]: Math.min(variant.inventoryQuantity, Math.max(1, Number(event.target.value) || 1)) }))} /></label> : <span className="inventory-unavailable">{active ? "Tanlang" : "Mavjud emas"}</span>}</td></tr>; })}</Fragment>; })}</Fragment>;
       })}
@@ -815,7 +879,7 @@ function ProductInspector({ product, onClose }: { product: Product; onClose: () 
   const salePrices = product.variants.map((variant) => amountOf(variant.price)).filter(Boolean);
   const article = product.metadata?.article || "—";
   const totalAdded = Math.max(Number(product.metadata?.baseInventoryQuantity ?? 0), product.variants.reduce((sum, variant) => sum + (variant.totalInventoryAdded ?? variant.inventoryQuantity), 0));
-  return <div className="product-inspector-backdrop" role="presentation" onMouseDown={onClose}><section className="product-inspector" role="dialog" aria-modal="true" aria-label={`${product.title} ma’lumotlari`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">PRODUCT INSPECTOR</p><h3>{product.title}</h3><span>{article} · {product.status}</span></div><button type="button" onClick={onClose} aria-label="Yopish">×</button></header><div className="product-inspector-metrics"><div><span>Sotilgan</span><b>{product.soldQuantity ?? 0}</b></div><div><span>Ko‘rishlar</span><b>{Number(product.metadata?.views ?? 0)}</b></div><div><span>Ombordagi qoldiq</span><b>{stock}</b></div><div><span>Jami kiritilgan</span><b>{totalAdded}</b></div><div><span>Tannarx</span><b>{money(cost, product.currencyCode)}</b></div><div><span>Xarajat</span><b>{money(expense, product.currencyCode)}</b></div><div><span>Sotuv narxi</span><b>{salePrices.length ? `${money(Math.min(...salePrices), product.currencyCode)} — ${money(Math.max(...salePrices), product.currencyCode)}` : money(amountOf(product.price), product.currencyCode)}</b></div></div><div className="product-inspector-table-wrap"><table><thead><tr><th>SKU</th><th>Rang</th><th>Razmer</th><th>Qoldiq</th><th>Tannarx</th><th>Xarajat</th><th>Sotuv narxi</th><th>Holat</th></tr></thead><tbody>{product.variants.length ? product.variants.map((variant) => <tr key={variant.id}><td>{variant.sku}</td><td>{variant.color || "—"}</td><td>{variant.size || "ONE SIZE"}</td><td>{variant.inventoryQuantity}</td><td>{money(amountOf(variant.attributes?.costPrice), product.currencyCode)}</td><td>{money(amountOf(variant.attributes?.expensePrice), product.currencyCode)}</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.isActive ? "Active" : "Off"}</td></tr>) : <tr><td colSpan={8}>Variantlar yo‘q.</td></tr>}</tbody></table></div><footer><Button type="button" variant="outline" onClick={onClose}>Yopish</Button><Button type="button" onClick={() => { window.location.assign(`/products/${product.slug}`); }}>Saytda ko‘rish <ChevronRight size={15} /></Button></footer></section></div>;
+  return <div className="product-inspector-backdrop" role="presentation" onMouseDown={onClose}><section className="product-inspector" role="dialog" aria-modal="true" aria-label={`${product.title} ma’lumotlari`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">PRODUCT INSPECTOR</p><h3>{product.title}</h3><span>{article} · {product.status}</span></div><button type="button" onClick={onClose} aria-label="Yopish">×</button></header><div className="product-inspector-metrics"><div><span>Sotilgan</span><b>{product.soldQuantity ?? 0}</b></div><div><span>Ko‘rishlar</span><b>{Number(product.metadata?.views ?? 0)}</b></div><div><span>Ombordagi qoldiq</span><b>{stock}</b></div><div><span>Jami kiritilgan</span><b>{totalAdded}</b></div><div><span>Tannarx</span><b>{money(cost, product.currencyCode)}</b></div><div><span>Xarajat</span><b>{money(expense, product.currencyCode)}</b></div><div><span>Sotuv narxi</span><b>{salePrices.length ? `${money(Math.min(...salePrices), product.currencyCode)} — ${money(Math.max(...salePrices), product.currencyCode)}` : money(amountOf(product.price), product.currencyCode)}</b></div></div><div className="product-inspector-table-wrap"><table><thead><tr><th>SKU</th><th>Rang</th><th>Razmer</th><th>Qoldiq</th><th>Tannarx</th><th>Xarajat</th><th>Sotuv narxi</th><th>Holat</th></tr></thead><tbody>{product.variants.length ? product.variants.map((variant) => <tr key={variant.id}><td>{variant.sku}</td><td>{variant.color || "—"}</td><td>{variant.size || "ONE SIZE"}</td><td>{variant.inventoryQuantity}</td><td>{money(amountOf(variant.attributes?.costPrice), product.currencyCode)}</td><td>{money(amountOf(variant.attributes?.expensePrice), product.currencyCode)}</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.isActive ? "Active" : "Off"}</td></tr>) : <tr><td colSpan={8}>Variantlar yo‘q.</td></tr>}</tbody></table></div><footer><Button type="button" variant="outline" onClick={onClose}>Yopish</Button><Link className="ui-button ui-button--primary" href={`/products/${product.slug}`}>Saytda ko‘rish <ChevronRight size={15} /></Link></footer></section></div>;
 }
 type AdminModuleConfig = { title: string; description: string; tabs: string[]; columns: string[]; fields: string[]; metrics?: string[]; action: string };
 const adminModules: Record<"delivery" | "customers" | "promos" | "partners" | "finance" | "currencies" | "analytics" | "settings", AdminModuleConfig> = {
@@ -855,10 +919,28 @@ function AdminModulePage({ config, loading, error, onNotify, customers = [] }: {
     </div>
   </section>;
 }
-function CustomerManager({ customers, loading, error }: { customers: CustomerRecord[]; loading: boolean; error: string }) {
+function CustomerManager({ customers, loading, error, token }: { customers: CustomerRecord[]; loading: boolean; error: string; token: string }) {
   const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<CustomerDetail | null>(null);
+  const [receipt, setReceipt] = useState<CustomerDetail["orders"][number] | null>(null);
+  const [detailError, setDetailError] = useState("");
+  const [opening, setOpening] = useState(false);
   const filtered = customers.filter((customer) => `${customer.firstName} ${customer.lastName} ${customer.email ?? ""} ${customer.phone ?? ""}`.toLocaleLowerCase("uz-UZ").includes(query.toLocaleLowerCase("uz-UZ")));
-  return <section className="tailadmin-customers-page"><header className="tailadmin-page-heading"><div><p className="ui-overline">Mijozlar</p><h2>Barcha mijozlar</h2><span>Saytda ro‘yxatdan o‘tgan va checkout qilgan haqiqiy customer yozuvlari.</span></div><Badge variant="neutral">{customers.length} ta mijoz</Badge></header><div className="tailadmin-data-card"><div className="tailadmin-data-card-toolbar admin-table-tools"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ism, email yoki telefon qidirish..." aria-label="Mijoz qidirish" /></div>{loading ? <div className="admin-module-state">Yuklanmoqda…</div> : error ? <div className="admin-module-state is-error">{error}</div> : <div className="admin-module-table-wrap"><table className="admin-module-table"><thead><tr><th>Ism</th><th>Telefon</th><th>Email</th><th>Ro‘yxatdan o‘tgan</th><th>Buyurtmalar</th><th>Jami xarid</th><th>O‘rtacha chek</th><th>Region</th><th>Holat</th></tr></thead><tbody>{filtered.map((customer) => { const average = customer.totalOrders ? customer.totalSpent / customer.totalOrders : 0; return <tr key={customer.id}><td><b>{`${customer.firstName} ${customer.lastName}`.trim() || "—"}</b></td><td>{customer.phone || "—"}</td><td>{customer.email || "—"}{customer.emailVerifiedAt ? <small> ✓</small> : null}</td><td>{readableDate(customer.createdAt)}</td><td>{customer.totalOrders}</td><td>{Math.round(customer.totalSpent).toLocaleString("uz-UZ")} UZS</td><td>{Math.round(average).toLocaleString("uz-UZ")} UZS</td><td>{customer.region || "—"}</td><td>{customer.isActive === false ? "Nofaol" : customer.welcomeDiscountEligible ? `${customer.welcomeDiscountPercent || 15}% welcome` : "Faol"}</td></tr>; })}{!filtered.length && <tr><td colSpan={9}><Empty>{query ? "Qidiruv bo‘yicha mijoz topilmadi." : "Hali customer yozuvi yo‘q."}</Empty></td></tr>}</tbody></table></div>}<div className="admin-table-pagination"><span>{filtered.length} ta natija</span></div></div></section>;
+  const openCustomer = async (customer: CustomerRecord) => {
+    setOpening(true); setDetailError("");
+    try { setSelected(await api<CustomerDetail>(`/admin/customers/${customer.id}`, token)); }
+    catch (reason) { setDetailError(reason instanceof Error ? reason.message : "Mijoz ma’lumotini olib bo‘lmadi."); }
+    finally { setOpening(false); }
+  };
+  const customerName = (customer: Pick<CustomerRecord, "firstName" | "lastName">) => `${customer.firstName} ${customer.lastName}`.trim() || "—";
+  const closeProfile = () => { setSelected(null); setReceipt(null); };
+  return <section className="tailadmin-customers-page">
+    <header className="tailadmin-page-heading"><div><p className="ui-overline">MIJOZLAR</p><h2>Barcha mijozlar</h2><span>Mijoz profili, buyurtmalar va xarid faolligi.</span></div><Badge variant="neutral">{customers.length} ta mijoz</Badge></header>
+    <div className="tailadmin-data-card"><div className="tailadmin-data-card-toolbar admin-table-tools"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ism, email yoki telefon qidirish..." aria-label="Mijoz qidirish" /></div>{loading ? <div className="admin-module-state">Yuklanmoqda…</div> : error ? <div className="admin-module-state is-error">{error}</div> : <div className="admin-module-table-wrap"><table className="admin-module-table customer-list-table"><thead><tr><th>Mijoz</th><th>Telefon</th><th>Email</th><th>Buyurtmalar</th><th>Jami savdo</th><th>O‘rtacha chek</th><th>Oxirgi buyurtma</th><th>Holat</th></tr></thead><tbody>{filtered.map((customer) => { const average = customer.totalOrders ? customer.totalSpent / customer.totalOrders : 0; return <tr key={customer.id}><td><button type="button" className="customer-name-trigger" onClick={() => void openCustomer(customer)}>{customerName(customer)}<small>Profilni ko‘rish</small></button></td><td>{customer.phone || "—"}</td><td>{customer.email || "—"}{customer.emailVerifiedAt ? <small> ✓</small> : null}</td><td>{customer.totalOrders}</td><td><b>{Math.round(customer.totalSpent).toLocaleString("uz-UZ")} UZS</b></td><td>{Math.round(average).toLocaleString("uz-UZ")} UZS</td><td>—</td><td><span className={`customer-segment${customer.welcomeDiscountEligible ? " is-welcome" : ""}`}>{customer.isActive === false ? "Nofaol" : customer.welcomeDiscountEligible ? `${customer.welcomeDiscountPercent || 15}% welcome` : "Faol"}</span></td></tr>; })}{!filtered.length && <tr><td colSpan={8}><Empty>{query ? "Qidiruv bo‘yicha mijoz topilmadi." : "Hali customer yozuvi yo‘q."}</Empty></td></tr>}</tbody></table></div>}<div className="admin-table-pagination"><span>{filtered.length} ta natija</span></div></div>
+    {opening && <p className="customer-detail-loading">Mijoz profili yuklanmoqda…</p>}{detailError && <p className="admin-module-state is-error">{detailError}</p>}
+    {selected && <div className="inventory-confirm-backdrop customer-detail-backdrop" onMouseDown={closeProfile}><section className="customer-detail-dialog" role="dialog" aria-modal="true" aria-label={`${customerName(selected)} profili`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">MIJOZ PROFILI</p><h3>{customerName(selected)}</h3><span>{selected.email || "Email kiritilmagan"}</span></div><button type="button" onClick={closeProfile} aria-label="Yopish">×</button></header><div className="customer-detail-metrics"><div><span>Buyurtmalar</span><b>{selected.totalOrders} ta</b></div><div><span>To‘langan</span><b>{selected.paidOrders} ta</b></div><div><span>Jami savdo</span><b>{money(selected.totalSpent, "UZS")}</b></div><div><span>O‘rtacha chek</span><b>{money(selected.averageOrder, "UZS")}</b></div></div><div className="customer-detail-columns"><section><h4>Aloqa va joylashuv</h4><dl><div><dt>Telefon</dt><dd>{selected.phone || "—"}</dd></div><div><dt>Hudud</dt><dd>{selected.region || "—"}</dd></div><div><dt>Ro‘yxatdan o‘tgan</dt><dd>{readableDate(selected.createdAt)}</dd></div><div><dt>Oxirgi kirish</dt><dd>{selected.lastLoginAt ? readableDate(selected.lastLoginAt) : "—"}</dd></div></dl>{selected.addresses.length ? <div className="customer-addresses">{selected.addresses.map((address) => <p key={address.id}><b>{address.isDefault ? "Asosiy manzil" : "Manzil"}</b><span>{[address.country, address.city, address.line1, address.line2, address.postalCode].filter(Boolean).join(", ")}</span></p>)}</div> : <p className="customer-detail-empty">Saqlangan manzil yo‘q.</p>}</section><section><h4>Buyurtmalar tarixi</h4><div className="customer-detail-orders">{selected.orders.map((order) => <article key={order.id}><div><button type="button" className="customer-receipt-trigger" onClick={() => setReceipt(order)}>#{order.orderNumber}</button><span>{readableDate(order.createdAt)} · {order.paymentStatus}</span><small>{order.items.map((item) => `${item.title} × ${item.quantity}`).join(", ") || "Mahsulot yo‘q"}</small></div><strong>{money(Number(order.totalAmount), order.currencyCode || "UZS")}</strong></article>)}{!selected.orders.length && <p className="customer-detail-empty">Bu mijozda buyurtma yo‘q.</p>}</div></section></div></section></div>}
+    {receipt && <div className="inventory-confirm-backdrop customer-receipt-backdrop" onMouseDown={() => setReceipt(null)}><section className="customer-receipt-dialog" role="dialog" aria-modal="true" aria-label={`Chek #${receipt.orderNumber}`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">BUYURTMA CHEKI</p><h3>Chek #{receipt.orderNumber}</h3><span>{readableDate(receipt.createdAt)} · {receipt.paymentStatus}</span></div><button type="button" onClick={() => setReceipt(null)} aria-label="Yopish">×</button></header><div className="customer-receipt-items">{receipt.items.map((item, index) => <article key={`${item.sku || item.title}-${index}`}><div><b>{item.title}</b><span>{item.sku || "SKU yo‘q"} × {item.quantity}</span></div><strong>{money(Number(item.unitPrice) * item.quantity, receipt.currencyCode || "UZS")}</strong></article>)}</div><dl><div><dt>To‘lov turi</dt><dd>{receipt.paymentMethod || "—"}</dd></div><div><dt>Buyurtma holati</dt><dd>{receipt.status}</dd></div><div className="is-total"><dt>Jami</dt><dd>{money(Number(receipt.totalAmount), receipt.currencyCode || "UZS")}</dd></div></dl></section></div>}
+  </section>;
 }
 function Empty({ children }: { children: ReactNode }) {
   return <p className="admin-empty-v2">{children}</p>;
@@ -889,6 +971,19 @@ function flavor(x: string) {
       ? "warning"
       : ("danger" as const);
 }
+type OrderStage = "pending" | "paid" | "on-way" | "success" | "fail";
+const orderStage = (order: Pick<Order, "status" | "paymentStatus" | "fulfillmentStatus">): OrderStage => {
+  const status = order.status.toLowerCase(); const payment = order.paymentStatus.toLowerCase(); const fulfillment = (order.fulfillmentStatus || "").toLowerCase();
+  if (["cancelled", "refunded", "failed", "fail"].includes(status) || ["failed", "fail", "refunded"].includes(payment)) return "fail";
+  if (["delivered", "success", "completed"].includes(status) || ["delivered", "success", "completed"].includes(fulfillment)) return "success";
+  if (["shipped", "on_way", "on way", "in_transit"].includes(status) || ["shipped", "on_way", "on way", "in_transit"].includes(fulfillment)) return "on-way";
+  if (payment === "paid" || ["paid", "processing"].includes(status)) return "paid";
+  return "pending";
+};
+function OrderStageBadge({ order }: { order: Pick<Order, "status" | "paymentStatus" | "fulfillmentStatus"> }) {
+  const stage = orderStage(order); const label: Record<OrderStage, string> = { pending: "PENDING", paid: "PAID", "on-way": "ON WAY", success: "SUCCESS", fail: "FAIL" };
+  return <span className={`order-stage-badge is-${stage}`}><i aria-hidden="true" />{label[stage]}</span>;
+}
 
 type DashboardData = {
   currency?: { code?: string; available?: boolean };
@@ -912,6 +1007,32 @@ function dashboardTime(value?: string | null) {
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} soat oldin`;
   return new Intl.DateTimeFormat("uz-UZ", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
+
+function dashboardActivityTitle(action: string, entityType: string) {
+  const actions: Record<string, string> = { created: "Yaratildi", activated: "Faollashtirildi", deactivated: "O‘chirildi", updated: "Yangilandi", deleted: "O‘chirildi", logged_in: "Tizimga kirildi", registered: "Ro‘yxatdan o‘tdi" };
+  const entities: Record<string, string> = { product_discount: "chegirma", product: "mahsulot", customer: "mijoz", partner: "hamkor", admin_session: "admin sessiyasi", order: "buyurtma" };
+  const entity = entities[entityType] ?? entityType.replaceAll("_", " ");
+  return entity ? `${actions[action] ?? action.replaceAll("_", " ")} · ${entity}` : (actions[action] ?? action.replaceAll("_", " "));
+}
+
+let orderAlertAudio: AudioContext | null = null;
+function prepareOrderAlertSound() {
+  if (typeof window === "undefined") return;
+  const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextClass) return;
+  orderAlertAudio ??= new AudioContextClass();
+  if (orderAlertAudio.state === "suspended") void orderAlertAudio.resume();
+}
+function playOrderAlertSound() {
+  if (!orderAlertAudio || orderAlertAudio.state !== "running") return;
+  const now = orderAlertAudio.currentTime;
+  [0, .16].forEach((offset, index) => {
+    const tone = orderAlertAudio!.createOscillator(); const gain = orderAlertAudio!.createGain();
+    tone.type = "sine"; tone.frequency.setValueAtTime(index ? 880 : 660, now + offset);
+    gain.gain.setValueAtTime(.0001, now + offset); gain.gain.exponentialRampToValueAtTime(.14, now + offset + .012); gain.gain.exponentialRampToValueAtTime(.0001, now + offset + .13);
+    tone.connect(gain).connect(orderAlertAudio!.destination); tone.start(now + offset); tone.stop(now + offset + .14);
+  });
+}
 function DashboardOverview({ dashboard, currency, period, metric, granularity, customFrom, customTo, onCurrency, onPeriod, onMetric, onGranularity, onCustomFrom, onCustomTo }: { dashboard: DashboardData | null; currency: string; period: string; metric: string; granularity: string; customFrom: string; customTo: string; onCurrency: (value: string) => void; onPeriod: (value: string) => void; onMetric: (value: string) => void; onGranularity: (value: string) => void; onCustomFrom: (value: string) => void; onCustomTo: (value: string) => void }) {
   const kpis = dashboard?.kpis?.current ?? {}; const changes = dashboard?.kpis?.changes ?? {}; const chart = dashboard?.chart; const chartCurrency = dashboard?.currency?.code ?? currency;
   const cards: Array<[string, string, typeof Package, boolean]> = [["Jami mijozlar", "customers", Users, false], ["Jami savdo", "revenue", BarChart3, true], ["Ombordagi mahsulotlar", "inventory", Package, false], ["Jami sotilgan birliklar", "units", ShoppingBag, false], ["Asosiy mahsulot modellari", "baseProducts", Box, false], ["Buyurtmalar", "orders", ClipboardList, false], ["O‘rtacha chek", "averageOrderValue", BarChart3, true], ["Foyda", "profit", ArrowUp, true]];
@@ -928,12 +1049,12 @@ function DashboardOverview({ dashboard, currency, period, metric, granularity, c
   </section>;
 }
 
-type ProductDiscountRecord = { id: string; productId: string; color?: string | null; size?: string | null; percent: number; endsAt?: string | null; isActive: boolean; product?: Pick<Product, "title" | "metadata" | "price" | "currencyCode"> };
+type ProductDiscountRecord = { id: string; productId: string; color?: string | null; size?: string | null; percent: number; endsAt?: string | null; isActive: boolean; discountSoldQuantity?: number; product?: Pick<Product, "title" | "metadata" | "price" | "currencyCode"> };
 function DiscountManager({ token, products, onNotice }: { token: string; products: Product[]; onNotice: (message: string) => void }) {
   const [items, setItems] = useState<ProductDiscountRecord[]>([]); const [query, setQuery] = useState(""); const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); const [scope, setScope] = useState<"sku" | "color" | "size">("sku"); const [color, setColor] = useState(""); const [size, setSize] = useState(""); const [percent, setPercent] = useState(10); const [salePrice, setSalePrice] = useState(""); const [endsAt, setEndsAt] = useState(""); const [saving, setSaving] = useState(false); const [deleteCandidate, setDeleteCandidate] = useState<ProductDiscountRecord | null>(null);
   const load = useCallback(async () => setItems(await api<ProductDiscountRecord[]>("/admin/catalog/discounts", token)), [token]);
   useEffect(() => { void load().catch(() => undefined); }, [load]);
-  const matches = products.filter((product) => `${product.title} ${product.metadata?.article || ""} ${product.variants.map((variant) => variant.sku).join(" ")}`.toLocaleLowerCase("uz-UZ").includes(query.trim().toLocaleLowerCase("uz-UZ")));
+  const matches = products.filter((product) => `${product.title} ${product.metadata?.article || ""} ${product.variants.map((variant) => variant.sku).join(" ")}`.toLocaleLowerCase("uz-UZ").includes(query.trim().toLocaleLowerCase("uz-UZ"))).map((product) => { const prices = product.variants.map((variant) => amountOf(variant.price ?? product.price)).filter((price) => price > 0); return prices.length ? { ...product, price: String(Math.min(...prices)) } : product; });
   const targetVariants = (selectedProduct?.variants ?? []).filter((variant) => scope === "sku" || (variant.color || "Rangsiz") === color).filter((variant) => scope !== "size" || (variant.size || "ONE SIZE") === size);
   const baseAmount = Math.min(...targetVariants.map((variant) => amountOf(variant.price || selectedProduct?.price)).filter((value) => value > 0), amountOf(selectedProduct?.price));
   const colors = [...new Set((selectedProduct?.variants ?? []).map((variant) => variant.color || "Rangsiz"))]; const sizes = [...new Set((selectedProduct?.variants ?? []).filter((variant) => !color || (variant.color || "Rangsiz") === color).map((variant) => variant.size || "ONE SIZE"))];
@@ -945,6 +1066,12 @@ function DiscountManager({ token, products, onNotice }: { token: string; product
   const remove = async () => { if (!deleteCandidate) return; setSaving(true); try { await api(`/admin/catalog/discounts/${deleteCandidate.id}`, token, { method: "DELETE" }); await load(); setDeleteCandidate(null); onNotice("Chegirma butunlay o‘chirildi."); } finally { setSaving(false); } };
   const toggleActive = async (item: ProductDiscountRecord) => { setSaving(true); try { await api(`/admin/catalog/discounts/${item.id}`, token, { method: "PATCH", body: JSON.stringify({ isActive: !item.isActive }) }); await load(); onNotice(item.isActive ? "Chegirma vaqtincha o‘chirildi." : "Chegirma qayta yoqildi."); } finally { setSaving(false); } };
   const timer = (value?: string | null) => value ? new Intl.DateTimeFormat("uz-UZ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Taymersiz";
+  useEffect(() => { const showInfo = (event: MouseEvent) => { const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-discount-extra="info"]') : null; if (!target) return; event.preventDefault(); event.stopPropagation(); const row = target.closest("tr"); const rows = [...document.querySelectorAll(".discount-manager > .ui-card:nth-of-type(2) tbody tr")]; const item = row ? items[rows.indexOf(row)] : undefined; if (!item) return; document.querySelector(".discount-info-backdrop")?.remove(); const product = item.product; const layer = document.createElement("div"); layer.className = "discount-info-backdrop"; layer.innerHTML = `<section class="discount-info-dialog" role="dialog" aria-modal="true"><button type="button" aria-label="Yopish" data-close>×</button><p>CHEGIRMA MA’LUMOTLARI</p><h3>${product?.title || "Mahsulot"}</h3><dl><div><dt>Variant</dt><dd>${item.size ? `${item.color} · ${item.size}` : item.color || "Barcha variant"}</dd></div><div><dt>Chegirma</dt><dd>−${item.percent}%</dd></div><div><dt>Chegirmadagi narx</dt><dd>${money(Math.round(amountOf(product?.price) * (100 - item.percent) / 100), product?.currencyCode || "UZS")}</dd></div><div><dt>Sotilgan</dt><dd>${item.discountSoldQuantity || 0} ta</dd></div><div><dt>Muddat</dt><dd>${timer(item.endsAt)}</dd></div><div><dt>Holat</dt><dd>${item.isActive ? "Faol" : "Off"}</dd></div></dl></section>`; layer.addEventListener("click", (click) => { if (click.target === layer || (click.target instanceof Element && click.target.closest("[data-close]"))) layer.remove(); }); document.body.append(layer); }; document.addEventListener("click", showInfo, true); return () => document.removeEventListener("click", showInfo, true); }, [items]);
+  useEffect(() => { const frame = window.requestAnimationFrame(() => document.querySelectorAll<HTMLElement>(".discount-manager > .ui-card:nth-of-type(2) tbody tr").forEach((row) => { const status = row.cells[6]?.querySelector<HTMLElement>(".ui-badge"); if (status?.textContent?.includes("Vaqtincha o‘chirilgan")) { status.textContent = "Off"; status.classList.add("discount-status-off"); } const view = row.querySelector<HTMLElement>('[data-discount-extra="view"]'); if (view && !view.dataset.eyeMounted) { view.dataset.eyeMounted = "true"; createRoot(view).render(<Eye size={16} strokeWidth={2} />); } })); return () => window.cancelAnimationFrame(frame); }, [items]);
+  useEffect(() => { document.querySelectorAll<HTMLElement>(".discount-manager > .ui-card:nth-of-type(2) tbody tr").forEach((row) => { const status = row.cells[6]?.querySelector<HTMLElement>(".ui-badge"); if (status?.textContent?.includes("Vaqtincha o‘chirilgan")) { status.textContent = "Off"; status.classList.add("discount-status-off"); } const view = row.querySelector<HTMLElement>('[data-discount-extra="view"]'); if (view && !view.dataset.eyeMounted) { view.dataset.eyeMounted = "true"; createRoot(view).render(<Eye size={16} strokeWidth={2} />); } }); }, [items]);
+  useEffect(() => { const toolbar = document.querySelector<HTMLElement>(".discount-manager > .ui-card:first-child .inventory-toolbar"); if (!toolbar || toolbar.querySelector("[data-discount-filter]")) return; const toggle = document.createElement("button"); toggle.type = "button"; toggle.dataset.discountFilter = "toggle"; toggle.className = "discount-source-filter-toggle"; toggle.innerHTML = "<span>☷</span> Filter"; const panel = document.createElement("div"); panel.dataset.discountFilter = "panel"; panel.className = "discount-source-filter-panel"; panel.innerHTML = '<label>Qoldiq<select data-filter="stock"><option value="all">Barchasi</option><option value="in">Mavjud</option><option value="out">Tugagan</option></select></label><label>Min. narx<input data-filter="min" type="number" min="0" placeholder="0" /></label><label>Max. narx<input data-filter="max" type="number" min="0" placeholder="Chegarasiz" /></label><div><button type="button" data-filter="reset">Tozalash</button><button type="button" data-filter="apply">Qo‘llash</button></div>'; const apply = () => { const stock = panel.querySelector<HTMLSelectElement>('[data-filter="stock"]')?.value || "all"; const min = Number(panel.querySelector<HTMLInputElement>('[data-filter="min"]')?.value || 0); const maxText = panel.querySelector<HTMLInputElement>('[data-filter="max"]')?.value || ""; const max = maxText ? Number(maxText) : Infinity; document.querySelectorAll<HTMLTableRowElement>(".discount-manager > .ui-card:first-child tbody tr").forEach((row) => { const price = Number((row.cells[2]?.textContent || "").replace(/[^0-9]/g, "")); const stockValue = Number((row.cells[4]?.textContent || "").replace(/[^0-9]/g, "")); row.hidden = price < min || price > max || (stock === "in" && stockValue <= 0) || (stock === "out" && stockValue > 0); }); panel.classList.remove("is-open"); }; toggle.addEventListener("click", () => panel.classList.toggle("is-open")); panel.querySelector('[data-filter="apply"]')?.addEventListener("click", apply); panel.querySelector('[data-filter="reset"]')?.addEventListener("click", () => { panel.querySelectorAll<HTMLInputElement>("input").forEach((input) => input.value = ""); const stock = panel.querySelector<HTMLSelectElement>("select"); if (stock) stock.value = "all"; document.querySelectorAll<HTMLTableRowElement>(".discount-manager > .ui-card:first-child tbody tr").forEach((row) => row.hidden = false); panel.classList.remove("is-open"); }); toolbar.append(toggle, panel); }, [products]);
+  useEffect(() => { const rows = document.querySelectorAll<HTMLElement>(".discount-manager > .ui-card:nth-of-type(2) tbody tr"); rows.forEach((row, index) => { const media = (items[index]?.product as (Product & { media?: Array<{ url?: string }> }) | undefined)?.media?.[0]?.url; if (!media) return; const source = media.startsWith("http") ? media : `${API.replace(/\/api$/, "")}${media}`; row.style.setProperty("--discount-product-image", `url("${source.replace(/"/g, "\\\"")}")`); }); }, [items]);
+  useEffect(() => { const rows = document.querySelectorAll<HTMLTableRowElement>(".discount-manager > .ui-card:nth-of-type(2) tbody tr"); rows.forEach((row, index) => { const item = items[index]; const actions = row.querySelector<HTMLElement>(".inventory-actions"); if (!item || !actions || actions.querySelector("[data-discount-extra]")) return; const product = item.product as (typeof item.product & { slug?: string }) | undefined; const info = document.createElement("button"); info.type = "button"; info.dataset.discountExtra = "info"; info.className = "discount-extra-action"; info.textContent = "Ma’lumotlar"; info.addEventListener("click", () => window.alert([`Mahsulot: ${product?.title || item.productId}`, `Variant: ${item.size ? `${item.color} · ${item.size}` : item.color || "Barcha variant"}`, `Chegirma: −${item.percent}%`, `Asl narx: ${money(amountOf(product?.price), product?.currencyCode || "UZS")}`, `Chegirmadagi narx: ${money(Math.round(amountOf(product?.price) * (100 - item.percent) / 100), product?.currencyCode || "UZS")}`, `Muddat: ${timer(item.endsAt)}`, `Holat: ${item.isActive ? "Faol" : "Vaqtincha o‘chirilgan"}`].join("\n"))); const view = document.createElement("a"); view.dataset.discountExtra = "view"; view.className = "discount-extra-action discount-extra-view"; view.href = product?.slug ? `/products/${product.slug}` : "/shop"; view.title = "Mahsulotni ko‘rish"; view.setAttribute("aria-label", "Mahsulotni ko‘rish"); view.textContent = "◉"; actions.prepend(info); actions.prepend(view); }); }, [items]);
   return <section className="discount-manager"><Card><CardHeader><div><p className="ui-overline">CHEGIRMALI MAHSULOTLAR</p><CardTitle>Mahsulotni tanlang</CardTitle><CardDescription>Qidiruv natijasidagi mahsulotni bosing — chegirma sozlamalari oynada ochiladi.</CardDescription></div></CardHeader><CardContent><div className="inventory-toolbar"><label><span>Qidirish</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Mahsulot nomi, artikul yoki SKU" /></label></div><div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th>Mahsulot</th><th>Artikul / SKU</th><th>Narx</th><th>Variantlar</th><th>Qoldiq</th><th /></tr></thead><tbody>{matches.map((product) => <tr key={product.id}><td><div className="inventory-product-cell"><div className="inventory-thumb"><AdminProductImageRotator product={product} /></div><span><b>{product.title}</b><small>{product.metadata?.article || "Artikul yo‘q"}</small></span></div></td><td>{product.variants.map((variant) => variant.sku).filter(Boolean).join(", ") || "—"}</td><td>{money(amountOf(product.price), product.currencyCode)}</td><td>{product.variants.length}</td><td>{product.variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0)}</td><td><Button type="button" size="sm" onClick={() => open(product)}>Chegirma berish</Button></td></tr>)}{!matches.length && <tr><td colSpan={6}><Empty>Mahsulot topilmadi.</Empty></td></tr>}</tbody></table></div></CardContent></Card><Card><CardHeader><div><p className="ui-overline">ACTIVE DISCOUNTS</p><CardTitle>Faol chegirmalar</CardTitle></div></CardHeader><CardContent><div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th>Mahsulot</th><th>Daraja</th><th>Asl narx</th><th>Chegirma</th><th>Chegirmadagi narx</th><th>Taymer / muddat</th><th>Holat</th><th /></tr></thead><tbody>{items.map((item) => { const original = amountOf(item.product?.price); const sale = Math.round(original * (100 - item.percent) / 100); const active = item.isActive && (!item.endsAt || new Date(item.endsAt) > new Date()); return <tr key={item.id}><td><b>{item.product?.metadata?.article || item.product?.title || item.productId}</b></td><td>{item.size ? `${item.color} · ${item.size}` : item.color || "Barcha variant"}</td><td>{money(original, item.product?.currencyCode || "UZS")}</td><td><b>−{item.percent}%</b></td><td><b>{money(sale, item.product?.currencyCode || "UZS")}</b></td><td>{timer(item.endsAt)}</td><td><Badge variant={active ? "success" : "warning"}>{active ? "Faol" : item.isActive ? "Tugagan" : "Vaqtincha o‘chirilgan"}</Badge></td><td><div className="inventory-actions"><Button type="button" size="sm" variant="outline" disabled={saving} onClick={() => void toggleActive(item)}>{item.isActive ? "Vaqtincha o‘chirish" : "Qayta yoqish"}</Button><Button type="button" size="sm" variant="outline" disabled={saving} onClick={() => setDeleteCandidate(item)}>O‘chirish</Button></div></td></tr>; })}{!items.length && <tr><td colSpan={8}><Empty>Chegirma yo‘q.</Empty></td></tr>}</tbody></table></div></CardContent></Card>{selectedProduct && <div className="inventory-confirm-backdrop" onMouseDown={() => !saving && setSelectedProduct(null)}><form className="inventory-confirm" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">CHEGIRMA SOZLAMASI</p><h3>{selectedProduct.title}</h3><p>{selectedProduct.metadata?.article || "Artikulsiz mahsulot"} · Asl narx: <b>{money(baseAmount, selectedProduct.currencyCode)}</b></p><div className="ui-form ui-form-grid"><Field label="Daraja"><select value={scope} onChange={(event) => { setScope(event.target.value as "sku" | "color" | "size"); setColor(""); setSize(""); }}><option value="sku">Barcha rang va razmer</option><option value="color">Faqat rang</option><option value="size">Rang va razmer</option></select></Field>{scope !== "sku" && <Field label="Rang"><select required value={color} onChange={(event) => { setColor(event.target.value); setSize(""); }}><option value="">Tanlang</option>{colors.map((value) => <option key={value}>{value}</option>)}</select></Field>}{scope === "size" && <Field label="Razmer"><select required value={size} onChange={(event) => setSize(event.target.value)}><option value="">Tanlang</option>{sizes.map((value) => <option key={value}>{value}</option>)}</select></Field>}<Field label="Chegirma foizi"><input type="number" min="1" max="99" value={percent} onChange={(event) => setPercentAndPrice(Number(event.target.value))} /></Field><Field label="Chegirmadagi narx"><input type="number" min="1" value={salePrice} onChange={(event) => setPriceAndPercent(event.target.value)} /><small>Narx va foiz bir-biriga avtomatik bog‘langan.</small></Field><Field label="Muddat (ixtiyoriy)"><input type="datetime-local" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} /><small>Bo‘sh qoldirilsa chegirma taymersiz davom etadi.</small></Field></div><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setSelectedProduct(null)}>Bekor qilish</Button><Button disabled={saving}>{saving ? "Saqlanmoqda…" : "Chegirmani saqlash"}</Button></div></form></div>}{deleteCandidate && <div className="admin-confirm-backdrop" onMouseDown={() => !saving && setDeleteCandidate(null)}><section className="admin-confirm-dialog" role="dialog" aria-modal="true" aria-label="Chegirmani o‘chirish" onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">CHEGIRMANI O‘CHIRISH</p><h3>Butunlay o‘chirilsinmi?</h3><p>“{deleteCandidate.product?.title || deleteCandidate.productId}” chegirmasi qayta tiklanmaydi. Vaqtincha o‘chirish uchun jadvaldagi alohida tugmadan foydalaning.</p><div><Button type="button" variant="outline" disabled={saving} onClick={() => setDeleteCandidate(null)}>Bekor qilish</Button><Button type="button" disabled={saving} onClick={() => void remove()}>{saving ? "O‘chirilmoqda…" : "Butunlay o‘chirish"}</Button></div></section></div>}</section>;
 }
 
@@ -980,6 +1107,11 @@ export default function AdminConsole() {
   const [sidebarCompact, setSidebarCompact] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [readActivityIds, setReadActivityIds] = useState<string[]>([]);
+  const [notificationSection, setNotificationSection] = useState<"system" | "orders">("system");
+  const [browserNotificationPermission, setBrowserNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
+  const orderNotificationIds = useRef(new Set<string>());
+  const orderNotificationsReady = useRef(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [transfers, setTransfers] = useState<InventoryTransfer[]>([]);
   const [productSubsection, setProductSubsection] = useState<"all" | "transfer">("all");
@@ -988,9 +1120,13 @@ export default function AdminConsole() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [deliveryOrder, setDeliveryOrder] = useState<Order | null>(null);
+  const [orderCustomer, setOrderCustomer] = useState<CustomerDetail | null>(null);
+  const [orderCustomerLoading, setOrderCustomerLoading] = useState(false);
   const [orderQuery, setOrderQuery] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
   const [orderPaymentFilter, setOrderPaymentFilter] = useState("all");
+  const [orderDeliveryFilter, setOrderDeliveryFilter] = useState("all");
+  const [orderFilterOpen, setOrderFilterOpen] = useState(false);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [lookbookEntries, setLookbookEntries] = useState<LookbookEntry[]>([]);
@@ -1113,6 +1249,46 @@ export default function AdminConsole() {
       setLoading(false);
     }
   };
+  const openOrderCustomer = async (customerId?: string) => {
+    if (!customerId) { setNotice("Bu buyurtmaga mijoz profili biriktirilmagan."); return; }
+    setOrderCustomerLoading(true);
+    try { setOrderCustomer(await api<CustomerDetail>(`/admin/customers/${customerId}`, token)); }
+    catch (reason) { setNotice(reason instanceof Error ? reason.message : "Mijoz ma’lumotini olib bo‘lmadi."); }
+    finally { setOrderCustomerLoading(false); }
+  };
+  const openOrderNotification = async (orderId?: string | null) => {
+    if (!orderId) return;
+    const known = orders.find((order) => order.id === orderId);
+    if (known) { setSelectedOrder(known); return; }
+    try {
+      const latest = await api<Order[]>("/admin/orders", token);
+      setOrders(latest);
+      const order = latest.find((item) => item.id === orderId);
+      if (order) setSelectedOrder(order); else setNotice("Buyurtma topilmadi.");
+    } catch { setNotice("Buyurtma ma’lumotini ochib bo‘lmadi."); }
+  };
+  const enableOrderNotifications = async () => {
+    prepareOrderAlertSound();
+    if (!("Notification" in window)) { setNotice("Bu brauzer push bildirishnomalarini qo‘llamaydi."); return; }
+    const permission = await Notification.requestPermission();
+    setBrowserNotificationPermission(permission);
+    if (permission === "granted") setNotice("Buyurtma bildirishnomalari yoqildi.");
+    else setNotice("Chrome sozlamalaridan bildirishnomalarga ruxsat bering.");
+  };
+  useEffect(() => {
+    const orderId = new URLSearchParams(window.location.search).get("order");
+    if (!token || !orderId) return;
+    void openOrderNotification(orderId);
+    window.history.replaceState({}, "", "/admin");
+  }, [token]);
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const openOrder = (event: MessageEvent<{ type?: string; orderId?: string }>) => {
+      if (event.data?.type === "siren-open-order") void openOrderNotification(event.data.orderId);
+    };
+    navigator.serviceWorker.addEventListener("message", openOrder);
+    return () => navigator.serviceWorker.removeEventListener("message", openOrder);
+  }, [token]);
   const catalog = useCallback(async () => {
     const [p, c, l, inventoryTransfers] = await Promise.all([
       api<Product[]>("/admin/catalog/products", token),
@@ -1184,6 +1360,10 @@ export default function AdminConsole() {
   useEffect(() => { localStorage.setItem("siren-admin-theme", adminTheme); }, [adminTheme]);
   useEffect(() => { localStorage.setItem("siren-admin-sidebar-compact", String(sidebarCompact)); }, [sidebarCompact]);
   useEffect(() => {
+    if ("Notification" in window) setBrowserNotificationPermission(Notification.permission);
+    if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/admin-notifications-sw.js").catch(() => undefined);
+  }, []);
+  useEffect(() => {
     const signOutExpiredSession = () => setToken("");
     window.addEventListener("siren-admin-unauthorized", signOutExpiredSession);
     return () => window.removeEventListener("siren-admin-unauthorized", signOutExpiredSession);
@@ -1228,6 +1408,10 @@ export default function AdminConsole() {
       gender: p.gender ?? "unisex",
       inventoryQuantity: Number(p.metadata?.baseInventoryQuantity ?? p.variants.reduce((sum, item) => sum + item.inventoryQuantity, 0)),
       sizeGuideImageUrl: p.metadata?.sizeGuideImageUrl ?? "",
+      ikpuCode: p.metadata?.fiscal?.ikpuCode ?? "",
+      packageCode: p.metadata?.fiscal?.packageCode ?? "",
+      unitCode: p.metadata?.fiscal?.unitCode ?? "",
+      vatPercent: Number(p.metadata?.fiscal?.vatPercent ?? 0),
     });
     setImageUrl(p.media[0]?.url ?? "");
     setSizeGuideFile(null);
@@ -1343,6 +1527,7 @@ export default function AdminConsole() {
           article,
           sizeGuideImageUrl:
             uploadedSizeGuide?.url || form.sizeGuideImageUrl || undefined,
+          fiscal: form.ikpuCode.trim() ? { ikpuCode: form.ikpuCode.trim(), packageCode: form.packageCode.trim() || undefined, unitCode: form.unitCode.trim() || undefined, vatPercent: Number(form.vatPercent) || 0 } : undefined,
           translations: {
             titleUz: form.titleUz.trim() || undefined,
             titleRu: form.titleRu.trim() || undefined,
@@ -1540,6 +1725,35 @@ export default function AdminConsole() {
       setNotice("Saqlandi.");
     });
   };
+  const dashboardActivities = (dashboard as DashboardData | null)?.activity ?? [];
+  const unreadActivities = dashboardActivities.filter((item) => !readActivityIds.includes(item.id));
+  const systemActivities = dashboardActivities.filter((item) => item.entityType !== "order");
+  const orderActivities = dashboardActivities.filter((item) => item.entityType === "order");
+  const visibleActivities = notificationSection === "orders" ? orderActivities : systemActivities;
+  const markActivitiesRead = (ids: string[]) => setReadActivityIds((current) => [...new Set([...current, ...ids])]);
+  useEffect(() => {
+    if (!token) return;
+    const poll = window.setInterval(() => { void refresh("dashboard").catch(() => undefined); }, 20_000);
+    return () => window.clearInterval(poll);
+  }, [token, refresh]);
+  useEffect(() => {
+    if (!dashboard) return;
+    const nextOrders = orderActivities.filter((item) => !orderNotificationIds.current.has(item.id));
+    if (!orderNotificationsReady.current) {
+      orderActivities.forEach((item) => orderNotificationIds.current.add(item.id));
+      orderNotificationsReady.current = true;
+      return;
+    }
+    if (!nextOrders.length) return;
+    nextOrders.forEach((item) => orderNotificationIds.current.add(item.id));
+    if (browserNotificationPermission !== "granted") return;
+    playOrderAlertSound();
+    nextOrders.forEach((item) => {
+      const options = { body: "Yangi buyurtma qabul qilindi. Batafsil ko‘rish uchun bosing.", tag: `siren-order-${item.entityId ?? item.id}`, data: { orderId: item.entityId ?? "" } };
+      if ("serviceWorker" in navigator) void navigator.serviceWorker.ready.then((registration) => registration.showNotification("SIREN · Yangi buyurtma", options));
+      else new Notification("SIREN · Yangi buyurtma", options);
+    });
+  }, [browserNotificationPermission, orderActivities]);
   if (!token)
     return (
       <main className="tailadmin-auth-page">
@@ -1636,7 +1850,7 @@ export default function AdminConsole() {
       }}
       className={`admin-theme--${adminTheme}`}
     >
-      <AdminShell activeId={tab} groups={navGroups.map(([label, items]) => ({ label, items: items.map(([id, itemLabel, icon]) => ({ id, label: itemLabel, icon })) }))} onNavigate={(id) => { setTab(id as Tab); void run(() => refresh(id as Tab)); }} compact={sidebarCompact} onCompactChange={setSidebarCompact} title={nav.find((item) => item[0] === tab)?.[1] ?? "Admin"} theme={adminTheme} onThemeChange={(value) => setAdminTheme(value as "light" | "midnight" | "violet" | "graphite" | "forest")} profile={adminProfile} busy={loading} onRefresh={() => void run(async () => { await refresh(); await refresh("dashboard"); })} notificationCount={((dashboard as DashboardData | null)?.activity?.length ?? 0)} notificationContent={<><header><b>Bildirishnomalar</b></header>{((dashboard as DashboardData | null)?.activity ?? []).map((item) => <article key={item.id}><b>{item.action} · {item.entityType}</b><span>{item.user} · {dashboardTime(item.createdAt)}</span></article>)}{!((dashboard as DashboardData | null)?.activity?.length) && <p>Yangi bildirishnoma yo‘q.</p>}</>} onSignOut={() => { localStorage.removeItem("siren-admin-token"); setToken(""); }}>
+      <AdminShell activeId={tab} groups={navGroups.map(([label, items]) => ({ label, items: items.map(([id, itemLabel, icon]) => ({ id, label: itemLabel, icon })) }))} onNavigate={(id) => { setTab(id as Tab); void run(() => refresh(id as Tab)); }} compact={sidebarCompact} onCompactChange={setSidebarCompact} title={nav.find((item) => item[0] === tab)?.[1] ?? "Admin"} theme={adminTheme} onThemeChange={(value) => setAdminTheme(value as "light" | "midnight" | "violet" | "graphite" | "forest")} profile={adminProfile} busy={loading} onRefresh={() => void run(async () => { await refresh(); await refresh("dashboard"); })} notificationCount={unreadActivities.length} notificationContent={<section className="admin-activity-notifications"><header><div><p>YANGI FAOLLIK</p><b>Bildirishnomalar</b></div>{unreadActivities.length > 0 && <button type="button" onClick={() => markActivitiesRead(unreadActivities.map((item) => item.id))}><CheckCheck size={15} /> Barchasini o‘qish</button>}</header><div className="admin-notification-tabs"><button type="button" className={notificationSection === "system" ? "is-active" : ""} onClick={() => setNotificationSection("system")}>Tizim <i>{systemActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button><button type="button" className={notificationSection === "orders" ? "is-active" : ""} onClick={() => setNotificationSection("orders")}>Buyurtmalar <i>{orderActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button></div>{notificationSection === "orders" && <div className="admin-order-notification-permission"><span>{browserNotificationPermission === "granted" ? "Chrome bildirishnomasi yoqilgan" : "Ovozli Chrome bildirishnomalarini yoqing"}</span>{browserNotificationPermission !== "granted" && <button type="button" onClick={() => void enableOrderNotifications()}>Yoqish</button>}</div>}{visibleActivities.length ? <div className="admin-activity-notification-list">{visibleActivities.slice(0, 12).map((item) => { const isRead = readActivityIds.includes(item.id); const isOrder = item.entityType === "order"; return <button type="button" key={item.id} className={`admin-activity-notification${isRead ? " is-read" : ""}${isOrder ? " is-order" : ""}`} onClick={() => { markActivitiesRead([item.id]); if (isOrder) void openOrderNotification(item.entityId); }}><i aria-hidden="true" /><span><b>{dashboardActivityTitle(item.action, item.entityType)}</b><small>{item.user} · {dashboardTime(item.createdAt)}{isOrder ? " · Chekni ochish" : ""}</small></span></button>; })}</div> : <p className="admin-activity-empty">Bu bo‘limda bildirishnoma yo‘q.</p>}</section>} onSignOut={() => { localStorage.removeItem("siren-admin-token"); setToken(""); }}>
         <AdminToast message={notice} />
         <AdminToast message={error} tone="error" />
         <TabsContent value="dashboard">
@@ -1813,6 +2027,10 @@ export default function AdminConsole() {
                         </select>
                       </Field>
                     </div>
+                    </section>
+                    <section className="product-form-block product-form-block--fiscal">
+                      <div><p className="ui-overline">PAYME / FISKAL CHEK</p><h3>IKPU va qadoqlash ma’lumotlari</h3><span>Payme fiskal chekida mahsulot bo‘yicha yuboriladi. Kodni rasmiy katalogdan tasdiqlang.</span></div>
+                      <FiscalCatalogPicker token={token} categoryName={categories.find((category) => category.id === form.categoryId)?.name ?? ''} productTitle={form.titleUz || form.title} value={{ ikpuCode: form.ikpuCode, packageCode: form.packageCode, unitCode: form.unitCode, vatPercent: form.vatPercent }} onChange={(next) => setForm({ ...form, ...next })} />
                     </section>
                   </form>
                   {(selected || productView === "create") && (
@@ -2092,16 +2310,16 @@ export default function AdminConsole() {
             <div className="reference-products-card reference-orders-card"><header className="reference-products-card-head"><div><h3>Buyurtmalar ro‘yxati</h3><p>Mijoz buyurtmalari, to‘lovlari va yetkazib berish ma’lumotlari.</p></div><Button type="button" variant="outline" onClick={() => void run(() => refresh("orders"))}><RefreshCw size={17} /> Yangilash</Button></header>
               <div className="reference-products-toolbar">
                 <label><Search size={19} /><input value={orderQuery} onChange={(event) => setOrderQuery(event.target.value)} placeholder="Buyurtma, mijoz yoki telefon qidirish..." /></label>
-                <details className="reference-filter-menu"><summary><SlidersHorizontal size={18} />Filter</summary><div className="reference-filter-panel"><select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value)} aria-label="Buyurtma holati"><option value="all">Barcha holatlar</option>{[...new Set(orders.map((order) => order.status).filter(Boolean))].map((status) => <option key={status} value={status}>{status}</option>)}</select><select value={orderPaymentFilter} onChange={(event) => setOrderPaymentFilter(event.target.value)} aria-label="To‘lov holati"><option value="all">Barcha to‘lovlar</option>{[...new Set(orders.map((order) => order.paymentStatus).filter(Boolean))].map((status) => <option key={status} value={status}>{status}</option>)}</select></div></details>
+                <div className="reference-filter-control"><Button type="button" variant="outline" className="reference-filter-trigger" onClick={() => setOrderFilterOpen((open) => !open)}><SlidersHorizontal size={18} /> Filter</Button>{orderFilterOpen && <div className="reference-filter-panel"><label>Buyurtma holati<select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value)}><option value="all">Barcha holatlar</option>{[...new Set(orders.map((order) => order.status).filter(Boolean))].map((status) => <option key={status} value={status}>{status}</option>)}</select></label><label>To‘lov holati<select value={orderPaymentFilter} onChange={(event) => setOrderPaymentFilter(event.target.value)}><option value="all">Barcha to‘lovlar</option>{[...new Set(orders.map((order) => order.paymentStatus).filter(Boolean))].map((status) => <option key={status} value={status}>{status}</option>)}</select></label><label>Yetkazib berish<select value={orderDeliveryFilter} onChange={(event) => setOrderDeliveryFilter(event.target.value)}><option value="all">Barcha yetkazib berishlar</option><option value="arranged">Rasmiylashtirilgan</option><option value="unarranged">Rasmiylashtirilmagan</option></select></label><div className="reference-filter-actions"><Button type="button" size="sm" variant="outline" onClick={() => { setOrderStatusFilter("all"); setOrderPaymentFilter("all"); setOrderDeliveryFilter("all"); }}>Tozalash</Button><Button type="button" size="sm" onClick={() => setOrderFilterOpen(false)}>Qo‘llash</Button></div></div>}</div>
               </div>
-              {orders.length ? <div className="inventory-table-wrap reference-table-50"><table className="inventory-table"><thead><tr><th>Buyurtma</th><th>Mijoz</th><th>Telefon</th><th>Mahsulotlar</th><th>To‘lov</th><th>Jami</th><th>Holat</th><th>Sana</th><th>Yetkazib berish</th></tr></thead><tbody>{orders.filter((o) => `${o.orderNumber} ${o.customer?.email || ""} ${o.customer?.firstName || ""} ${o.customer?.lastName || ""} ${o.customer?.phone || ""}`.toLowerCase().includes(orderQuery.toLowerCase()) && (orderStatusFilter === "all" || o.status === orderStatusFilter) && (orderPaymentFilter === "all" || o.paymentStatus === orderPaymentFilter)).map((o) => <tr key={o.id} className="reference-order-row"><td><button type="button" className="reference-order-open" onClick={() => setSelectedOrder(o)}>#{o.orderNumber}</button></td><td><b>{`${o.customer?.firstName || ""} ${o.customer?.lastName || ""}`.trim() || o.customer?.email || "Guest"}</b></td><td>{o.customer?.phone || "—"}</td><td>{o.items?.reduce((sum, item) => sum + item.quantity, 0) || 0} ta</td><td>{o.paymentMethod || "—"}<small>{o.paymentStatus || "—"}</small></td><td><b>{money(Number(o.totalAmount), "UZS")}</b></td><td><Badge variant={flavor(o.status)}>{o.status}</Badge></td><td>{readableDate(o.createdAt)}</td><td><button type="button" className="reference-delivery-open" aria-label={`Buyurtma #${o.orderNumber} yetkazib berish ma’lumotlari`} title="Yetkazib berish ma’lumotlari" onClick={() => setDeliveryOrder(o)}><Truck size={18} /></button></td></tr>)}</tbody></table></div> : <Empty><ShoppingBag />Hali buyurtmalar yo‘q.</Empty>}
+              {orders.length ? <div className="inventory-table-wrap reference-table-50"><table className="inventory-table"><thead><tr><th>Buyurtma</th><th>Mijoz</th><th>Telefon</th><th>Mahsulotlar</th><th>To‘lov</th><th>Jami</th><th>Holat</th><th>Sana</th><th>Yetkazib berish</th></tr></thead><tbody>{orders.filter((o) => `${o.orderNumber} ${o.customer?.email || ""} ${o.customer?.firstName || ""} ${o.customer?.lastName || ""} ${o.customer?.phone || ""}`.toLowerCase().includes(orderQuery.toLowerCase()) && (orderStatusFilter === "all" || o.status === orderStatusFilter) && (orderPaymentFilter === "all" || o.paymentStatus === orderPaymentFilter) && (orderDeliveryFilter === "all" || (orderDeliveryFilter === "unarranged" ? !o.fulfillmentStatus || o.fulfillmentStatus === "unfulfilled" : Boolean(o.fulfillmentStatus && o.fulfillmentStatus !== "unfulfilled")))).map((o) => { const deliveryEnabled = o.paymentStatus === "paid"; const customerLabel = `${o.customer?.firstName || ""} ${o.customer?.lastName || ""}`.trim() || o.customer?.email || "Guest"; return <tr key={o.id} className="reference-order-row"><td><button type="button" className="reference-order-open" onClick={() => setSelectedOrder(o)}>#{o.orderNumber}</button></td><td><button type="button" className="reference-customer-open" disabled={!o.customer?.id} title={o.customer?.id ? "Mijoz profilini ochish" : "Mijoz profili biriktirilmagan"} onClick={() => void openOrderCustomer(o.customer?.id)}>{customerLabel}</button></td><td>{o.customer?.phone || "—"}</td><td>{o.items?.reduce((sum, item) => sum + item.quantity, 0) || 0} ta</td><td>{o.paymentMethod || "—"}<small>{o.paymentStatus || "—"}</small></td><td><b>{money(Number(o.totalAmount), "UZS")}</b></td><td><OrderStageBadge order={o} /></td><td>{readableDate(o.createdAt)}</td><td><button type="button" disabled={!deliveryEnabled} className="reference-delivery-open" aria-label={`Buyurtma #${o.orderNumber} yetkazib berish ma’lumotlari`} title={deliveryEnabled ? "Yetkazib berish ma’lumotlari" : "Avval to‘lov tasdiqlanishi kerak"} onClick={() => setDeliveryOrder(o)}><Truck size={18} /></button></td></tr>; })}</tbody></table></div> : <Empty><ShoppingBag />Hali buyurtmalar yo‘q.</Empty>}
             </div>
             {selectedOrder && <div className="inventory-confirm-backdrop" onMouseDown={() => setSelectedOrder(null)}><section className="inventory-confirm reference-order-modal" onMouseDown={(event) => event.stopPropagation()}><button className="reference-modal-close" onClick={() => setSelectedOrder(null)}>×</button><p className="ui-overline">BUYURTMA #{selectedOrder.orderNumber}</p><h3>{`${selectedOrder.customer?.firstName || ""} ${selectedOrder.customer?.lastName || ""}`.trim() || selectedOrder.customer?.email || "Guest"}</h3><p><b>Email:</b> {selectedOrder.customer?.email || "—"}<br /><b>Telefon:</b> {selectedOrder.customer?.phone || "—"}<br /><b>Yetkazish:</b> {selectedOrder.shippingAddress?.country || "—"}, {selectedOrder.shippingAddress?.city || "—"}, {selectedOrder.shippingAddress?.address || "—"}<br /><b>To‘lov:</b> {selectedOrder.paymentMethod || "—"} · {selectedOrder.paymentStatus || "—"}</p><div className="reference-modal-items">{selectedOrder.items?.map((item, index) => <p key={`${item.skuSnapshot}-${index}`}>{item.imageUrl && <img src={item.imageUrl.startsWith("/uploads/") ? `${API.replace(/\/api$/, "")}${item.imageUrl}` : item.imageUrl} alt="" />}<b>{item.titleSnapshot}</b><span>{item.skuSnapshot || "SKU kiritilmagan"} × {item.quantity}</span><strong>{money(Number(item.unitPrice), "UZS")}</strong></p>)}</div><dl className="reference-order-totals"><div><dt>Mahsulotlar jami</dt><dd>{money(Number(selectedOrder.subtotalAmount ?? selectedOrder.items?.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0) ?? 0), "UZS")}</dd></div><div><dt>Chegirma</dt><dd className="is-discount">−{money(Number(selectedOrder.discountAmount ?? 0), "UZS")}</dd></div><div><dt>Yetkazib berish</dt><dd>{money(Number(selectedOrder.shippingAmount ?? 0), "UZS")}</dd></div><div className="is-total"><dt>To‘langan</dt><dd>{money(Number(selectedOrder.totalAmount), "UZS")}</dd></div></dl></section></div>}
             {deliveryOrder && <div className="inventory-confirm-backdrop" onMouseDown={() => setDeliveryOrder(null)}><section className="inventory-confirm reference-delivery-modal" onMouseDown={(event) => event.stopPropagation()}><button className="reference-modal-close" onClick={() => setDeliveryOrder(null)}>×</button><p className="ui-overline">YETKAZIB BERISH · #{deliveryOrder.orderNumber}</p><h3>Jo‘natmaga tayyorlash</h3><p><b>Qabul qiluvchi:</b> {`${deliveryOrder.customer?.firstName || ""} ${deliveryOrder.customer?.lastName || ""}`.trim() || deliveryOrder.customer?.email || "—"}<br /><b>Telefon:</b> {deliveryOrder.customer?.phone || "—"}<br /><b>Manzil:</b> {deliveryOrder.shippingAddress?.country || "—"}, {deliveryOrder.shippingAddress?.city || "—"}, {deliveryOrder.shippingAddress?.address || "—"}<br /><b>Holat:</b> {deliveryOrder.fulfillmentStatus || "unfulfilled"}</p><div className="reference-delivery-note"><Truck size={19} /><span>UzPost integratsiyasi ulanganda bu yerda jo‘natma kodi va pochta yuborish amali chiqadi.</span></div></section></div>}
           </section>
         </TabsContent>
         <TabsContent value="delivery"><AdminModulePage config={adminModules.delivery} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
-        <TabsContent value="customers"><AdminModulePage config={adminModules.customers} customers={customers} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
+        <TabsContent value="customers"><CustomerManager customers={customers} loading={loading} error={error} token={token} /></TabsContent>
         <TabsContent value="discounts"><DiscountManager token={token} products={products} onNotice={setNotice} /></TabsContent>
         <TabsContent value="partners"><PartnerManager token={token} products={products} onNotice={setNotice} /></TabsContent>
         <TabsContent value="finance"><AdminModulePage config={adminModules.finance} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
@@ -2172,6 +2390,8 @@ export default function AdminConsole() {
         <TabsContent value="team"><section className="tailadmin-products-page"><header className="tailadmin-page-heading"><div><p className="ui-overline">Tizim</p><h2>Jamoa</h2><span>Admin foydalanuvchilari va ularning rollari.</span></div></header><List title="Jamoa" rows={users.map((u) => `${u.email} · ${u.role}`)} /></section></TabsContent>
         <TabsContent value="audit"><section className="tailadmin-products-page"><header className="tailadmin-page-heading"><div><p className="ui-overline">Tizim</p><h2>Audit log</h2><span>Tizimdagi oxirgi hodisalar va amallar.</span></div></header><Card><CardContent><pre className="admin-json">{JSON.stringify(audit, null, 2)}</pre></CardContent></Card></section></TabsContent>
       </AdminShell>
+      {orderCustomerLoading && <div className="inventory-confirm-backdrop customer-detail-backdrop"><p className="customer-detail-loading customer-detail-loading--overlay">Mijoz profili yuklanmoqda…</p></div>}
+      {orderCustomer && <div className="inventory-confirm-backdrop customer-detail-backdrop" onMouseDown={() => setOrderCustomer(null)}><section className="customer-detail-dialog" role="dialog" aria-modal="true" aria-label="Mijoz profili" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">MIJOZ PROFILI</p><h3>{`${orderCustomer.firstName} ${orderCustomer.lastName}`.trim() || "Mijoz"}</h3><span>{orderCustomer.email || "Email kiritilmagan"}</span></div><button type="button" onClick={() => setOrderCustomer(null)} aria-label="Yopish">×</button></header><div className="customer-detail-metrics"><div><span>Buyurtmalar</span><b>{orderCustomer.totalOrders} ta</b></div><div><span>To‘langan</span><b>{orderCustomer.paidOrders} ta</b></div><div><span>Jami savdo</span><b>{money(orderCustomer.totalSpent, "UZS")}</b></div><div><span>O‘rtacha chek</span><b>{money(orderCustomer.averageOrder, "UZS")}</b></div></div><div className="customer-detail-columns"><section><h4>Aloqa va joylashuv</h4><dl><div><dt>Telefon</dt><dd>{orderCustomer.phone || "—"}</dd></div><div><dt>Hudud</dt><dd>{orderCustomer.region || "—"}</dd></div><div><dt>Ro‘yxatdan o‘tgan</dt><dd>{readableDate(orderCustomer.createdAt)}</dd></div><div><dt>Oxirgi kirish</dt><dd>{orderCustomer.lastLoginAt ? readableDate(orderCustomer.lastLoginAt) : "—"}</dd></div></dl>{orderCustomer.addresses.length ? <div className="customer-addresses">{orderCustomer.addresses.map((address) => <p key={address.id}><b>{address.isDefault ? "Asosiy manzil" : "Manzil"}</b><span>{[address.country, address.city, address.line1, address.line2, address.postalCode].filter(Boolean).join(", ")}</span></p>)}</div> : <p className="customer-detail-empty">Saqlangan manzil yo‘q.</p>}</section><section><h4>Buyurtmalar tarixi</h4><div className="customer-detail-orders">{orderCustomer.orders.map((order) => <article key={order.id}><div><b>#{order.orderNumber}</b><span>{readableDate(order.createdAt)} · {order.paymentStatus}</span><small>{order.items.map((item) => `${item.title} × ${item.quantity}`).join(", ") || "Mahsulot yo‘q"}</small></div><strong>{money(Number(order.totalAmount), order.currencyCode || "UZS")}</strong></article>)}{!orderCustomer.orders.length && <p className="customer-detail-empty">Bu mijozda buyurtma yo‘q.</p>}</div></section></div></section></div>}
     </Tabs>
   );
 }

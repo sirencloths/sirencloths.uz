@@ -40,7 +40,12 @@ export default function CartDrawer() {
   }, [isCartOpen, closeCart]);
 
   if (!mounted) return null;
-  const checkout = () => { closeCart(); router.push("/checkout"); };
+  const checkout = () => {
+    closeCart();
+    // Let the overlay history entry settle first, then perform one normal
+    // route push. This avoids the Back action racing the checkout navigation.
+    window.setTimeout(() => router.push("/checkout"), 0);
+  };
 
   return <div className={`cart-drawer-layer ${visible ? "is-visible" : ""}`} role="presentation" onMouseDown={closeCart}>
     <aside className="cart-drawer" role="dialog" aria-modal="true" aria-label="Корзина" onMouseDown={(event) => event.stopPropagation()}>

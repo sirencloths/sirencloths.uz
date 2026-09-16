@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource, In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AuditLog, Customer, Order, OrderItem, OrderStatus, Partner, PartnerPromoUsage, Product, ProductDiscount, ProductVariant } from '../database/entities';
+import { AuditLog, Customer, CustomerAddress, Order, OrderItem, OrderStatus, Partner, PartnerPromoUsage, Product, ProductDiscount, ProductVariant } from '../database/entities';
 
 export type CheckoutInput = {
   email: string; phone?: string; firstName: string; lastName: string;
@@ -139,5 +139,30 @@ export class CommerceService {
       const totals = await this.orders.createQueryBuilder('order').select('COUNT(*)', 'orders').addSelect('COALESCE(SUM(order.total_amount), 0)', 'spent').where('order.customer_id = :id', { id: customer.id }).getRawOne<{ orders: string; spent: string }>();
       return { ...customer, totalOrders: Number(totals?.orders ?? 0), totalSpent: Number(totals?.spent ?? 0) };
     }));
+  }
+  async customerDetails(id: string) {
+    const customer = await this.customers.findOneBy({ id });
+    if (!customer) throw new NotFoundException('Mijoz topilmadi');
+    const [orders, addresses] = await Promise.all([
+      this.orders.find({ where: { customerId: id }, relations: { items: true }, order: { createdAt: 'DESC' } }),
+      this.dataSource.getRepository(CustomerAddress).find({ where: { customerId: id }, order: { isDefault: 'DESC', updatedAt: 'DESC' } }),
+    ]);
+    const paidOrders = orders.filter((order) => order.paymentStatus === 'paid');
+    const totalSpent = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+    return {
+      ...customer,
+      totalOrders: orders.length,
+      paidOrders: paidOrders.length,
+      totalSpent,
+      averageOrder: paidOrders.length ? totalSpent / paidOrders.length : 0,
+      addresses,
+      lastOrderAt: orders[0]?.createdAt ?? null,
+      orders: orders.map((order) => ({
+        id: order.id, orderNumber: order.orderNumber, status: order.status, paymentStatus: order.paymentStatus,
+        fulfillmentStatus: order.fulfillmentStatus, totalAmount: order.totalAmount, currencyCode: order.currencyCode,
+        paymentMethod: order.paymentMethod, shippingAddress: order.shippingAddress, note: order.note, createdAt: order.createdAt,
+        items: order.items.map((item) => ({ title: item.titleSnapshot, sku: item.skuSnapshot, quantity: item.quantity, unitPrice: item.unitPrice })),
+      })),
+    };
   }
 }

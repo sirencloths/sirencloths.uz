@@ -1,11 +1,19 @@
 import { formatStorePrice, type ApiCustomSection, type ApiProduct } from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/lib/data";
+import Link from "next/link";
+import type { ReactNode } from "react";
 
 const apiOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
 const asset = (url: string) => url.startsWith("http") || !url.startsWith("/uploads/") ? url : `${apiOrigin}${url}`;
 
 type Section = ApiCustomSection & { layoutType: "collection" | "promo" | "tactical" };
+
+function SectionLink({ href, className, children }: { href?: string | null; className: string; children: ReactNode }) {
+  const target = href || "#";
+  if (target.startsWith("/")) return <Link href={target} className={className}>{children}</Link>;
+  return <a href={target} className={className}>{children}</a>;
+}
 
 export default function ManagedHomepageSections({ sections, products }: { sections: Section[]; products: ApiProduct[] }) {
   return <>{sections.filter((section) => section.isActive !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map((section) => {
@@ -65,16 +73,16 @@ function Copy({ section, mobile = false }: { section: Section; mobile?: boolean 
 function CollectionSection({ section, products }: { section: Section; products: ApiProduct[] }) {
   const desktop = sectionProducts(section, products, "desktop");
   const mobile = sectionProducts(section, products, "mobile");
-  return <section className="managed-section managed-section--collection"><div className="collection"><div className="collection-side collection-side--desktop">{desktop.map((item) => <Card key={item.variant.id} item={item} />)}</div><a className="collection-banner" href={section.desktopLink || section.targetUrl || "#"}><picture><source media="(max-width:760px)" srcSet={asset(section.mobileImageUrl || section.desktopImageUrl)} /><img src={asset(section.desktopImageUrl)} alt="" /></picture><Copy section={section} /></a><div className="collection-side collection-side--mobile">{mobile.map((item) => <Card key={item.variant.id} item={item} />)}</div></div></section>;
+  return <section className="managed-section managed-section--collection"><div className="collection"><div className="collection-side collection-side--desktop">{desktop.map((item) => <Card key={item.variant.id} item={item} />)}</div><SectionLink className="collection-banner" href={section.desktopLink || section.targetUrl || "#"}><picture><source media="(max-width:760px)" srcSet={asset(section.mobileImageUrl || section.desktopImageUrl)} /><img src={asset(section.desktopImageUrl)} alt="" /></picture><Copy section={section} /></SectionLink><div className="collection-side collection-side--mobile">{mobile.map((item) => <Card key={item.variant.id} item={item} />)}</div></div></section>;
 }
 
 function PromoSection({ section }: { section: Section }) {
   const slots = section.bannerItems?.length ? section.bannerItems : [{ id: section.id, desktopImageUrl: section.desktopImageUrl, mobileImageUrl: section.mobileImageUrl, targetUrl: section.targetUrl, linkLabel: section.linkLabel, desktopName: section.desktopName, mobileName: section.mobileName, desktopLinkLabel: section.desktopLinkLabel, mobileLinkLabel: section.mobileLinkLabel }];
-  return <section className="managed-section managed-section--promo"><div className="promo">{slots.slice(0, 2).map((slot, index) => <a key={slot.id} className={`promo-card ${index === 0 ? "promo-card--large" : "promo-card--small"}`} href={slot.desktopLink || slot.targetUrl || "#"}><picture><source media="(max-width:760px)" srcSet={asset(slot.mobileImageUrl || slot.desktopImageUrl)} /><img src={asset(slot.desktopImageUrl)} alt="" /></picture><span className={`banner-copy banner-copy--dark${index === 1 ? " banner-copy--right" : ""}`}><span>{slot.desktopName || section.desktopName || section.name}</span><b>{slot.desktopLinkLabel || slot.linkLabel || "ПЕРЕЙТИ"}</b></span></a>)}</div></section>;
+  return <section className="managed-section managed-section--promo"><div className="promo">{slots.slice(0, 2).map((slot, index) => <SectionLink key={slot.id} className={`promo-card ${index === 0 ? "promo-card--large" : "promo-card--small"}`} href={slot.desktopLink || slot.targetUrl || "#"}><picture><source media="(max-width:760px)" srcSet={asset(slot.mobileImageUrl || slot.desktopImageUrl)} /><img src={asset(slot.desktopImageUrl)} alt="" /></picture><span className={`banner-copy banner-copy--dark${index === 1 ? " banner-copy--right" : ""}`}><span>{slot.desktopName || section.desktopName || section.name}</span><b>{slot.desktopLinkLabel || slot.linkLabel || "ПЕРЕЙТИ"}</b></span></SectionLink>)}</div></section>;
 }
 
 function TacticalSection({ section, products }: { section: Section; products: ApiProduct[] }) {
   const desktop = sectionProducts(section, products, "desktop");
   const mobile = sectionProducts(section, products, "mobile");
-  return <section className="managed-section managed-section--tactical"><div className="tactical"><a className="tactical-banner" href={section.desktopLink || section.targetUrl || "#"}><picture><source media="(max-width:760px)" srcSet={asset(section.mobileImageUrl || section.desktopImageUrl)} /><img src={asset(section.desktopImageUrl)} alt="" /></picture><span className="tactical-banner-copy"><span>{section.desktopName || section.name}</span><b>{section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</b></span></a><div className="tactical-products tactical-products--desktop">{desktop.map((item) => <Card key={item.variant.id} item={item} />)}</div><div className="tactical-products tactical-products--mobile">{mobile.map((item) => <Card key={item.variant.id} item={item} />)}</div></div></section>;
+  return <section className="managed-section managed-section--tactical"><div className="tactical"><SectionLink className="tactical-banner" href={section.desktopLink || section.targetUrl || "#"}><picture><source media="(max-width:760px)" srcSet={asset(section.mobileImageUrl || section.desktopImageUrl)} /><img src={asset(section.desktopImageUrl)} alt="" /></picture><span className="tactical-banner-copy"><span>{section.desktopName || section.name}</span><b>{section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</b></span></SectionLink><div className="tactical-products tactical-products--desktop">{desktop.map((item) => <Card key={item.variant.id} item={item} />)}</div><div className="tactical-products tactical-products--mobile">{mobile.map((item) => <Card key={item.variant.id} item={item} />)}</div></div></section>;
 }

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useCart } from "./CartContext";
 import Image from "next/image";
 import { useLanguage } from "./LanguageProvider";
-import { useRouter } from "next/navigation";
 
 type Props = {
   id: string;
@@ -27,17 +26,10 @@ export default function AddToCartButton({
 }: Props) {
   const { addToCart, openCart } = useCart();
   const { t } = useLanguage();
-  const router = useRouter();
 
   const [added, setAdded] = useState(false);
 
-  const goToCart = () => {
-    if (window.matchMedia("(max-width: 760px)").matches) {
-      router.push("/cart");
-      return;
-    }
-    openCart();
-  };
+  const goToCart = () => openCart();
 
   const handleClick = () => {
     if (added) {

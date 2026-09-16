@@ -64,6 +64,13 @@ export type ApiBanner = {
   textShadow: boolean;
   position: number;
 };
+export type StorefrontNavigationItem = {
+  id: string;
+  href: string;
+  label: string;
+  translationKey?: string;
+  isActive?: boolean;
+};
 export type ApiCustomSection = {
   id: string;
   name: string;
@@ -150,6 +157,11 @@ export async function getStorefrontBanners(): Promise<ApiBanner[]> {
   const response = await fetch(`${apiBaseUrl}/content/banners`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Unable to load banners');
   return response.json() as Promise<ApiBanner[]>;
+}
+export async function getStorefrontNavigation(): Promise<StorefrontNavigationItem[]> {
+  const response = await fetch(`${apiBaseUrl}/content/navigation`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Unable to load navigation');
+  return response.json() as Promise<StorefrontNavigationItem[]>;
 }
 
 export async function getStorefrontLookbook(): Promise<ApiLookbookEntry[]> {

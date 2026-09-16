@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { cartSubtotal } from "@/lib/commerce";
+import { useOverlayHistory } from "./OverlayHistoryProvider";
 
 export type CartItem = {
   id: string;
@@ -45,7 +46,8 @@ export function CartProvider({
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { isOverlayOpen, openOverlay, closeOverlay } = useOverlayHistory();
+  const isCartOpen = isOverlayOpen("cart");
 
   // Load cart from localStorage
   useEffect(() => {
@@ -167,8 +169,8 @@ export function CartProvider({
         cartCount,
         subtotal,
         isCartOpen,
-        openCart: () => setIsCartOpen(true),
-        closeCart: () => setIsCartOpen(false),
+        openCart: () => openOverlay("cart"),
+        closeCart: () => closeOverlay("cart"),
       }}
     >
       {children}

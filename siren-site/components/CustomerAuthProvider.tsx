@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, FormEvent, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useOverlayHistory } from "./OverlayHistoryProvider";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 const TOKEN_KEY = "siren-customer-token";
@@ -21,7 +23,8 @@ const request = customerApi;
 export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isOpen, setOpen] = useState(false);
+  const { isOverlayOpen, openOverlay, closeOverlay } = useOverlayHistory();
+  const isOpen = isOverlayOpen("auth");
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
   const refresh = async () => {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -31,13 +34,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void refresh().finally(() => setLoading(false)); }, []);
   useEffect(() => {
     if (!isAdminRoute && !loading && !customer && !sessionStorage.getItem("siren-auth-dismissed")) {
-      const id = window.setTimeout(() => setOpen(true), 850);
+      const id = window.setTimeout(() => openOverlay("auth"), 850);
       return () => window.clearTimeout(id);
     }
   }, [isAdminRoute, loading, customer]);
   const signOut = () => { localStorage.removeItem(TOKEN_KEY); setCustomer(null); };
-  const value = useMemo(() => ({ customer, loading, openAuth: () => setOpen(true), signOut, refresh }), [customer, loading]);
-  return <CustomerAuthContext.Provider value={value}>{children}{!isAdminRoute && <WelcomeDiscountTimer customer={customer} onExpired={refresh} />}{!isAdminRoute && isOpen && <AuthModal onClose={() => { sessionStorage.setItem("siren-auth-dismissed", "1"); setOpen(false); }} onAuthenticated={(result) => { localStorage.setItem(TOKEN_KEY, result.accessToken); setCustomer(result.customer); setOpen(false); }} />}</CustomerAuthContext.Provider>;
+  const value = useMemo(() => ({ customer, loading, openAuth: () => openOverlay("auth"), signOut, refresh }), [customer, loading, openOverlay]);
+  return <CustomerAuthContext.Provider value={value}>{children}{!isAdminRoute && <WelcomeDiscountTimer customer={customer} onExpired={refresh} />}{!isAdminRoute && isOpen && <AuthModal onClose={() => { sessionStorage.setItem("siren-auth-dismissed", "1"); closeOverlay("auth"); }} onAuthenticated={(result) => { localStorage.setItem(TOKEN_KEY, result.accessToken); setCustomer(result.customer); closeOverlay("auth"); }} />}</CustomerAuthContext.Provider>;
 }
 export const useCustomerAuth = () => {
   const context = useContext(CustomerAuthContext);
@@ -59,7 +62,7 @@ function WelcomeDiscountTimer({ customer, onExpired }: { customer: Customer | nu
     update(); const timer = window.setInterval(update, 1000); return () => window.clearInterval(timer);
   }, [customer?.id, customer?.welcomeDiscountEligible, expiresAt, onExpired]);
   if (!customer?.welcomeDiscountEligible || !remaining) return null;
-  return <aside className="welcome-discount-timer" role="status" aria-label="Welcome chegirma taymeri"><span>WELCOME</span><b>−{customer.welcomeDiscountPercent || 15}%</b><time>{remaining}</time><a href="/shop">XARID QILISH</a></aside>;
+  return <aside className="welcome-discount-timer" role="status" aria-label="Welcome chegirma taymeri"><span>WELCOME</span><b>−{customer.welcomeDiscountPercent || 15}%</b><time>{remaining}</time><Link href="/shop">XARID QILISH</Link></aside>;
 }
 
 function AuthModal({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (result: { accessToken: string; customer: Customer }) => void }) {

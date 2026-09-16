@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
 import { useCart } from "./CartContext";
+import { useSearch } from "./SearchProvider";
 
 const items = [
   { href: "/", label: "Главная", icon: "/icons/home.svg" },
@@ -22,7 +23,8 @@ function NavIcon({ icon, home }: { icon: string; home?: boolean }) {
 export default function MobileBottomNav() {
   const { t } = useLanguage();
   const pathname = usePathname();
-  const { cartCount } = useCart();
+  const { cartCount, openCart } = useCart();
+  const { isSearchOpen, toggleSearch } = useSearch();
 
   if (pathname.startsWith("/admin")) return null;
 
@@ -38,6 +40,13 @@ export default function MobileBottomNav() {
         const className = `${isActive ? "is-active" : ""}${hasItems ? " has-items" : ""}`.trim();
         const ariaLabel = t(item.label === "Главная" ? "home" : item.label === "Поиск" ? "search" : item.label === "Корзина" ? "cart" : item.label === "Избранное" ? "favorites" : "profile");
 
+        if (item.href === "/cart" || item.href === "/search") {
+          const open = item.href === "/cart" ? undefined : isSearchOpen;
+          return <button key={item.label} type="button" aria-label={ariaLabel} aria-expanded={open} className={`${className} mobile-bottom-nav-button`.trim()} onClick={() => item.href === "/cart" ? openCart() : toggleSearch()}>
+            <NavIcon icon={item.icon} />
+            {hasItems && <span aria-hidden="true" />}
+          </button>;
+        }
         return (
         <Link
           key={item.label}

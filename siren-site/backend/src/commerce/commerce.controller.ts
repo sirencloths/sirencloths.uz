@@ -48,4 +48,5 @@ export class AdminCommerceController {
   @Get('orders') orders() { return this.commerce.listOrders(); }
   @Patch('orders/:id') updateOrder(@Param('id') id: string, @Body() body: UpdateOrderDto) { return this.commerce.updateOrder(id, body); }
   @Get('customers') customers() { return this.commerce.listCustomers(); }
+  @Get('customers/:id') customer(@Param('id') id: string) { return this.commerce.customerDetails(id); }
 }

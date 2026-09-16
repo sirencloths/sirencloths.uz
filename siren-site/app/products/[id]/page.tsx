@@ -5,6 +5,7 @@ import ProductInfoAccordion from "@/components/ProductInfoAccordion";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import ProductColorGallery from "@/components/ProductColorGallery";
 import { T } from "@/components/LanguageProvider";
+import Link from "next/link";
 import { heroProducts } from "@/lib/data";
 import { formatStorePrice, getStorefrontProduct, storefrontProductImages, storefrontProductImagesByColor, storefrontProductPrice, type ApiProduct } from "@/lib/api";
 
@@ -33,12 +34,12 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
   return <>
     <FixedTop />
     <main className="product-detail">
-      <ProductColorGallery productId={apiProduct?.id ?? legacy!.id} initialColor={initialColor} imagesByColor={imagesByColor} fallbackImages={images.length ? images : [image]} alt={title} />
+      <ProductColorGallery key={apiProduct?.id ?? legacy!.id} productId={apiProduct?.id ?? legacy!.id} initialColor={initialColor} imagesByColor={imagesByColor} fallbackImages={images.length ? images : [image]} alt={title} />
       <div className="product-detail-info">
-        <div className="product-detail-breadcrumb"><a href="/"><T text="home" /></a><span>&gt;</span><span>{title}</span></div>
+        <div className="product-detail-breadcrumb"><Link href="/"><T text="home" /></Link><span>&gt;</span><span>{title}</span></div>
         <h1 className="product-detail-title">{title}</h1>
         {article && <p className="product-detail-sku">ARTIKUL: {article}</p>}
-        <ProductDetailClient id={apiProduct?.id ?? legacy!.id} title={title} price={price} currencyCode={apiProduct?.currencyCode ?? "UZS"} image={image} variants={variants} initialColor={initialColor} sizeGuideImageUrl={apiProduct?.metadata?.sizeGuideImageUrl} />
+        <ProductDetailClient key={apiProduct?.id ?? legacy!.id} id={apiProduct?.id ?? legacy!.id} title={title} price={price} currencyCode={apiProduct?.currencyCode ?? "UZS"} image={image} variants={variants} initialColor={initialColor} sizeGuideImageUrl={apiProduct?.metadata?.sizeGuideImageUrl} />
         <ProductInfoAccordion description={apiProduct?.description} article={article} />
       </div>
     </main>

@@ -91,6 +91,8 @@ export class AdminCatalogController {
   @Patch('variants/:id') updateVariant(@Param('id') id: string, @Body() body: Partial<VariantDto>) { return this.catalog.updateVariant(id, body); }
   @Delete('variants/:id') removeVariant(@Param('id') id: string) { return this.catalog.removeVariant(id); }
   @Get('discounts') discounts() { return this.catalog.listDiscounts(); }
+  @Get('fiscal/ikpu') fiscalIkpuSearch(@Query('query') query?: string) { return this.catalog.searchFiscalIkpu(query ?? ''); }
+  @Get('fiscal/ikpu/:code') fiscalIkpuDetails(@Param('code') code: string) { return this.catalog.fiscalIkpuDetails(code); }
   @Post('discounts') discount(@Body() body: DiscountDto, @CurrentUser() actor: { id: string }) { return this.catalog.createDiscount(body, actor.id); }
   @Patch('discounts/:id') updateDiscount(@Param('id') id: string, @Body() body: DiscountStatusDto, @CurrentUser() actor: { id: string }) { return this.catalog.setDiscountActive(id, body.isActive, actor.id); }
   @Delete('discounts/:id') removeDiscount(@Param('id') id: string, @CurrentUser() actor: { id: string }) { return this.catalog.removeDiscount(id, actor.id); }

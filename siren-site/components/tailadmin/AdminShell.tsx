@@ -5,6 +5,7 @@ import type { ElementType, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Dropdown } from "./ui/dropdown/Dropdown";
 import { DropdownItem } from "./ui/dropdown/DropdownItem";
+import Link from "next/link";
 
 export type TailAdminNavItem = { id: string; label: string; icon: ElementType };
 export type TailAdminNavGroup = { label: string; items: TailAdminNavItem[] };
@@ -56,10 +57,10 @@ export default function AdminShell({ activeId, groups, onNavigate, compact, onCo
     {mobileOpen && <button aria-label="Menyuni yopish" className="fixed inset-0 z-40 bg-gray-900/50 xl:hidden" onClick={() => setMobileOpen(false)} />}
     <aside className={`fixed top-0 left-0 z-50 flex h-full flex-col border-r border-gray-200 bg-white px-5 text-gray-900 transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 ${sideWidth} ${expanded ? "translate-x-0" : "-translate-x-full"}`} style={{ ...surfaceStyle, borderColor: "#e4e7ec" }}>
       <div className={`flex py-8 ${expanded ? "justify-start" : "justify-center"}`}>
-        <a href="/" className="flex items-center gap-2 text-gray-900 dark:text-white" style={{ color: darkMode ? "#ffffff" : "#101828" }}>
+        <Link href="/" className="flex items-center gap-2 text-gray-900 dark:text-white" style={{ color: darkMode ? "#ffffff" : "#101828" }}>
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-sm font-bold text-white">S</span>
           {expanded && <span className="whitespace-nowrap text-lg font-semibold tracking-tight">SIREN Admin</span>}
-        </a>
+        </Link>
       </div>
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
         <nav className="mb-6 flex flex-col gap-6">

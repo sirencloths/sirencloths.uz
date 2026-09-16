@@ -6,6 +6,7 @@ import type { Product } from "@/lib/data";
 import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
 import ProductCard from "./ProductCard";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import Link from "next/link";
 
 type Props = { products: Product[]; id?: string; ariaLabel: string; more?: boolean; slider?: boolean; heading?: { title: string; linkLabel: string; href: string } };
 const AUTO_ADVANCE_MS = 9000;
@@ -48,7 +49,7 @@ export default function Products({ products, id, ariaLabel, more = false, slider
 
   return <section className={`products${more ? " products--more" : ""}${activeSlider ? " products--slider" : ""}${slider && !activeSlider ? " products--short" : ""}`} id={id} aria-label={ariaLabel}>
     {activeSlider && <button className="slider-btn slider-btn--left" type="button" aria-label="Назад" onClick={() => api?.scrollPrev()}><Image src="/icons/arrow-right.svg" alt="" width={6} height={12} /></button>}
-    {heading && <div className="section-heading recommendation-heading"><h2 style={{ fontSize: "40px" }}>{heading.title}</h2><a href={heading.href}>{heading.linkLabel}</a></div>}
+    {heading && <div className="section-heading recommendation-heading"><h2 style={{ fontSize: "40px" }}>{heading.title}</h2><Link href={heading.href}>{heading.linkLabel}</Link></div>}
     {activeSlider ? <Carousel key={viewport} className="products-slider" style={{ visibility: viewport === "pending" ? "hidden" : undefined }} opts={{ loop: true, align: viewport === "mobile" ? "center" : "start", duration: 28 }} setApi={setApi} onPointerDown={() => { resumeAt.current = Date.now() + RESUME_DELAY_MS; }}>
       <CarouselContent className="products-track">
         {displayProducts.map((product) => <CarouselItem className="products-slide" key={product.cardId ?? product.id}><ProductCard product={product} /></CarouselItem>)}

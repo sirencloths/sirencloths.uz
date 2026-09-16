@@ -28,6 +28,57 @@ export class CatalogService {
     private readonly dataSource: DataSource,
   ) {}
 
+  /** Keeps fiscal codes sourced from the National Catalog instead of local guesses. */
+  async searchFiscalIkpu(query: string) {
+    const term = query.trim();
+    if (term.length < 2) throw new BadRequestException('IKPU qidiruvi kamida 2 ta belgi bo‘lishi kerak');
+    const response = await this.tasnifRequest('/mxik/search/by-params', { text: term, size: '20', lang: 'uz_latn' });
+    const searchData = response.data as { content?: unknown[] } | undefined;
+    const content = Array.isArray(searchData?.content) ? searchData.content : [];
+    return content.map((raw) => {
+      const item = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+      return {
+        code: String(item.mxikCode ?? ''),
+        name: String(item.mxikName ?? item.subPositionName ?? item.positionName ?? ''),
+        category: [item.groupName, item.className].filter(Boolean).map(String).join(' · '),
+      };
+    }).filter((item: { code: string }) => Boolean(item.code));
+  }
+
+  async fiscalIkpuDetails(code: string) {
+    const normalized = code.trim();
+    if (!/^\d{8,20}$/.test(normalized)) throw new BadRequestException('IKPU kodi noto‘g‘ri');
+    const item = await this.tasnifRequest('/mxik/get/by-mxik', { mxikCode: normalized, lang: 'uz_latn' });
+    return {
+      code: String(item.mxikCode ?? normalized),
+      name: String(item.mxikName ?? item.subPositionName ?? item.positionName ?? ''),
+      category: [item.groupName, item.className].filter(Boolean).map(String).join(' · '),
+      packages: (Array.isArray(item.packages) ? item.packages : []).map((pkg: Record<string, unknown>) => ({
+        code: String(pkg.code ?? ''),
+        label: [pkg.containerName, pkg.name].filter(Boolean).map(String).join(' — '),
+        unitCode: pkg.unitId == null ? '' : String(pkg.unitId),
+        unitName: String(pkg.unitName ?? ''),
+      })).filter((pkg: { code: string }) => Boolean(pkg.code)),
+    };
+  }
+
+  private async tasnifRequest(path: string, params: Record<string, string>) {
+    const url = new URL(`https://tasnif.soliq.uz/api/cls-api${path}`);
+    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
+    try {
+      const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new BadRequestException('Rasmiy IKPU katalogiga ulanib bo‘lmadi');
+      return await response.json() as Record<string, unknown>;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('Rasmiy IKPU katalogi hozir javob bermayapti. Keyinroq qayta urinib ko‘ring.');
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   async publicProducts() {
     const products = await this.products.find({ where: { status: ProductStatus.ACTIVE }, relations: { variants: true, category: true }, order: { createdAt: 'DESC' } });
     const discounted = await this.applyDiscounts(await this.ensureVariantEan13(products));
@@ -126,7 +177,16 @@ export class CatalogService {
   }
   async removeVariant(id: string) { await this.variants.delete(id); return { deleted: true }; }
 
-  listDiscounts() { return this.discounts.find({ relations: { product: true }, order: { isActive: 'DESC', createdAt: 'DESC' } }); }
+  async listDiscounts() {
+    const discounts = await this.discounts.find({ relations: { product: { variants: true } }, order: { isActive: 'DESC', createdAt: 'DESC' } });
+    return Promise.all(discounts.map(async (discount) => {
+      const matchingVariants = discount.product?.variants?.filter((variant) => (!discount.color || variant.color === discount.color) && (!discount.size || variant.size === discount.size)) ?? [];
+      const amounts = matchingVariants.map((variant) => Number(variant.price ?? discount.product.price)).filter((amount) => Number.isFinite(amount) && amount > 0);
+      if (amounts.length && discount.product) discount.product.price = String(Math.min(...amounts));
+      const sales = await this.orderItems.createQueryBuilder('item').innerJoin('item.order', 'order').select('COALESCE(SUM(item.quantity), 0)', 'quantity').where('item.product_id = :productId', { productId: discount.productId }).andWhere('order.payment_status = :paymentStatus', { paymentStatus: 'paid' }).andWhere(matchingVariants.length ? 'item.variant_id IN (:...variantIds)' : '1=1', { variantIds: matchingVariants.map((variant) => variant.id) }).getRawOne<{ quantity: string }>();
+      return { ...discount, discountSoldQuantity: Number(sales?.quantity || 0) };
+    }));
+  }
   async createDiscount(input: DiscountInput, actorId?: string) {
     const product = await this.productOrFail(input.productId);
     const color = input.color?.trim() || null, size = input.size?.trim() || null;

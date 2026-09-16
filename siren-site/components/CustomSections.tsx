@@ -1,10 +1,18 @@
 import { formatStorePrice, type ApiCustomSection, type ApiProduct } from "@/lib/api";
+import Link from "next/link";
+import type { CSSProperties, ReactNode } from "react";
 
 const apiOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
 const imageUrl = (value: string) =>
   value.startsWith("http") || !value.startsWith("/uploads/")
     ? value
     : `${apiOrigin}${value}`;
+
+function ContentLink({ href, className, children, style }: { href?: string | null; className?: string; children: ReactNode; style?: CSSProperties }) {
+  const target = href || "#";
+  if (target.startsWith("/")) return <Link href={target} className={className} style={style}>{children}</Link>;
+  return <a className={className} href={target} style={style}>{children}</a>;
+}
 
 export default function CustomSections({
   sections,
@@ -62,7 +70,7 @@ export default function CustomSections({
           >
             <div className="custom-section-desktop-layout">
               {desktopCartPosition === "left" && desktopCart}
-              <a
+              <ContentLink
                 className={`custom-section-banner custom-section-text--${section.desktopTextPosition ?? "bottom-left"}`}
                 href={section.targetUrl || "#"}
                 style={{ borderRadius: section.borderRadius ?? 0 }}
@@ -74,7 +82,7 @@ export default function CustomSections({
                 {section.shadow !== false && <span className="custom-section-shade" />}
                 <span className="custom-section-copy custom-section-copy--desktop"><b>{section.desktopName || section.name}</b><small>{section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</small></span>
                 <span className="custom-section-copy custom-section-copy--mobile"><b>{section.mobileName || section.desktopName || section.name}</b><small>{section.mobileLinkLabel || section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</small></span>
-              </a>
+              </ContentLink>
               {desktopCartPosition === "right" && desktopCart}
               {desktopCartPosition === "below" && desktopCart}
               {mobileCart}
@@ -109,12 +117,12 @@ function BannerOnlySection({ section }: { section: ApiCustomSection }) {
   const items = Array.from({ length: count }, (_, index) => source[index] ?? source[0] ?? fallback);
   return <section className={`custom-banner-only custom-banner-only--desktop-${desktopTemplate} custom-banner-only--mobile-${mobileTemplate}`}>
     <div className="custom-banner-only-layout">
-      {items.map((item, index) => <a className="custom-banner-only-slot" href={item.desktopLink || item.targetUrl || section.desktopLink || section.targetUrl || "#"} key={`${item.id}-${index}`}>
+      {items.map((item, index) => <ContentLink className="custom-banner-only-slot" href={item.desktopLink || item.targetUrl || section.desktopLink || section.targetUrl || "#"} key={`${item.id}-${index}`}>
         <picture><source media="(max-width: 760px)" srcSet={imageUrl(item.mobileImageUrl || section.mobileImageUrl || section.desktopImageUrl)} /><img src={imageUrl(item.desktopImageUrl || section.desktopImageUrl)} alt="" /></picture>
         {section.shadow !== false && <span className="custom-section-shade" />}
         <span className="custom-banner-only-copy custom-banner-only-copy--desktop"><b>{item.desktopName || section.desktopName || section.name}</b><small>{item.desktopLinkLabel || item.linkLabel || section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</small></span>
         <span className="custom-banner-only-copy custom-banner-only-copy--mobile"><b>{item.mobileName || item.desktopName || section.mobileName || section.desktopName || section.name}</b><small>{item.mobileLinkLabel || item.desktopLinkLabel || item.linkLabel || section.mobileLinkLabel || section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</small></span>
-      </a>)}
+      </ContentLink>)}
     </div>
   </section>;
 }
@@ -145,12 +153,12 @@ function SectionCart({
       aria-label="Custom section mahsulotlari"
     >
       {items.map(({ product, variant }, index) => (
-        <a className="product-card custom-section-product-card" href={`/products/${product.slug}`} key={`${device}-${variant.id}-${index}`}>
+        <Link className="product-card custom-section-product-card" href={`/products/${product.slug}`} key={`${device}-${variant.id}-${index}`}>
           <span className="product-image"><img className="custom-section-product-image--primary" src={imageUrl(product.media[0]?.url ?? "")} alt="" />{product.media[1]?.url && <img className="custom-section-product-image--hover" src={imageUrl(product.media[1].url)} alt="" aria-hidden="true" />}<span className="like-btn"><img src="/icons/heart.svg" alt="" /></span></span>
           <h2>{product.title}</h2>
           <p>{(variant.color || variant.size || "").toUpperCase()}</p>
           <strong>{formatStorePrice(product.price, product.currencyCode)}</strong>
-        </a>
+        </Link>
       ))}
     </div>
   );

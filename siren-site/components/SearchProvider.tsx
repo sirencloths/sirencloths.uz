@@ -14,6 +14,7 @@ import {
 import { heroProducts, type Product } from "@/lib/data";
 import { useLanguage } from "./LanguageProvider";
 import { getStorefrontProducts, getStorefrontRandomProducts, storefrontAssetUrl, toStorefrontColorCards } from "@/lib/api";
+import { useOverlayHistory } from "./OverlayHistoryProvider";
 
 type SearchContextValue = {
   isSearchOpen: boolean;
@@ -23,24 +24,24 @@ type SearchContextValue = {
 
 const SearchContext = createContext<SearchContextValue | null>(null);
 export function SearchProvider({ children }: { children: ReactNode }) {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-
-  const closeSearch = () => {
-    setIsSearchOpen(false);
-  };
+  const { isOverlayOpen, openOverlay, closeOverlay } = useOverlayHistory();
+  const isSearchOpen = isOverlayOpen("search");
+  const closeSearch = () => closeOverlay("search");
 
   useEffect(() => {
     if (!isSearchOpen) return;
     const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") closeSearch(); };
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previousOverflow; };
-  }, [isSearchOpen]);
+    window.addEventListener("keydown", onKeyDown);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKeyDown); };
+  }, [isSearchOpen, closeSearch]);
 
   const value = useMemo(() => ({
     isSearchOpen,
-    toggleSearch: () => setIsSearchOpen((open) => !open),
+    toggleSearch: () => isSearchOpen ? closeOverlay("search") : openOverlay("search"),
     closeSearch,
-  }), [isSearchOpen]);
+  }), [isSearchOpen, openOverlay, closeOverlay]);
 
   return (
     <SearchContext.Provider value={value}>

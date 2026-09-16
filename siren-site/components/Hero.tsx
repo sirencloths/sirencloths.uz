@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "./LanguageProvider";
 import type { ApiBanner } from "@/lib/api";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import Link from "next/link";
 
 const apiOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
 const assetUrl = (url: string) => (url.startsWith("http") || url.startsWith("/") && !url.startsWith("/uploads/") ? url : `${apiOrigin}${url}`);
@@ -41,7 +42,7 @@ export default function Hero({ banners = [] }: { banners?: ApiBanner[] }) {
       </CarouselContent>
     </Carousel>}
     {activeBanner?.textShadow !== false && <div className="hero-shade" aria-hidden="true" />}
-    <div className="hero-content"><h1>{activeBanner?.title || t("newCollection")}</h1><a href={activeBanner?.targetUrl || "#collections"}>{activeBanner?.linkLabel || t("go")}</a></div>
+    <div className="hero-content"><h1>{activeBanner?.title || t("newCollection")}</h1>{(activeBanner?.targetUrl || "").startsWith("/") ? <Link href={activeBanner?.targetUrl || "/"}>{activeBanner?.linkLabel || t("go")}</Link> : <a href={activeBanner?.targetUrl || "#collections"}>{activeBanner?.linkLabel || t("go")}</a>}</div>
     {banners.length > 1 && <div className="hero-controls"><button type="button" aria-label="Предыдущий баннер" onClick={() => move(-1)}>←</button><button type="button" aria-label="Следующий баннер" onClick={() => move(1)}>→</button></div>}
   </section>;
 }

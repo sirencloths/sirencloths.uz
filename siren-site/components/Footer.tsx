@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useLanguage } from "./LanguageProvider";
+import Link from "next/link";
 
 const tickerItems = Array.from({ length: 12 });
 
@@ -37,10 +38,10 @@ export default function Footer() {
 
       <div className="siren-footer__inner">
         <nav className="footer-menu" aria-label="Footer navigation">
-          <a href="#shop">{t("shop")}</a>
-          <a href="#collections">{t("collections")}</a>
-          <a href="#lookbook">{t("lookbook")}</a>
-          <a href="/blog">{t("blog")}</a>
+          <Link href="/shop">{t("shop")}</Link>
+          <Link href="/collections">{t("collections")}</Link>
+          <Link href="/lookbook">{t("lookbook")}</Link>
+          <Link href="/blog">{t("blog")}</Link>
         </nav>
 
         <div className="footer-buyers">

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { collectionSideProducts } from "@/lib/data";
 import ProductCard from "./ProductCard";
 import { useLanguage } from "./LanguageProvider";
+import Link from "next/link";
 
 export default function Collection() {
   const { t } = useLanguage();
@@ -16,7 +17,7 @@ export default function Collection() {
         ))}
       </div>
 
-      <a className="collection-banner" href="#">
+      <Link className="collection-banner" href="/collections">
         <Image
           src="/images/collection-banner.jpg"
           alt="Новая коллекция SIREN"
@@ -29,7 +30,7 @@ export default function Collection() {
           </span>
           <b>{t("go")}</b>
         </span>
-      </a>
+      </Link>
     </section>
   );
 }

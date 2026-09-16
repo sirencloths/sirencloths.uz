@@ -3,6 +3,7 @@
 import { useLanguage } from "./LanguageProvider";
 import { heroProducts } from "@/lib/data";
 import ProductCard from "./ProductCard";
+import Link from "next/link";
 
 export default function Recommendation() {
   const { t } = useLanguage();
@@ -12,7 +13,7 @@ export default function Recommendation() {
     <section className="recommendation-section">
       <div className="recommendation-header">
         <h2>РЕКОМЕНДУЕМ</h2>
-        <a href="/shop">{t("go")}</a>
+        <Link href="/shop">{t("go")}</Link>
       </div>
 
       <div className="recommendation-grid">
