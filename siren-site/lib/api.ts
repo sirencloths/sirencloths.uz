@@ -14,6 +14,7 @@ export type ApiProduct = {
   gender?: "male" | "female" | "unisex";
 };
 export type ApiCategory = { id: string; slug: string; name: string; description?: string | null; isVisible: boolean };
+export type ApiCollection = { id: string; slug: string; name: string; description?: string | null; isVisible: boolean };
 export type ListingFacet = { value: string; count: number };
 export type StorefrontListing = { products: ApiProduct[]; total: number; facets: { genders: ListingFacet[]; colors: ListingFacet[]; sizes: ListingFacet[]; price: { min: number; max: number } } };
 
@@ -122,6 +123,11 @@ export async function getStorefrontCategories(): Promise<ApiCategory[]> {
   const response = await fetch(`${apiBaseUrl}/catalog/categories`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Unable to load categories');
   return response.json() as Promise<ApiCategory[]>;
+}
+export async function getStorefrontCollections(): Promise<ApiCollection[]> {
+  const response = await fetch(`${apiBaseUrl}/catalog/collections`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Unable to load collections');
+  return response.json() as Promise<ApiCollection[]>;
 }
 export async function getStorefrontListing(params: URLSearchParams): Promise<StorefrontListing> {
   const response = await fetch(`${apiBaseUrl}/catalog/products/listing?${params.toString()}`, { cache: 'no-store' });

@@ -21,6 +21,7 @@ export class CmsController {
   @Get('lookbook') lookbook() { return this.cms.lookbookForStorefront(); }
   @Get('custom-sections') customSections() { return this.cms.customSectionsForStorefront(); }
   @Get('navigation') navigation() { return this.cms.navigationForStorefront(); }
+  @Get('header-message') headerMessage() { return this.cms.headerMessageForStorefront(); }
   @Get('records') records() { return this.cms.recordsForStorefront(); }
   @Get('notifications') notifications() { return this.cms.notificationsForStorefront(); }
   @Post('notifications/:id/click') notificationClick(@Param('id') id: string, @Body() body: NotificationClickDto) { return this.cms.recordNotificationClick(id, body.visitorId); }

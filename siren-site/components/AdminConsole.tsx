@@ -64,6 +64,55 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "./tailadmin/
 import { OfflineCashier, OfflineInventory, OfflineReports, OfflineSales } from "./OfflineShopWorkspace";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? (typeof window === "undefined" ? "http://localhost:4000/api" : `${window.location.protocol}//${window.location.hostname}:4000/api`);
+const ADMIN_TOKEN_KEY = "siren-admin-token";
+const ADMIN_REFRESH_TOKEN_KEY = "siren-admin-refresh-token";
+type SessionTokens = { accessToken: string; refreshToken: string; accessTokenExpiresIn: number; refreshTokenExpiresIn: number };
+let adminRefreshInFlight: Promise<string | null> | null = null;
+
+function storeAdminTokens(tokens: SessionTokens) {
+  localStorage.setItem(ADMIN_TOKEN_KEY, tokens.accessToken);
+  localStorage.setItem(ADMIN_REFRESH_TOKEN_KEY, tokens.refreshToken);
+}
+
+function clearAdminTokens() {
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  localStorage.removeItem(ADMIN_REFRESH_TOKEN_KEY);
+}
+
+async function refreshAdminAccessToken() {
+  if (typeof window === "undefined") return null;
+  if (!adminRefreshInFlight) {
+    adminRefreshInFlight = (async () => {
+      const refreshToken = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY);
+      if (!refreshToken) return null;
+      const response = await fetch(`${API}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.accessToken || !payload.refreshToken) {
+        // Do not discard a session because of a transient connection failure.
+        // Only the auth service can confirm that the refresh session expired.
+        if (response.status === 401 || response.status === 403) {
+          clearAdminTokens();
+          window.dispatchEvent(new Event("siren-admin-unauthorized"));
+        }
+        return null;
+      }
+      storeAdminTokens(payload as SessionTokens);
+      window.dispatchEvent(new Event("siren-admin-token-refreshed"));
+      return payload.accessToken as string;
+    })().catch(() => null).finally(() => { adminRefreshInFlight = null; });
+  }
+  return adminRefreshInFlight;
+}
+
+function signOutAdmin() {
+  const refreshToken = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY);
+  if (refreshToken) void fetch(`${API}/auth/logout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken }) }).catch(() => undefined);
+  clearAdminTokens();
+}
 type Tab =
   | "dashboard"
   | "products"
@@ -86,8 +135,9 @@ type Tab =
   | "offline_inventory"
   | "offline_sales"
   | "offline_reports";
-type ContentSubsection = "main-banner" | "custom-pages" | "lookbook" | "blog" | "records" | "collections";
+type ContentSubsection = "main-banner" | "header-quotes" | "custom-pages" | "lookbook" | "blog" | "records" | "collections";
 type StoreNotification = { id: string; kind?: "general" | "blog" | "discounts" | "products"; title: Record<string, string>; text: Record<string, string>; imageUrl?: string; href?: string; createdAt: string; isActive?: boolean; clicks?: number; clickVisitorIds?: string[] };
+type HeaderQuote = { id: string; text: string; isActive: boolean };
 type Variant = {
   id: string;
   sku: string;
@@ -134,6 +184,9 @@ type Product = {
   slug: string;
   description: string;
   status: "draft" | "active" | "archived";
+  scheduledAt?: string | null;
+  showLaunchCountdown?: boolean;
+  launchCountdownText?: string | null;
   price: string;
   categoryId?: string | null;
   gender?: "male" | "female" | "unisex";
@@ -392,6 +445,10 @@ const blankProduct = () => ({
   descriptionRu: "",
   descriptionEn: "",
   status: "draft" as Product["status"],
+  publicationMode: "draft" as "draft" | "active" | "planned" | "archived",
+  scheduledAt: "",
+  showLaunchCountdown: false,
+  launchCountdownText: "",
   price: "",
   currencyCode: "UZS",
   categoryId: "",
@@ -451,23 +508,20 @@ const generatedVariantSku = (article: string, color: string, size: string) => {
 };
 const blankTaxonomy = () => ({ name: "", slug: "", isVisible: true });
 async function api<T>(path: string, token: string, options: RequestInit = {}) {
-  const headers = new Headers(options.headers);
-  headers.set("Authorization", `Bearer ${token}`);
-  if (!(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
-  const r = await fetch(`${API}${path}`, {
-    ...options,
-    headers,
-  });
+  const send = (accessToken: string) => {
+    const headers = new Headers(options.headers);
+    headers.set("Authorization", `Bearer ${accessToken}`);
+    if (!(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
+    return fetch(`${API}${path}`, { ...options, headers });
+  };
+  let r = await send(token);
+  if (r.status === 401) {
+    const renewedToken = await refreshAdminAccessToken();
+    if (renewedToken) r = await send(renewedToken);
+  }
   const body = await r.json().catch(() => ({}));
   if (r.status === 401) {
-    // A backend restart or an expired JWT used to leave the admin on a broken
-    // editor screen.  Clear the stale token and let the console show login
-    // again, before reporting the reason to the current action.
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("siren-admin-token");
-      window.dispatchEvent(new Event("siren-admin-unauthorized"));
-    }
-    throw new Error("Sessiya tugadi. Qayta kiring.");
+    throw new Error("Sessiya tekshiruvi bajarilmadi. Sahifani qayta yuklang.");
   }
   if (!r.ok)
     throw new Error(
@@ -484,6 +538,14 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       {children}
     </label>
   );
+}
+function AdminConfirmDialog({ title, description, confirmLabel = "Ha, o‘chirish", busy = false, onCancel, onConfirm }: { title: string; description: ReactNode; confirmLabel?: string; busy?: boolean; onCancel: () => void; onConfirm: () => void }) {
+  return <div className="admin-confirm-backdrop" role="presentation" onMouseDown={() => !busy && onCancel()}>
+    <section className="admin-confirm-dialog" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.stopPropagation()}>
+      <p className="ui-overline">TASDIQLASH KERAK</p><h3>{title}</h3><p>{description}</p>
+      <div><Button type="button" variant="outline" disabled={busy} onClick={onCancel}>Bekor qilish</Button><Button type="button" variant="destructive" disabled={busy} onClick={onConfirm}>{busy ? "Bajarilmoqda…" : confirmLabel}</Button></div>
+    </section>
+  </div>;
 }
 type FiscalIkpuOption = { code: string; name: string; category: string };
 type FiscalPackage = { code: string; label: string; unitCode: string; unitName: string };
@@ -1134,12 +1196,14 @@ export default function AdminConsole() {
   const [records, setRecords] = useState<MusicRecord[]>([]);
   const [storeNotifications, setStoreNotifications] = useState<StoreNotification[]>([]);
   const [pageBanners, setPageBanners] = useState<PageBannerDraft[]>([]);
+  const [headerQuotes, setHeaderQuotes] = useState<HeaderQuote[]>([]);
   const [pages, setPages] = useState<CmsPage[]>([]);
   const [users, setUsers] = useState<
     Array<{ id: string; email: string; role: string }>
   >([]);
   const [audit, setAudit] = useState<Record<string, unknown>[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [confirmProductDeletion, setConfirmProductDeletion] = useState(false);
   const [inspectedProductId, setInspectedProductId] = useState<string | null>(null);
   const [productView, setProductView] = useState<"list" | "create" | "edit">(
     "list",
@@ -1330,6 +1394,11 @@ export default function AdminConsole() {
         const pageBannerSetting = settings.find((setting) => setting.key === "page-banners");
         const storedItems = pageBannerSetting?.value?.items;
         setPageBanners(Array.isArray(storedItems) ? (storedItems as PageBannerDraft[]).map((item) => ({ ...blankPageBanner(), ...item, cartItems: Array.isArray(item.cartItems) ? item.cartItems : [] })) : []);
+        const headerQuoteItems = settings.find((setting) => setting.key === "header-quotes")?.value?.items;
+        setHeaderQuotes(Array.isArray(headerQuoteItems) ? headerQuoteItems
+          .filter((item): item is Partial<HeaderQuote> => Boolean(item && typeof item === "object"))
+          .map((item) => ({ id: typeof item.id === "string" ? item.id : `quote-${Math.random().toString(36).slice(2)}`, text: typeof item.text === "string" ? item.text : "", isActive: item.isActive !== false }))
+          .filter((item) => Boolean(item.text.trim())) : []);
       }
       if (t === "notifications") {
         const settings = await api<SiteSetting[]>("/admin/content/settings", token);
@@ -1342,8 +1411,11 @@ export default function AdminConsole() {
     [catalog, dashboardCurrency, dashboardFrom, dashboardGranularity, dashboardMetric, dashboardPeriod, dashboardTo, tab, token],
   );
   useEffect(() => {
-    const v = localStorage.getItem("siren-admin-token");
-    if (v) setToken(v);
+    void (async () => {
+      const renewedToken = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY) ? await refreshAdminAccessToken() : null;
+      const v = renewedToken || localStorage.getItem(ADMIN_TOKEN_KEY);
+      if (v) setToken(v);
+    })();
     const savedTheme = localStorage.getItem("siren-admin-theme");
     if (savedTheme === "midnight" || savedTheme === "violet" || savedTheme === "graphite" || savedTheme === "forest" || savedTheme === "light") setAdminTheme(savedTheme);
     // The TailAdmin product layout starts with the navigation drawer closed.
@@ -1365,8 +1437,13 @@ export default function AdminConsole() {
   }, []);
   useEffect(() => {
     const signOutExpiredSession = () => setToken("");
+    const syncRefreshedSession = () => setToken(localStorage.getItem(ADMIN_TOKEN_KEY) ?? "");
     window.addEventListener("siren-admin-unauthorized", signOutExpiredSession);
-    return () => window.removeEventListener("siren-admin-unauthorized", signOutExpiredSession);
+    window.addEventListener("siren-admin-token-refreshed", syncRefreshedSession);
+    return () => {
+      window.removeEventListener("siren-admin-unauthorized", signOutExpiredSession);
+      window.removeEventListener("siren-admin-token-refreshed", syncRefreshedSession);
+    };
   }, []);
   useEffect(() => {
     if (token) void run(() => refresh());
@@ -1381,7 +1458,8 @@ export default function AdminConsole() {
       });
       const b = await r.json();
       if (!r.ok) throw new Error(b.message ?? "Kirish amalga oshmadi");
-      localStorage.setItem("siren-admin-token", b.accessToken);
+      if (!b.accessToken || !b.refreshToken) throw new Error("Sessiya tokenlari olinmadi. Qayta urinib ko‘ring.");
+      storeAdminTokens(b as SessionTokens);
       setToken(b.accessToken);
     });
   };
@@ -1402,6 +1480,10 @@ export default function AdminConsole() {
       descriptionRu: translations?.descriptionRu ?? "",
       descriptionEn: translations?.descriptionEn ?? "",
       status: p.status,
+      publicationMode: p.scheduledAt && new Date(p.scheduledAt).getTime() > Date.now() ? "planned" : p.status,
+      scheduledAt: localDateTimeInput(p.scheduledAt),
+      showLaunchCountdown: p.showLaunchCountdown === true,
+      launchCountdownText: p.launchCountdownText ?? "",
       price: p.price,
       currencyCode: p.currencyCode,
       categoryId: p.categoryId ?? "",
@@ -1451,6 +1533,17 @@ export default function AdminConsole() {
     e.preventDefault();
     if (!form.categoryId) { setNotice("Kategoriya tanlang."); return; }
     if (!form.gender) { setNotice("Gender tanlang."); return; }
+    if (form.publicationMode === "planned") {
+      const launchAt = new Date(form.scheduledAt).getTime();
+      if (!form.scheduledAt || Number.isNaN(launchAt) || launchAt <= Date.now()) {
+        setError("Rejalashtirish uchun kelajakdagi kun va soatni tanlang.");
+        return;
+      }
+      if (form.showLaunchCountdown && !form.launchCountdownText.trim()) {
+        setError("Public taymer uchun qisqa text kiriting.");
+        return;
+      }
+    }
     const isCreate = !selectedId;
     const primaryTitle = form.titleUz.trim() || form.title.trim() || form.titleRu.trim() || form.titleEn.trim();
     const primaryDescription = form.descriptionUz.trim() || form.description.trim() || form.descriptionRu.trim() || form.descriptionEn.trim();
@@ -1514,7 +1607,10 @@ export default function AdminConsole() {
         title: primaryTitle,
         description: primaryDescription,
         slug: form.slug || primaryTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `product-${Date.now()}`,
-        status: form.status,
+        status: form.publicationMode === "planned" ? "draft" : form.publicationMode,
+        scheduledAt: form.publicationMode === "planned" ? new Date(form.scheduledAt).toISOString() : null,
+        showLaunchCountdown: form.publicationMode === "planned" && form.showLaunchCountdown,
+        launchCountdownText: form.publicationMode === "planned" && form.showLaunchCountdown ? form.launchCountdownText.trim() : null,
         price: effectiveProductPrice,
         currencyCode: form.currencyCode,
         categoryId: form.categoryId || null,
@@ -1675,12 +1771,13 @@ export default function AdminConsole() {
     });
   };
   const deleteProduct = async () => {
-    if (!selectedId || !confirm("Mahsulot o‘chirilsinmi?")) return;
+    if (!selectedId) return;
     await run(async () => {
       await api(`/admin/catalog/products/${selectedId}`, token, {
         method: "DELETE",
       });
       closeEditor();
+      setConfirmProductDeletion(false);
       await catalog();
       setNotice("Mahsulot o‘chirildi.");
     });
@@ -1813,7 +1910,6 @@ export default function AdminConsole() {
     ["offline_inventory", "Offline mahsulotlar", Package],
     ["offline_sales", "Sotilgan tovarlar", ShoppingBag],
     ["offline_reports", "Offline hisobot", BarChart3],
-    ["content", "Kontent", FileText],
     ["pages", "Sahifalar", FileText],
     ["notifications", "Xabarlar", Bell],
     ["team", "Jamoa", Users],
@@ -1826,21 +1922,33 @@ export default function AdminConsole() {
     string,
   ]> = [
     ["main-banner", "Main banner", "Bosh sahifadagi asosiy banner"],
+    ["header-quotes", "Header quote", "Headerdagi quote va taymer tartibi"],
     ["custom-pages", "Custom sections", "Custom section va bannerlar"],
     ["lookbook", "Lookbook", "Lookbook sahifalari va ko‘rinishlari"],
     ["blog", "Blog", "Maqolalar va yangiliklar"],
     ["records", "Records", "Musiqa va audio treklar"],
     ["collections", "Kolleksiyalar", "Mahsulot kolleksiyalari"],
   ];
-  const standardNavGroups: Array<[string, Array<[Tab, string, ElementType]>]> = [
+  const contentSidebarNav: Array<[string, string, ElementType]> = [
+    ["content-main-banner", "Main banner", Monitor],
+    ["content-header-quotes", "Header quote", FileText],
+    ["content-custom-pages", "Custom sections", LayoutDashboard],
+    ["content-lookbook", "Lookbook", Palette],
+    ["content-blog", "Blog", FileText],
+    ["content-records", "Records", Music2],
+    ["content-collections", "Kolleksiyalar", Tags],
+  ];
+  const standardNavGroups: Array<[string, Array<[string, string, ElementType]>]> = [
     ["Asosiy", nav.slice(0, 4)],
     ["Savdo", nav.slice(4, 11)],
     ["Offline do‘kon", nav.slice(11, 15)],
-    ["Kontent", nav.slice(15, 18)],
-    ["Tizim", nav.slice(18)],
+    ["Kontent", [...contentSidebarNav, ...nav.slice(15, 17)]],
+    ["Tizim", nav.slice(17)],
   ];
   const offlineNav = nav.slice(11, 15);
-  const navGroups: Array<[string, Array<[Tab, string, ElementType]>]> = adminProfile?.role === "cashier" ? [["Offline do‘kon", offlineNav]] : standardNavGroups;
+  const navGroups: Array<[string, Array<[string, string, ElementType]>]> = adminProfile?.role === "cashier" ? [["Offline do‘kon", offlineNav]] : standardNavGroups;
+  const activeSidebarId = tab === "content" ? `content-${contentSubsection}` : tab;
+  const activeContentLabel = contentNavigation.find(([id]) => id === contentSubsection)?.[1] ?? "Kontent";
   return (
     <Tabs
       value={tab}
@@ -1850,7 +1958,7 @@ export default function AdminConsole() {
       }}
       className={`admin-theme--${adminTheme}`}
     >
-      <AdminShell activeId={tab} groups={navGroups.map(([label, items]) => ({ label, items: items.map(([id, itemLabel, icon]) => ({ id, label: itemLabel, icon })) }))} onNavigate={(id) => { setTab(id as Tab); void run(() => refresh(id as Tab)); }} compact={sidebarCompact} onCompactChange={setSidebarCompact} title={nav.find((item) => item[0] === tab)?.[1] ?? "Admin"} theme={adminTheme} onThemeChange={(value) => setAdminTheme(value as "light" | "midnight" | "violet" | "graphite" | "forest")} profile={adminProfile} busy={loading} onRefresh={() => void run(async () => { await refresh(); await refresh("dashboard"); })} notificationCount={unreadActivities.length} notificationContent={<section className="admin-activity-notifications"><header><div><p>YANGI FAOLLIK</p><b>Bildirishnomalar</b></div>{unreadActivities.length > 0 && <button type="button" onClick={() => markActivitiesRead(unreadActivities.map((item) => item.id))}><CheckCheck size={15} /> Barchasini o‘qish</button>}</header><div className="admin-notification-tabs"><button type="button" className={notificationSection === "system" ? "is-active" : ""} onClick={() => setNotificationSection("system")}>Tizim <i>{systemActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button><button type="button" className={notificationSection === "orders" ? "is-active" : ""} onClick={() => setNotificationSection("orders")}>Buyurtmalar <i>{orderActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button></div>{notificationSection === "orders" && <div className="admin-order-notification-permission"><span>{browserNotificationPermission === "granted" ? "Chrome bildirishnomasi yoqilgan" : "Ovozli Chrome bildirishnomalarini yoqing"}</span>{browserNotificationPermission !== "granted" && <button type="button" onClick={() => void enableOrderNotifications()}>Yoqish</button>}</div>}{visibleActivities.length ? <div className="admin-activity-notification-list">{visibleActivities.slice(0, 12).map((item) => { const isRead = readActivityIds.includes(item.id); const isOrder = item.entityType === "order"; return <button type="button" key={item.id} className={`admin-activity-notification${isRead ? " is-read" : ""}${isOrder ? " is-order" : ""}`} onClick={() => { markActivitiesRead([item.id]); if (isOrder) void openOrderNotification(item.entityId); }}><i aria-hidden="true" /><span><b>{dashboardActivityTitle(item.action, item.entityType)}</b><small>{item.user} · {dashboardTime(item.createdAt)}{isOrder ? " · Chekni ochish" : ""}</small></span></button>; })}</div> : <p className="admin-activity-empty">Bu bo‘limda bildirishnoma yo‘q.</p>}</section>} onSignOut={() => { localStorage.removeItem("siren-admin-token"); setToken(""); }}>
+      <AdminShell activeId={activeSidebarId} groups={navGroups.map(([label, items]) => ({ label, items: items.map(([id, itemLabel, icon]) => ({ id, label: itemLabel, icon })) }))} onNavigate={(id) => { if (id.startsWith("content-")) { setContentSubsection(id.slice("content-".length) as ContentSubsection); setTab("content"); void run(() => refresh("content")); return; } setTab(id as Tab); void run(() => refresh(id as Tab)); }} compact={sidebarCompact} onCompactChange={setSidebarCompact} title={tab === "content" ? activeContentLabel : nav.find((item) => item[0] === tab)?.[1] ?? "Admin"} theme={adminTheme} onThemeChange={(value) => setAdminTheme(value as "light" | "midnight" | "violet" | "graphite" | "forest")} profile={adminProfile} busy={loading} onRefresh={() => void run(async () => { await refresh(); await refresh("dashboard"); })} notificationCount={unreadActivities.length} notificationContent={<section className="admin-activity-notifications"><header><div><p>YANGI FAOLLIK</p><b>Bildirishnomalar</b></div>{unreadActivities.length > 0 && <button type="button" onClick={() => markActivitiesRead(unreadActivities.map((item) => item.id))}><CheckCheck size={15} /> Barchasini o‘qish</button>}</header><div className="admin-notification-tabs"><button type="button" className={notificationSection === "system" ? "is-active" : ""} onClick={() => setNotificationSection("system")}>Tizim <i>{systemActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button><button type="button" className={notificationSection === "orders" ? "is-active" : ""} onClick={() => setNotificationSection("orders")}>Buyurtmalar <i>{orderActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button></div>{notificationSection === "orders" && <div className="admin-order-notification-permission"><span>{browserNotificationPermission === "granted" ? "Chrome bildirishnomasi yoqilgan" : "Ovozli Chrome bildirishnomalarini yoqing"}</span>{browserNotificationPermission !== "granted" && <button type="button" onClick={() => void enableOrderNotifications()}>Yoqish</button>}</div>}{visibleActivities.length ? <div className="admin-activity-notification-list">{visibleActivities.slice(0, 12).map((item) => { const isRead = readActivityIds.includes(item.id); const isOrder = item.entityType === "order"; return <button type="button" key={item.id} className={`admin-activity-notification${isRead ? " is-read" : ""}${isOrder ? " is-order" : ""}`} onClick={() => { markActivitiesRead([item.id]); if (isOrder) void openOrderNotification(item.entityId); }}><i aria-hidden="true" /><span><b>{dashboardActivityTitle(item.action, item.entityType)}</b><small>{item.user} · {dashboardTime(item.createdAt)}{isOrder ? " · Chekni ochish" : ""}</small></span></button>; })}</div> : <p className="admin-activity-empty">Bu bo‘limda bildirishnoma yo‘q.</p>}</section>} onSignOut={() => { signOutAdmin(); setToken(""); }}>
         <AdminToast message={notice} />
         <AdminToast message={error} tone="error" />
         <TabsContent value="dashboard">
@@ -1911,7 +2019,7 @@ export default function AdminConsole() {
                       type="button"
                       variant="outline"
                       onClick={() => {
-                        setForm({ ...form, status: "draft" });
+                        setForm({ ...form, status: "draft", publicationMode: "draft", scheduledAt: "", showLaunchCountdown: false, launchCountdownText: "" });
                         setNotice("Draft holati tanlandi. Saqlashni bosing.");
                       }}
                     >
@@ -1930,7 +2038,7 @@ export default function AdminConsole() {
                       <Button
                         type="button"
                         variant="destructive"
-                        onClick={deleteProduct}
+                        onClick={() => setConfirmProductDeletion(true)}
                       >
                         <Archive size={15} />
                         O‘chirish
@@ -2019,13 +2127,26 @@ export default function AdminConsole() {
                           required
                         />
                       </Field>
-                      <Field label="Status">
-                        <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Product["status"] })}>
+                      <Field label="Nashr holati">
+                        <select value={form.publicationMode} onChange={(e) => {
+                          const publicationMode = e.target.value as typeof form.publicationMode;
+                          setForm({ ...form, publicationMode, status: publicationMode === "planned" ? "draft" : publicationMode, ...(publicationMode === "planned" ? {} : { scheduledAt: "", showLaunchCountdown: false, launchCountdownText: "" }) });
+                        }}>
                           <option value="draft">Draft</option>
-                          <option value="active">Active — saytda ko‘rinadi</option>
+                          <option value="active">Active — saytda hozir ko‘rinadi</option>
+                          <option value="planned">Rejalashtirish — kun va soat tanlanadi</option>
                           <option value="archived">Archived</option>
                         </select>
                       </Field>
+                      {form.publicationMode === "planned" && <>
+                        <Field label="Aktiv bo‘ladigan kun va soat">
+                          <input type="datetime-local" value={form.scheduledAt} min={localDateTimeInput(new Date().toISOString())} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} required />
+                        </Field>
+                        <div className="product-launch-countdown-control">
+                          <label className="ui-checkbox"><input type="checkbox" checked={form.showLaunchCountdown} onChange={(e) => setForm({ ...form, showLaunchCountdown: e.target.checked, launchCountdownText: e.target.checked ? form.launchCountdownText : "" })} /> Taymerni public headerda ko‘rsatish</label>
+                          {form.showLaunchCountdown && <Field label="Taymer oldidagi qizil text"><input value={form.launchCountdownText} onChange={(e) => setForm({ ...form, launchCountdownText: e.target.value.slice(0, 180) })} placeholder="Masalan: YANGI DROPGA QOLDI" required /></Field>}
+                        </div>
+                      </>}
                     </div>
                     </section>
                     <section className="product-form-block product-form-block--fiscal">
@@ -2327,28 +2448,16 @@ export default function AdminConsole() {
         <TabsContent value="analytics"><AdminModulePage config={adminModules.analytics} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
         <TabsContent value="settings"><AdminModulePage config={adminModules.settings} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
         <TabsContent value="content">
-          <section className="tailadmin-module-page admin-content-workspace">
-            <aside className="tailadmin-module-tabs admin-content-subnav" aria-label="Kontent bo‘limlari">
-              <p className="ui-overline">KONTENT</p>
-              {contentNavigation.map(([id, label, description]) => (
-                <button
-                  type="button"
-                  className={contentSubsection === id ? "is-active" : ""}
-                  onClick={() => setContentSubsection(id)}
-                  key={id}
-                >
-                  <span>{label}</span>
-                  <small>{description}</small>
-                </button>
-              ))}
-            </aside>
-            <div className="tailadmin-module-content admin-content-panel">
+          <section className="admin-content-panel">
               {contentSubsection === "main-banner" && (
                 <BannerManager
                   banners={banners}
                   token={token}
                   onChanged={() => refresh("content")}
                 />
+              )}
+              {contentSubsection === "header-quotes" && (
+                <HeaderQuotesManager quotes={headerQuotes} token={token} onChanged={setHeaderQuotes} />
               )}
               {contentSubsection === "custom-pages" && (
                 <PageBannerEditor
@@ -2376,7 +2485,6 @@ export default function AdminConsole() {
                   rows={collections.map((item) => `${item.name} · ${item.slug}`)}
                 />
               )}
-            </div>
           </section>
         </TabsContent>
         <TabsContent value="pages">
@@ -2392,6 +2500,7 @@ export default function AdminConsole() {
       </AdminShell>
       {orderCustomerLoading && <div className="inventory-confirm-backdrop customer-detail-backdrop"><p className="customer-detail-loading customer-detail-loading--overlay">Mijoz profili yuklanmoqda…</p></div>}
       {orderCustomer && <div className="inventory-confirm-backdrop customer-detail-backdrop" onMouseDown={() => setOrderCustomer(null)}><section className="customer-detail-dialog" role="dialog" aria-modal="true" aria-label="Mijoz profili" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">MIJOZ PROFILI</p><h3>{`${orderCustomer.firstName} ${orderCustomer.lastName}`.trim() || "Mijoz"}</h3><span>{orderCustomer.email || "Email kiritilmagan"}</span></div><button type="button" onClick={() => setOrderCustomer(null)} aria-label="Yopish">×</button></header><div className="customer-detail-metrics"><div><span>Buyurtmalar</span><b>{orderCustomer.totalOrders} ta</b></div><div><span>To‘langan</span><b>{orderCustomer.paidOrders} ta</b></div><div><span>Jami savdo</span><b>{money(orderCustomer.totalSpent, "UZS")}</b></div><div><span>O‘rtacha chek</span><b>{money(orderCustomer.averageOrder, "UZS")}</b></div></div><div className="customer-detail-columns"><section><h4>Aloqa va joylashuv</h4><dl><div><dt>Telefon</dt><dd>{orderCustomer.phone || "—"}</dd></div><div><dt>Hudud</dt><dd>{orderCustomer.region || "—"}</dd></div><div><dt>Ro‘yxatdan o‘tgan</dt><dd>{readableDate(orderCustomer.createdAt)}</dd></div><div><dt>Oxirgi kirish</dt><dd>{orderCustomer.lastLoginAt ? readableDate(orderCustomer.lastLoginAt) : "—"}</dd></div></dl>{orderCustomer.addresses.length ? <div className="customer-addresses">{orderCustomer.addresses.map((address) => <p key={address.id}><b>{address.isDefault ? "Asosiy manzil" : "Manzil"}</b><span>{[address.country, address.city, address.line1, address.line2, address.postalCode].filter(Boolean).join(", ")}</span></p>)}</div> : <p className="customer-detail-empty">Saqlangan manzil yo‘q.</p>}</section><section><h4>Buyurtmalar tarixi</h4><div className="customer-detail-orders">{orderCustomer.orders.map((order) => <article key={order.id}><div><b>#{order.orderNumber}</b><span>{readableDate(order.createdAt)} · {order.paymentStatus}</span><small>{order.items.map((item) => `${item.title} × ${item.quantity}`).join(", ") || "Mahsulot yo‘q"}</small></div><strong>{money(Number(order.totalAmount), order.currencyCode || "UZS")}</strong></article>)}{!orderCustomer.orders.length && <p className="customer-detail-empty">Bu mijozda buyurtma yo‘q.</p>}</div></section></div></section></div>}
+      {confirmProductDeletion && selected && <AdminConfirmDialog title="Mahsulot o‘chirilsinmi?" description={`“${selected.title}” va uning variantlari katalogdan butunlay o‘chadi.`} onCancel={() => setConfirmProductDeletion(false)} onConfirm={() => void deleteProduct()} />}
     </Tabs>
   );
 }
@@ -2452,11 +2561,12 @@ function Taxonomy({
 }
 function CategoryManager({ categories, products, token, onChanged }: { categories: Taxonomy[]; products: Product[]; token: string; onChanged: () => Promise<void> }) {
   const [editing, setEditing] = useState<Taxonomy | null>(null); const [query, setQuery] = useState(""); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [view, setView] = useState<"list" | "editor">("list");
+  const [pendingProductAction, setPendingProductAction] = useState<{ kind: "move" | "detach"; product: Product } | null>(null);
   const visible = products.filter((product) => `${product.title} ${product.slug}`.toLocaleLowerCase("uz-UZ").includes(query.toLocaleLowerCase("uz-UZ")));
   const open = (category?: Taxonomy, productsOnly = false) => { setEditing(category ? { ...category } : { id: "", name: "", slug: "", isVisible: true }); setQuery(""); setMessage(productsOnly ? "Mahsulotlarni boshqaring." : ""); setView("editor"); };
   const saveCategory = async () => { if (!editing || !editing.name.trim() || !editing.slug.trim()) return setMessage("Nomi va slug majburiy."); setBusy(true); try { await api(editing.id ? `/admin/catalog/categories/${editing.id}` : "/admin/catalog/categories", token, { method: editing.id ? "PATCH" : "POST", body: JSON.stringify({ name: editing.name.trim(), slug: editing.slug.trim(), isVisible: editing.isVisible }) }); await onChanged(); setView("list"); setEditing(null); } catch (error) { setMessage(error instanceof Error ? error.message : "Kategoriya saqlanmadi."); } finally { setBusy(false); } };
-  const move = async (product: Product) => { if (!editing) return; if (product.categoryId && product.categoryId !== editing.id && !confirm(`“${product.title}” boshqa kategoriyada. Shu kategoriyaga ko‘chirilsinmi?`)) return; setBusy(true); try { await api(`/admin/catalog/products/${product.id}`, token, { method: "PATCH", body: JSON.stringify({ categoryId: editing.id }) }); await onChanged(); } catch (error) { setMessage(error instanceof Error ? error.message : "Mahsulot ko‘chirilmadi."); } finally { setBusy(false); } };
-  const detach = async (product: Product) => { if (!editing || !confirm(`“${product.title}” ushbu kategoriyadan olib tashlansinmi?`)) return; setBusy(true); try { await api(`/admin/catalog/products/${product.id}`, token, { method: "PATCH", body: JSON.stringify({ categoryId: null }) }); await onChanged(); } catch (error) { setMessage(error instanceof Error ? error.message : "Mahsulot olib tashlanmadi."); } finally { setBusy(false); } };
+  const move = async (product: Product) => { if (!editing) return; setBusy(true); try { await api(`/admin/catalog/products/${product.id}`, token, { method: "PATCH", body: JSON.stringify({ categoryId: editing.id }) }); await onChanged(); setPendingProductAction(null); } catch (error) { setMessage(error instanceof Error ? error.message : "Mahsulot ko‘chirilmadi."); } finally { setBusy(false); } };
+  const detach = async (product: Product) => { if (!editing) return; setBusy(true); try { await api(`/admin/catalog/products/${product.id}`, token, { method: "PATCH", body: JSON.stringify({ categoryId: null }) }); await onChanged(); setPendingProductAction(null); } catch (error) { setMessage(error instanceof Error ? error.message : "Mahsulot olib tashlanmadi."); } finally { setBusy(false); } };
   const productColors = (product: Product) => [...new Set(product.variants.map((variant) => variant.color?.trim()).filter((color): color is string => Boolean(color)))];
   if (view === "list") return <section className="tailadmin-module-page"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-1 text-sm text-gray-500 dark:text-gray-400">Katalog sozlamalari</p><h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">Kategoriyalar</h2></div><Button onClick={() => open()}><Plus size={16} />Yangi kategoriya</Button></div><Card className="category-manager category-manager--list"><CardHeader><div><CardTitle>Kategoriyalar ro‘yxati</CardTitle><CardDescription>Mahsulotlar kategoriyalarini tartiblang va saytda ko‘rinishini boshqaring.</CardDescription></div></CardHeader><CardContent><div className="category-row-list">{categories.map((category) => <article key={category.id}><div><b>{category.name}</b><span>{category.productCount ?? products.filter((product) => product.categoryId === category.id).length} mahsulot</span></div><div className="category-row-actions"><Button size="sm" onClick={() => open(category)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => open(category, true)}>Mahsulotlar</Button></div></article>)}{!categories.length && <Empty>Kategoriya yo‘q.</Empty>}</div></CardContent></Card></section>;
   if (!editing) return null;
@@ -2474,8 +2584,9 @@ function CategoryManager({ categories, products, token, onChanged }: { categorie
       </div>
       <div className="category-slug-field"><Field label="Slug"><input value={editing.slug} onChange={(event) => setEditing({ ...editing, slug: event.target.value })} required /></Field></div>
       <label className="admin-record-active"><input type="checkbox" checked={editing.isVisible} onChange={(event) => setEditing({ ...editing, isVisible: event.target.checked })} /> Saytda ko‘rsatish</label>
-      {editing.id ? <div className="category-product-list" aria-label="Kategoriya mahsulotlari">{visible.map((product) => { const assigned = product.categoryId === editing.id; const owner = categories.find((category) => category.id === product.categoryId); const colors = productColors(product); return <article key={product.id} className={assigned ? "is-assigned" : ""}><button type="button" className="category-product-select" aria-label={`${product.title} ${assigned ? "tanlangan" : "tanlanmagan"}`} disabled={busy} onClick={() => void (assigned ? detach(product) : move(product))}>{assigned ? "✓" : ""}</button><img src={contentImageUrl(product.media[0]?.url)} alt="" /><div><b>{product.title}</b><small>{product.metadata?.article || product.slug}</small><span className="category-product-colors">{colors.length ? colors.map((color) => <i key={color} title={color} style={{ backgroundColor: colorHex(color) }} />) : "Rang kiritilmagan"}</span></div><div className="category-product-status"><small>{assigned ? "Shu kategoriya" : owner ? `Hozir: ${owner.name}` : "Kategoriya biriktirilmagan"}</small><Button type="button" size="sm" variant={assigned ? "outline" : "default"} disabled={busy} onClick={() => void (assigned ? detach(product) : move(product))}>{assigned ? "Olib tashlash" : "Biriktirish"}</Button></div></article>; })}{!visible.length && <Empty>Mahsulot topilmadi.</Empty>}</div> : <p className="category-save-note">Mahsulotlarni tanlash uchun avval kategoriyani saqlang.</p>}
+      {editing.id ? <div className="category-product-list" aria-label="Kategoriya mahsulotlari">{visible.map((product) => { const assigned = product.categoryId === editing.id; const owner = categories.find((category) => category.id === product.categoryId); const colors = productColors(product); const requestAction = () => setPendingProductAction({ kind: assigned ? "detach" : "move", product }); return <article key={product.id} className={assigned ? "is-assigned" : ""}><button type="button" className="category-product-select" aria-label={`${product.title} ${assigned ? "tanlangan" : "tanlanmagan"}`} disabled={busy} onClick={requestAction}>{assigned ? "✓" : ""}</button><img src={contentImageUrl(product.media[0]?.url)} alt="" /><div><b>{product.title}</b><small>{product.metadata?.article || product.slug}</small><span className="category-product-colors">{colors.length ? colors.map((color) => <i key={color} title={color} style={{ backgroundColor: colorHex(color) }} />) : "Rang kiritilmagan"}</span></div><div className="category-product-status"><small>{assigned ? "Shu kategoriya" : owner ? `Hozir: ${owner.name}` : "Kategoriya biriktirilmagan"}</small><Button type="button" size="sm" variant={assigned ? "outline" : "default"} disabled={busy} onClick={requestAction}>{assigned ? "Olib tashlash" : "Biriktirish"}</Button></div></article>; })}{!visible.length && <Empty>Mahsulot topilmadi.</Empty>}</div> : <p className="category-save-note">Mahsulotlarni tanlash uchun avval kategoriyani saqlang.</p>}
       <AdminToast message={message} />
+      {pendingProductAction && <AdminConfirmDialog title={pendingProductAction.kind === "detach" ? "Mahsulot kategoriyadan olib tashlansinmi?" : "Mahsulot shu kategoriyaga biriktirilsinmi?"} description={`“${pendingProductAction.product.title}” uchun kategoriya bog‘lanishi yangilanadi.`} confirmLabel={pendingProductAction.kind === "detach" ? "Ha, olib tashlash" : "Ha, biriktirish"} busy={busy} onCancel={() => setPendingProductAction(null)} onConfirm={() => void (pendingProductAction.kind === "detach" ? detach(pendingProductAction.product) : move(pendingProductAction.product))} />}
     </section></CardContent>
   </Card></section>;
 }
@@ -2621,8 +2732,8 @@ function PagesManager({
   };
 
   return (
-    <section className="pages-manager tailadmin-module-page">
-      <Card>
+    <section className="pages-manager pages-manager--tailadmin tailadmin-module-page">
+      <Card className="pages-manager-navigation-card">
         <CardHeader>
           <div>
             <p className="ui-overline">NAVIGATION</p>
@@ -2631,36 +2742,43 @@ function PagesManager({
           </div>
         </CardHeader>
         <CardContent>
+          <div className="pages-manager-summary" aria-label="Navbar sahifalari statistikasi">
+            <span><small>Jami link</small><b>{links.length}</b></span>
+            <span><small>Ko‘rinadi</small><b>{links.filter((item) => item.isActive).length}</b></span>
+            <span><small>Yashirilgan</small><b>{links.filter((item) => !item.isActive).length}</b></span>
+          </div>
           <div className="pages-manager-list">
             {links.map((item, index) => {
               const defaultLabel = defaultNavigation.find((link) => link.id === item.id)?.label ?? item.label;
               const isEditing = editingLinkId === item.id;
               return (
-              <div className="pages-manager-row" key={item.id}>
-                <small>{String(index + 1).padStart(2, "0")}</small>
-                <div>{isEditing ? <div className="pages-manager-edit"><input autoFocus value={editingLabel} onChange={(event) => setEditingLabel(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void renameLink(item); if (event.key === "Escape") setEditingLinkId(null); }} /><Button type="button" size="sm" disabled={busy} onClick={() => void renameLink(item)}>SAQLASH</Button><Button type="button" size="sm" variant="outline" onClick={() => setEditingLinkId(null)}>BEKOR</Button></div> : <><strong>{item.label.toUpperCase()}</strong><span>{item.href} · DEFAULT: {defaultLabel.toUpperCase()}</span></>}</div>
-                <Badge variant={item.isActive ? "success" : "warning"}>{item.isActive ? "KO‘RINADI" : "KO‘RINMAYDI"}</Badge>
-                {!isEditing && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { setEditingLinkId(item.id); setEditingLabel(item.label); }}>NOMINI EDIT</Button>}
-                <Button type="button" variant={item.isActive ? "outline" : "default"} size="sm" disabled={busy} onClick={() => void toggle(item)}>
-                  {item.isActive ? "YASHIRISH" : "KO‘RSATISH"}
-                </Button>
-              </div>
+                <article className={`pages-manager-row ${item.isActive ? "is-active" : "is-hidden"}`} key={item.id}>
+                  <small className="pages-manager-order">{String(index + 1).padStart(2, "0")}</small>
+                  <div className="pages-manager-link-detail">{isEditing ? <div className="pages-manager-edit"><input aria-label={`${item.label} nomi`} autoFocus value={editingLabel} onChange={(event) => setEditingLabel(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void renameLink(item); if (event.key === "Escape") setEditingLinkId(null); }} /><Button type="button" size="sm" disabled={busy} onClick={() => void renameLink(item)}>Saqlash</Button><Button type="button" size="sm" variant="outline" onClick={() => setEditingLinkId(null)}>Bekor</Button></div> : <><div className="pages-manager-link-title"><strong>{item.label}</strong><em>{item.isBuiltIn ? "Standart" : "Maxsus"}</em></div><code>{item.href}</code><span>Asl nomi: {defaultLabel}</span></>}</div>
+                  <div className="pages-manager-status"><Badge variant={item.isActive ? "success" : "warning"}>{item.isActive ? "Faol" : "Yashirilgan"}</Badge><span>{item.isActive ? "Headerda ko‘rinadi" : "Headerda ko‘rinmaydi"}</span></div>
+                  <div className="pages-manager-actions">
+                    {!isEditing && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { setEditingLinkId(item.id); setEditingLabel(item.label); }}>Tahrirlash</Button>}
+                    <Button type="button" variant={item.isActive ? "outline" : "default"} size="sm" disabled={busy} onClick={() => void toggle(item)}>
+                      {item.isActive ? "Yashirish" : "Ko‘rsatish"}
+                    </Button>
+                  </div>
+                </article>
             ); })}
           </div>
           <AdminToast message={message} />
         </CardContent>
       </Card>
-      <Card>
+      <Card className="pages-manager-create-card">
         <CardHeader>
-          <div><p className="ui-overline">NEW PAGE</p><CardTitle>Yangi sahifa qo‘shish</CardTitle></div>
+          <div><p className="ui-overline">NEW PAGE</p><CardTitle>Yangi sahifa qo‘shish</CardTitle><CardDescription>Yaratilgan sahifa darhol navbar ro‘yxatiga qo‘shiladi. URL avtomatik ravishda /pages/ ichida ochiladi.</CardDescription></div>
         </CardHeader>
         <CardContent>
-          <form className="ui-form ui-form-grid" onSubmit={createPage}>
+          <form className="ui-form ui-form-grid pages-manager-create-form" onSubmit={createPage}>
             <Field label="Sahifa nomi"><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Masalan: Yetkazib berish" required /></Field>
             <Field label="Slug (URL)"><input value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="yetkazib-berish" /></Field>
             <Button disabled={busy}><Plus size={15} /> Sahifa qo‘shish</Button>
           </form>
-          {pages.length > 0 && <p className="pages-manager-note">Yaratilgan sahifalar: {pages.map((page) => page.title).join(", ")}</p>}
+          {pages.length > 0 && <div className="pages-manager-note"><b>Yaratilgan sahifalar</b><span>{pages.map((page) => page.title).join(" · ")}</span></div>}
         </CardContent>
       </Card>
     </section>
@@ -2692,8 +2810,43 @@ function ContentIntro({
     </Card>
   );
 }
+
+function HeaderQuotesManager({ quotes, token, onChanged }: { quotes: HeaderQuote[]; token: string; onChanged: (quotes: HeaderQuote[]) => void }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const save = async (next: HeaderQuote[], success: string) => {
+    setBusy(true); setMessage("");
+    try {
+      await api("/admin/content/settings/header-quotes", token, { method: "PUT", body: JSON.stringify({ value: { items: next } }) });
+      onChanged(next);
+      setMessage(success);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Header quote saqlanmadi."); }
+    finally { setBusy(false); }
+  };
+  const add = async (event: FormEvent) => {
+    event.preventDefault();
+    const clean = text.trim();
+    if (!clean) return setMessage("Quote textini kiriting.");
+    await save([...quotes, { id: `quote-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: clean, isActive: true }], "Quote qo‘shildi.");
+    setText("");
+  };
+  return <section className="header-quotes-manager tailadmin-module-page">
+    <Card>
+      <CardHeader><div><p className="ui-overline">HEADER QUOTE</p><CardTitle>Header quote’lari</CardTitle><CardDescription>Bitta faol text o‘zgarmasdan turadi. Ikki yoki undan ko‘p faol text bo‘lsa, ular headerda har 10 soniyada silliq almashadi. Rejalashtirilgan mahsulot taymeri yoqilsa, taymer vaqtincha quote o‘rniga chiqadi.</CardDescription></div></CardHeader>
+      <CardContent><form className="header-quote-add" onSubmit={add}><Field label="QUOTE MATNI"><input value={text} maxLength={180} onChange={(event) => setText(event.target.value)} placeholder="Masalan: YANGI MAVSUM · YANGI QOIDALAR" aria-label="Yangi header quote" /></Field><Button disabled={busy}><Plus size={16} /> Quote qo‘shish</Button></form></CardContent>
+    </Card>
+    <Card><CardHeader><div><CardTitle>Faol quote’lar</CardTitle><CardDescription>{quotes.filter((quote) => quote.isActive).length} ta faol quote</CardDescription></div></CardHeader><CardContent><div className="header-quote-list">{quotes.map((quote, index) => <article key={quote.id}><span className="header-quote-order">{String(index + 1).padStart(2, "0")}</span><p>{quote.text}</p><label className="ui-checkbox"><input type="checkbox" checked={quote.isActive} disabled={busy} onChange={(event) => void save(quotes.map((item) => item.id === quote.id ? { ...item, isActive: event.target.checked } : item), event.target.checked ? "Quote faollashtirildi." : "Quote yashirildi.")} /> Faol</label><Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void save(quotes.filter((item) => item.id !== quote.id), "Quote o‘chirildi.")}><Trash2 size={15} /> O‘chirish</Button></article>)}{!quotes.length && <Empty><FileText /> Hali header quote yo‘q.</Empty>}</div><AdminToast message={message} /></CardContent></Card>
+  </section>;
+}
 const contentImageUrl = (url?: string | null) => !url ? "" : (url.startsWith("http") ? url : `${API.replace(/\/api$/, "")}${url}`);
 const readableDate = (value?: string | null) => value ? new Intl.DateTimeFormat("uz-UZ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
+const localDateTimeInput = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+};
 
 function LookbookManager({ entries, token, onChanged }: { entries: LookbookEntry[]; token: string; onChanged: () => void }) {
   const [editing, setEditing] = useState<LookbookEntry | null>(null);
@@ -2702,6 +2855,7 @@ function LookbookManager({ entries, token, onChanged }: { entries: LookbookEntry
   const [imageUrl, setImageUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [deleteCandidate, setDeleteCandidate] = useState<LookbookEntry | null>(null);
   const upload = async (image: File) => {
     const data = new FormData(); data.append("file", image);
     return api<{ url: string }>("/admin/content/lookbook/upload", token, { method: "POST", body: data });
@@ -2722,9 +2876,8 @@ function LookbookManager({ entries, token, onChanged }: { entries: LookbookEntry
   };
   const edit = (entry: LookbookEntry) => { setEditing(entry); setFile(null); setImageUrl(entry.imageUrl); setShowComposer(true); setMessage(""); };
   const remove = async (entry: LookbookEntry) => {
-    if (!confirm(`“${entry.title}” o‘chirilsinmi?`)) return;
     setBusy(true); setMessage("");
-    try { await api(`/admin/content/lookbook/${entry.id}`, token, { method: "DELETE" }); if (editing?.id === entry.id) { setEditing(null); setShowComposer(false); } setMessage("Lookbook rasmi o‘chirildi."); onChanged(); }
+    try { await api(`/admin/content/lookbook/${entry.id}`, token, { method: "DELETE" }); if (editing?.id === entry.id) { setEditing(null); setShowComposer(false); } setDeleteCandidate(null); setMessage("Lookbook rasmi o‘chirildi."); onChanged(); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Lookbook o‘chirilmadi."); } finally { setBusy(false); }
   };
   const toggle = async (entry: LookbookEntry) => {
@@ -2743,7 +2896,8 @@ function LookbookManager({ entries, token, onChanged }: { entries: LookbookEntry
         <div className="content-manager-actions"><Button disabled={busy}>{editing ? "RASMNI ALMASHTIRISH" : "RASMNI QO‘SHISH"}</Button>{editing && <Button type="button" variant="outline" onClick={() => { setEditing(null); setFile(null); setImageUrl(""); setShowComposer(false); }}>BEKOR QILISH</Button>}</div>
       </form>
     </CardContent></Card>}
-    <Card><CardHeader className="lookbook-list-head"><div><CardTitle>Lookbook ro‘yxati</CardTitle><CardDescription>Qachon yuklangani, faollik, rasmni almashtirish va o‘chirish shu yerda.</CardDescription></div><Button type="button" size="sm" onClick={() => { setEditing(null); setFile(null); setImageUrl(""); setShowComposer(true); setMessage(""); }}>+ QO‘SHISH</Button></CardHeader><CardContent><div className="lookbook-library">{entries.map((entry, index) => <article className="lookbook-library-card" key={entry.id}><img src={contentImageUrl(entry.imageUrl)} alt={`Lookbook rasm ${index + 1}`} /><div className="lookbook-card-meta"><Badge variant={entry.isPublished ? "success" : "warning"}>{entry.isPublished ? "FAOL" : "VAQTINCHA O‘CHIRILGAN"}</Badge><small>{readableDate(entry.createdAt)}</small></div><footer><Button type="button" variant={entry.isPublished ? "outline" : "default"} onClick={() => void toggle(entry)} disabled={busy}>{entry.isPublished ? "VAQTINCHA O‘CHIRISH" : "FAOLLASHTIRISH"}</Button><Button type="button" variant="outline" onClick={() => edit(entry)}>ALMASHTIRISH</Button><Button type="button" variant="outline" onClick={() => void remove(entry)} disabled={busy}>O‘CHIRISH</Button></footer></article>)}{!entries.length && <Empty><Palette /> Hali lookbook rasmi yo‘q.</Empty>}</div><AdminToast message={message} /></CardContent></Card>
+    <Card><CardHeader className="lookbook-list-head"><div><CardTitle>Lookbook ro‘yxati</CardTitle><CardDescription>Qachon yuklangani, faollik, rasmni almashtirish va o‘chirish shu yerda.</CardDescription></div><Button type="button" size="sm" onClick={() => { setEditing(null); setFile(null); setImageUrl(""); setShowComposer(true); setMessage(""); }}>+ QO‘SHISH</Button></CardHeader><CardContent><div className="lookbook-library">{entries.map((entry, index) => <article className="lookbook-library-card" key={entry.id}><img src={contentImageUrl(entry.imageUrl)} alt={`Lookbook rasm ${index + 1}`} /><div className="lookbook-card-meta"><Badge variant={entry.isPublished ? "success" : "warning"}>{entry.isPublished ? "FAOL" : "VAQTINCHA O‘CHIRILGAN"}</Badge><small>{readableDate(entry.createdAt)}</small></div><footer><Button type="button" variant={entry.isPublished ? "outline" : "default"} onClick={() => void toggle(entry)} disabled={busy}>{entry.isPublished ? "VAQTINCHA O‘CHIRISH" : "FAOLLASHTIRISH"}</Button><Button type="button" variant="secondary" onClick={() => edit(entry)}>ALMASHTIRISH</Button><Button type="button" variant="destructive" onClick={() => setDeleteCandidate(entry)} disabled={busy}>O‘CHIRISH</Button></footer></article>)}{!entries.length && <Empty><Palette /> Hali lookbook rasmi yo‘q.</Empty>}</div><AdminToast message={message} /></CardContent></Card>
+    {deleteCandidate && <AdminConfirmDialog title="Lookbook rasmi o‘chirilsinmi?" description={`“${deleteCandidate.title}” rasm va uning boshqaruv ma’lumotlari butunlay o‘chadi.`} busy={busy} onCancel={() => setDeleteCandidate(null)} onConfirm={() => void remove(deleteCandidate)} />}
   </section>;
 }
 
@@ -2756,6 +2910,8 @@ function BlogManager({ posts, token, onChanged }: { posts: BlogPost[]; token: st
   const [galleryUrl, setGalleryUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [view, setView] = useState<"list" | "editor">("list");
+  const [deleteCandidate, setDeleteCandidate] = useState<BlogPost | null>(null);
   const upload = async (image: File) => { const data = new FormData(); data.append("file", image); return api<{ url: string }>("/admin/content/posts/upload", token, { method: "POST", body: data }); };
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -2768,13 +2924,12 @@ function BlogManager({ posts, token, onChanged }: { posts: BlogPost[]; token: st
       const seo = { ...(editing?.seo ?? {}), galleryImageUrls: [...draft.gallery, ...uploadedGallery.map((item) => item.url)], textLinkUrl: draft.textLinkUrl.trim(), textLinkLabel: draft.textLinkLabel.trim() };
       const payload = { title: draft.title.trim(), slug, excerpt: draft.excerpt.trim(), body: draft.body.trim(), coverImageUrl: cover.url, isPublished: draft.isPublished, publishedAt: new Date(draft.publishedAt).toISOString(), seo };
       await api(editing ? `/admin/content/posts/${editing.id}` : "/admin/content/posts", token, { method: editing ? "PATCH" : "POST", body: JSON.stringify(payload) });
-      setEditing(null); setDraft(empty); setCoverFile(null); setGalleryFiles([]); setGalleryUrl(""); setMessage(editing ? "Blog tahrirlandi." : "Blog qo‘shildi."); onChanged();
+      setEditing(null); setDraft(empty); setCoverFile(null); setGalleryFiles([]); setGalleryUrl(""); setView("list"); setMessage(editing ? "Blog tahrirlandi." : "Blog qo‘shildi."); onChanged();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Blog saqlanmadi."); } finally { setBusy(false); }
   };
-  const edit = (post: BlogPost) => { const seo = post.seo ?? {}; setEditing(post); setCoverFile(null); setGalleryFiles([]); setGalleryUrl(""); setDraft({ title: post.title, slug: post.slug, excerpt: post.excerpt, body: post.body, coverImageUrl: post.coverImageUrl ?? "", isPublished: post.isPublished, publishedAt: (post.publishedAt ?? post.createdAt).slice(0, 10), textLinkUrl: typeof seo.textLinkUrl === "string" ? seo.textLinkUrl : "", textLinkLabel: typeof seo.textLinkLabel === "string" ? seo.textLinkLabel : "", gallery: Array.isArray(seo.galleryImageUrls) ? seo.galleryImageUrls.filter((item): item is string => typeof item === "string") : [] }); setMessage(""); };
-  const remove = async (post: BlogPost) => { if (!confirm(`“${post.title}” o‘chirilsinmi?`)) return; setBusy(true); setMessage(""); try { await api(`/admin/content/posts/${post.id}`, token, { method: "DELETE" }); if (editing?.id === post.id) { setEditing(null); setDraft(empty); } setMessage("Blog o‘chirildi."); onChanged(); } catch (error) { setMessage(error instanceof Error ? error.message : "Blog o‘chirilmadi."); } finally { setBusy(false); } };
-  return <section className="content-manager tailadmin-module-page">
-    <Card><CardHeader><div><p className="ui-overline">BLOG</p><CardTitle>{editing ? "Blogni tahrirlash" : "Blog maqolasi qo‘shish"}</CardTitle><CardDescription>Asosiy rasm: 1600 × 900 px; qo‘shimcha rasmlar: 1200 × 1200 px. JPG/PNG/WEBP, har biri 10 MB gacha.</CardDescription></div></CardHeader><CardContent>
+  const edit = (post: BlogPost) => { const seo = post.seo ?? {}; setEditing(post); setCoverFile(null); setGalleryFiles([]); setGalleryUrl(""); setDraft({ title: post.title, slug: post.slug, excerpt: post.excerpt, body: post.body, coverImageUrl: post.coverImageUrl ?? "", isPublished: post.isPublished, publishedAt: (post.publishedAt ?? post.createdAt).slice(0, 10), textLinkUrl: typeof seo.textLinkUrl === "string" ? seo.textLinkUrl : "", textLinkLabel: typeof seo.textLinkLabel === "string" ? seo.textLinkLabel : "", gallery: Array.isArray(seo.galleryImageUrls) ? seo.galleryImageUrls.filter((item): item is string => typeof item === "string") : [] }); setMessage(""); setView("editor"); };
+  const remove = async (post: BlogPost) => { setBusy(true); setMessage(""); try { await api(`/admin/content/posts/${post.id}`, token, { method: "DELETE" }); if (editing?.id === post.id) { setEditing(null); setDraft(empty); } setDeleteCandidate(null); setMessage("Blog o‘chirildi."); onChanged(); } catch (error) { setMessage(error instanceof Error ? error.message : "Blog o‘chirilmadi."); } finally { setBusy(false); } };
+  const editor = <Card><CardHeader><div><p className="ui-overline">BLOG</p><CardTitle>{editing ? "Blogni tahrirlash" : "Blog maqolasi qo‘shish"}</CardTitle><CardDescription>Asosiy rasm: 1600 × 900 px; qo‘shimcha rasmlar: 1200 × 1200 px. JPG/PNG/WEBP, har biri 10 MB gacha.</CardDescription></div></CardHeader><CardContent>
       <form className="ui-form ui-form-grid" onSubmit={save}>
         <Field label="SARLAVHA"><input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} required /></Field><Field label="SLUG (URL)"><input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} placeholder="yangi-maqola" /></Field>
         <Field label="SANA"><input type="date" value={draft.publishedAt} onChange={(event) => setDraft({ ...draft, publishedAt: event.target.value })} required /></Field><Field label="ASOSIY RASM URL"><input value={draft.coverImageUrl} onChange={(event) => setDraft({ ...draft, coverImageUrl: event.target.value })} placeholder="https://..." /></Field>
@@ -2783,10 +2938,13 @@ function BlogManager({ posts, token, onChanged }: { posts: BlogPost[]; token: st
         <Field label="TEXT UCHUN LINK"><input value={draft.textLinkUrl} onChange={(event) => setDraft({ ...draft, textLinkUrl: event.target.value })} placeholder="/shop yoki https://..." /></Field><Field label="LINK NOMI"><input value={draft.textLinkLabel} onChange={(event) => setDraft({ ...draft, textLinkLabel: event.target.value })} placeholder="BATAFSIL O‘QISH" /></Field>
         <div className="blog-gallery-add"><input value={galleryUrl} onChange={(event) => setGalleryUrl(event.target.value)} placeholder="Qo‘shimcha rasm URL" /><Button type="button" variant="outline" size="sm" onClick={() => { if (galleryUrl.trim()) { setDraft({ ...draft, gallery: [...draft.gallery, galleryUrl.trim()] }); setGalleryUrl(""); } }}>+ RASM URL</Button></div>
         {draft.gallery.length > 0 && <div className="blog-gallery-chip-list">{draft.gallery.map((url, index) => <button type="button" key={`${url}-${index}`} onClick={() => setDraft({ ...draft, gallery: draft.gallery.filter((_, itemIndex) => itemIndex !== index) })}>× Rasm {index + 1}</button>)}</div>}
-        <label className="ui-checkbox"><input type="checkbox" checked={draft.isPublished} onChange={(event) => setDraft({ ...draft, isPublished: event.target.checked })} /> Saytda chop etish</label><div className="content-manager-actions"><Button disabled={busy}>{editing ? "TAHRIRLASHNI SAQLASH" : "BLOG QO‘SHISH"}</Button>{editing && <Button type="button" variant="outline" onClick={() => { setEditing(null); setDraft(empty); setCoverFile(null); setGalleryFiles([]); }}>BEKOR QILISH</Button>}</div>
+        <label className="ui-checkbox"><input type="checkbox" checked={draft.isPublished} onChange={(event) => setDraft({ ...draft, isPublished: event.target.checked })} /> Saytda chop etish</label><div className="content-manager-actions"><Button disabled={busy}>{editing ? "TAHRIRLASHNI SAQLASH" : "BLOG QO‘SHISH"}</Button><Button type="button" variant="outline" onClick={() => { setEditing(null); setDraft(empty); setCoverFile(null); setGalleryFiles([]); setView("list"); }}>BEKOR QILISH</Button></div>
       </form>
-    </CardContent></Card>
-    <Card><CardHeader><div><CardTitle>Blog ro‘yxati</CardTitle><CardDescription>Asosiy rasm, sana, yuklangan vaqt, tahrirlash va o‘chirish.</CardDescription></div></CardHeader><CardContent><div className="content-entry-list">{posts.map((post) => <div className="content-entry-row" key={post.id}><img src={contentImageUrl(post.coverImageUrl)} alt="" /><div><strong>{post.title}</strong><span>{readableDate(post.createdAt)} · {readableDate(post.publishedAt)}</span><Badge variant={post.isPublished ? "success" : "warning"}>{post.isPublished ? "SAYTDA FAOL" : "DRAFT"}</Badge></div><Button type="button" size="sm" variant="outline" onClick={() => edit(post)}>EDIT</Button><Button type="button" size="sm" variant="outline" onClick={() => void remove(post)} disabled={busy}>O‘CHIRISH</Button></div>)}{!posts.length && <Empty><FileText /> Hali blog maqolasi yo‘q.</Empty>}</div><AdminToast message={message} /></CardContent></Card>
+    </CardContent></Card>;
+  if (view === "editor") return <section className="content-manager content-manager--editor tailadmin-module-page"><button type="button" className="admin-back-button" onClick={() => { setEditing(null); setDraft(empty); setCoverFile(null); setGalleryFiles([]); setView("list"); }}>← Blog ro‘yxatiga qaytish</button>{editor}</section>;
+  return <section className="content-manager tailadmin-module-page">
+    <Card><CardHeader><div><p className="ui-overline">BLOG</p><CardTitle>Blog ro‘yxati</CardTitle><CardDescription>Asosiy rasm, sana, yuklangan vaqt, tahrirlash va o‘chirish.</CardDescription></div><Button type="button" onClick={() => { setEditing(null); setDraft(empty); setCoverFile(null); setGalleryFiles([]); setGalleryUrl(""); setMessage(""); setView("editor"); }}><Plus size={16} /> Yaratish</Button></CardHeader><CardContent><div className="content-entry-list">{posts.map((post) => <div className="content-entry-row" key={post.id}><img src={contentImageUrl(post.coverImageUrl)} alt="" /><div><strong>{post.title}</strong><span>{readableDate(post.createdAt)} · {readableDate(post.publishedAt)}</span><Badge variant={post.isPublished ? "success" : "warning"}>{post.isPublished ? "SAYTDA FAOL" : "DRAFT"}</Badge></div><Button type="button" size="sm" variant="secondary" onClick={() => edit(post)}>Tahrirlash</Button><Button type="button" size="sm" variant="destructive" onClick={() => setDeleteCandidate(post)} disabled={busy}>O‘chirish</Button></div>)}{!posts.length && <Empty><FileText /> Hali blog maqolasi yo‘q.</Empty>}</div><AdminToast message={message} /></CardContent></Card>
+    {deleteCandidate && <AdminConfirmDialog title="Blog maqolasi o‘chirilsinmi?" description={`“${deleteCandidate.title}” va uning barcha biriktirilgan ma’lumotlari butunlay o‘chadi.`} busy={busy} onCancel={() => setDeleteCandidate(null)} onConfirm={() => void remove(deleteCandidate)} />}
   </section>;
 }
 function recordAssetUrl(url: string) {
@@ -2929,7 +3087,6 @@ function PageBannerEditor({
     }
   };
   const remove = async (id: string) => {
-    if (!confirm("Bu custom section o‘chirilsinmi?")) return;
     const next = normalizeOrder(orderedBanners.filter((banner) => banner.id !== id));
     setBusy(true);
     try {
@@ -3190,7 +3347,7 @@ function PageBannerEditor({
           <Card className="custom-section-registry">
             <CardHeader><CardTitle>Mavjud sectionlar</CardTitle><CardDescription>Yangi section qo‘shilmaydi. Tahrirlash, holatini boshqarish yoki dublikat qilish mumkin.</CardDescription></CardHeader>
             <CardContent>
-              {orderedBanners.length ? <div className="custom-section-registry-list">{orderedBanners.map((banner, index) => { const active = banner.isActive !== false; const duplicate = isDuplicateSection(banner); return <article className="custom-section-registry-row custom-section-registry-row--default" key={banner.id}><span className="custom-section-number">{String(index + 1).padStart(2, "0")}</span><div><strong><ScrollingName>{banner.name}</ScrollingName></strong><small>{banner.cartEnabled ? "Banner + Cart · Desktop/Mobil" : "Banner · Desktop/Mobil"}</small></div><span className={active ? "custom-section-status" : "custom-section-status is-paused"}>{active ? "Faol" : "Vaqtincha o‘chirilgan"}</span><Button type="button" size="sm" onClick={() => openExisting(banner)}>Edit</Button><Button type="button" size="sm" variant={active ? "outline" : "default"} disabled={busy} onClick={() => void toggleDefaultSection(banner.id)}>{active ? "Vaqtincha o‘chirish" : "Aktivlashtirish"}</Button><Button type="button" size="sm" disabled={busy} onClick={() => void duplicateDefaultSection(banner)}><Plus size={14} /> Dublikat</Button>{duplicate && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setPendingDuplicateDelete(banner)}>Delete</Button>}</article>; })}</div> : <Empty><FileText /> Default sectionlar hali yuklanmadi.</Empty>}
+              {orderedBanners.length ? <div className="custom-section-registry-list">{orderedBanners.map((banner, index) => { const active = banner.isActive !== false; const duplicate = isDuplicateSection(banner); return <article className="custom-section-registry-row custom-section-registry-row--default" key={banner.id}><span className="custom-section-number">{String(index + 1).padStart(2, "0")}</span><div><strong><ScrollingName>{banner.name}</ScrollingName></strong><small>{banner.cartEnabled ? "Banner + Cart · Desktop/Mobil" : "Banner · Desktop/Mobil"}</small></div><span className={active ? "custom-section-status" : "custom-section-status is-paused"}>{active ? "Faol" : "Vaqtincha o‘chirilgan"}</span><Button type="button" size="sm" onClick={() => openExisting(banner)}>Tahrirlash</Button><Button type="button" size="sm" variant={active ? "outline" : "default"} disabled={busy} onClick={() => void toggleDefaultSection(banner.id)}>{active ? "Vaqtincha o‘chirish" : "Aktivlashtirish"}</Button><Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => void duplicateDefaultSection(banner)}><Plus size={14} /> Dublikat</Button>{duplicate && <Button type="button" size="sm" variant="destructive" disabled={busy} onClick={() => setPendingDuplicateDelete(banner)}>O‘chirish</Button>}</article>; })}</div> : <Empty><FileText /> Default sectionlar hali yuklanmadi.</Empty>}
               <AdminToast message={message} />
             </CardContent>
           </Card>
@@ -3839,6 +3996,8 @@ function RecordsManager({
   const [isActive, setIsActive] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [view, setView] = useState<"list" | "editor">("list");
+  const [deleteCandidate, setDeleteCandidate] = useState<MusicRecord | null>(null);
 
   const upload = async (event: FormEvent) => {
     event.preventDefault();
@@ -3874,7 +4033,7 @@ function RecordsManager({
       setPosition("0");
       setFile(null);
       setIsActive(true);
-      await onChanged();
+      await onChanged(); setView("list");
       setMessage(file ? "Trek yuklandi va Records ro‘yxatiga qo‘shildi." : "Spotify trek Records ro‘yxatiga qo‘shildi.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Audio yuklanmadi.");
@@ -3883,12 +4042,11 @@ function RecordsManager({
     }
   };
   const remove = async (id: string) => {
-    if (!confirm("Bu trek o‘chirilsinmi?")) return;
     setBusy(true);
     setMessage("");
     try {
       await api(`/admin/content/records/${id}`, token, { method: "DELETE" });
-      await onChanged();
+      await onChanged(); setDeleteCandidate(null);
       setMessage("Trek o‘chirildi.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Trek o‘chirilmadi.");
@@ -3897,9 +4055,7 @@ function RecordsManager({
     }
   };
 
-  return (
-    <section className="admin-records-layout">
-      <Card>
+  const editor = <Card>
         <CardHeader>
           <div>
             <CardTitle>Records — musiqa yuklash</CardTitle>
@@ -3943,35 +4099,10 @@ function RecordsManager({
           </form>
           <AdminToast message={message} />
         </CardContent>
-      </Card>
-      <Card className="admin-list-card">
-        <CardHeader>
-          <CardTitle>Yuklangan treklar</CardTitle>
-          <Badge variant="neutral">{records.length} ta</Badge>
-        </CardHeader>
-        <CardContent>
-          {records.length ? (
-            <div className="admin-record-list">
-              {records.map((record) => (
-                <article key={record.id}>
-                  <div className="admin-record-icon"><Music2 size={18} /></div>
-                  <div>
-                    <strong>{record.title}</strong>
-                    <span>{record.artist || "Artist ko‘rsatilmagan"}{record.genre ? ` · ${record.genre}` : ""}</span>
-                    {isSpotifyUrl(record.audioUrl) ? <a className="admin-spotify-link" href={record.audioUrl} target="_blank" rel="noreferrer">Spotify’da ochish</a> : <audio controls preload="none" src={recordAssetUrl(record.audioUrl)} />}
-                  </div>
-                  <div className="admin-record-actions">
-                    <Badge variant={record.isActive ? "success" : "warning"}>{record.isActive ? "active" : "hidden"}</Badge>
-                    <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void remove(record.id)}>O‘chirish</Button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <Empty><Music2 /> Hali trek yuklanmagan.</Empty>
-          )}
-        </CardContent>
-      </Card>
-    </section>
-  );
+      </Card>;
+  if (view === "editor") return <section className="admin-records-layout admin-records-layout--editor"><button type="button" className="admin-back-button" onClick={() => setView("list")}>← Records ro‘yxatiga qaytish</button>{editor}</section>;
+  return <section className="admin-records-layout">
+    <Card className="admin-list-card"><CardHeader><div><p className="ui-overline">RECORDS</p><CardTitle>Yuklangan treklar</CardTitle><CardDescription>Musiqa, artist, janr, holat va boshqaruv bir joyda.</CardDescription></div><div className="admin-record-list-head-actions"><Badge variant="neutral">{records.length} ta</Badge><Button type="button" onClick={() => setView("editor")}><Plus size={16} /> Yaratish</Button></div></CardHeader><CardContent>{records.length ? <div className="admin-record-list">{records.map((record) => <article key={record.id}><div className="admin-record-cover">{record.coverImageUrl ? <img src={recordAssetUrl(record.coverImageUrl)} alt="" /> : <Music2 size={18} />}</div><div><strong>{record.title}</strong><span>{record.artist || "Artist ko‘rsatilmagan"}</span>{record.genre && <small>{record.genre}</small>}{isSpotifyUrl(record.audioUrl) ? <a className="admin-spotify-link" href={record.audioUrl} target="_blank" rel="noreferrer">Spotify’da ochish</a> : <audio controls preload="none" src={recordAssetUrl(record.audioUrl)} />}</div><div className="admin-record-actions"><Badge variant={record.isActive ? "success" : "warning"}>{record.isActive ? "Faol" : "Yashirilgan"}</Badge><Button type="button" variant="destructive" size="sm" disabled={busy} onClick={() => setDeleteCandidate(record)}>O‘chirish</Button></div></article>)}</div> : <Empty><Music2 /> Hali trek yuklanmagan.</Empty>}<AdminToast message={message} /></CardContent></Card>
+    {deleteCandidate && <AdminConfirmDialog title="Trek o‘chirilsinmi?" description={`“${deleteCandidate.title}” Records ro‘yxatidan butunlay olib tashlanadi.`} busy={busy} onCancel={() => setDeleteCandidate(null)} onConfirm={() => void remove(deleteCandidate.id)} />}
+  </section>;
 }

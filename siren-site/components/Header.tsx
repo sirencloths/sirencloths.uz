@@ -3,43 +3,66 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "./CartContext";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
+import { useSearch } from "./SearchProvider";
 import { useEffect, useState } from "react";
 import { useCustomerAuth } from "./CustomerAuthProvider";
 import { getStorefrontNavigation, type StorefrontNavigationItem } from "@/lib/api";
 
 type NavigationLink = StorefrontNavigationItem;
 
-const defaultNavLinks: NavigationLink[] = [
-  { id: "shop", href: "/shop", label: "shop", translationKey: "shop", isActive: true },
-  { id: "collections", href: "/collections", label: "collections", translationKey: "collections", isActive: true },
-  { id: "lookbook", href: "/lookbook", label: "lookbook", translationKey: "lookbook", isActive: true },
-  { id: "blog", href: "/blog", label: "blog", translationKey: "blog", isActive: true },
-];
-const navIcons: Array<{ href: "/shop" | "/favorites" | "/cart" | "/profile"; label: "shop" | "favorites" | "cart" | "profile"; icon: string; overlay?: "cart"; catalog?: boolean }> = [
-  { href: "/shop", label: "shop", icon: "/icons/catalog.svg", catalog: true },
+// The storefront chrome deliberately stays mounted between routes.  Keep the
+// last confirmed menu at module scope too, so even if React remounts the
+// header during a route boundary it never paints an empty, narrower navbar
+// while the settings request is in flight.
+let confirmedNavigation: NavigationLink[] | null = null;
+const navIcons: Array<{ href: "/shop" | "/search" | "/favorites" | "/cart" | "/profile"; label: "shop" | "search" | "favorites" | "cart" | "profile"; icon: string; overlay?: "search" | "cart"; catalog?: boolean }> = [
+  { href: "/shop", label: "shop", icon: "/icons/shop.svg", catalog: true },
+  { href: "/search", label: "search", icon: "/icons/search.svg", overlay: "search" },
   { href: "/favorites", label: "favorites", icon: "/icons/heart.svg" },
   { href: "/cart", label: "cart", icon: "/icons/cart.svg", overlay: "cart" },
   { href: "/profile", label: "profile", icon: "/icons/user.svg" },
 ];
 
 export default function Header() {
-  const { cartCount, openCart } = useCart();
+  const { cartCount, isCartOpen, openCart, closeCart } = useCart();
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useLanguage();
+  const { isSearchOpen, toggleSearch } = useSearch();
   const { customer, openAuth } = useCustomerAuth();
-  const [navLinks, setNavLinks] = useState<NavigationLink[]>(defaultNavLinks);
+  // Do not render a hard-coded fallback menu.  The admin setting is the only
+  // source of truth, so a link that has been hidden can never flash on screen
+  // during a refresh or a client-side page transition.
+  const [navLinks, setNavLinks] = useState<NavigationLink[]>(() => confirmedNavigation ?? []);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 761px)");
+    const update = () => setIsDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  const returnHome = () => {
+    if (isSearchOpen) toggleSearch();
+    if (isCartOpen) closeCart();
+    router.push("/");
+  };
 
   useEffect(() => {
     let active = true;
     void getStorefrontNavigation()
       .then((items) => {
-        if (!active || !items.length) return;
+        if (!active) return;
+        const visibleItems = items.filter((item) => item.isActive !== false);
+        confirmedNavigation = visibleItems;
         setNavLinks((current) => {
-          const before = JSON.stringify(current.map(({ id, href, label, translationKey }) => ({ id, href, label, translationKey })));
-          const after = JSON.stringify(items.map(({ id, href, label, translationKey }) => ({ id, href, label, translationKey })));
-          return before === after ? current : items;
+          const before = JSON.stringify(current.map(({ id, href, label, translationKey, isActive }) => ({ id, href, label, translationKey, isActive })));
+          const after = JSON.stringify(visibleItems.map(({ id, href, label, translationKey, isActive }) => ({ id, href, label, translationKey, isActive })));
+          return before === after ? current : visibleItems;
         });
       })
       .catch(() => undefined);
@@ -62,8 +85,8 @@ export default function Header() {
         </Link>
 
         {/* NAVIGATION */}
-        <ul className="nav-menu">
-          {navLinks.filter((link) => link.id !== "shop" && link.href !== "/shop").map((link) => {
+        <ul className={`nav-menu${navLinks.length ? "" : " nav-menu--loading"}`}>
+          {navLinks.filter((link) => link.isActive !== false && link.id !== "shop" && link.href !== "/shop").map((link) => {
             const isActive = link.href === "/"
               ? pathname === "/"
               : pathname === link.href || pathname.startsWith(`${link.href}/`);
@@ -92,19 +115,40 @@ export default function Header() {
         >
           {navIcons.map((item) => {
             const isCartIcon = item.href === "/cart";
+            const isSearchIcon = item.href === "/search";
+            const isShopIcon = item.href === "/shop";
             const isProfileIcon = item.href === "/profile";
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const isOverlayAction = Boolean(item.overlay);
+            // An open overlay gets the single close affordance.  The current
+            // page icon must stay normal while search/cart is open; otherwise
+            // two close marks appear in the desktop header.
+            const isIconActive = isDesktop && (
+              isSearchOpen
+                ? isSearchIcon
+                : isCartOpen
+                  ? isCartIcon
+                  : isActive
+            );
+            const icon = isIconActive ? "/icons/close.svg" : item.icon;
 
             if (isOverlayAction) {
               return <button
                 key={item.href}
                 type="button"
                 aria-label={t(item.label)}
-                className="nav-icon-link nav-icon-button"
-                onClick={openCart}
+                aria-expanded={isSearchIcon ? isSearchOpen : isCartIcon ? isCartOpen : undefined}
+                className={`nav-icon-link nav-icon-button${isSearchIcon ? " nav-search-link" : ""}${isIconActive ? " nav-icon-link--active" : ""}`}
+                onClick={() => {
+                  if (isIconActive && isSearchIcon && isSearchOpen) toggleSearch();
+                  else if (isIconActive && isCartIcon && isCartOpen) closeCart();
+                  else if (isIconActive) returnHome();
+                  else if (isSearchIcon) toggleSearch();
+                  else if (isCartIcon && !isDesktop) router.push("/cart");
+                  else openCart();
+                }}
               >
-                <Image src={item.icon} alt="" width={30} height={30} />
+                <Image src={icon} alt="" width={30} height={30} />
                 {isCartIcon && cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
               </button>;
             }
@@ -115,8 +159,13 @@ export default function Header() {
                 href={item.href}
                 aria-label={t(item.label)}
                 aria-current={isActive ? "page" : undefined}
-                className={`nav-icon-link${item.catalog ? " nav-catalog-link" : ""}`}
+                className={`nav-icon-link${item.catalog ? " nav-catalog-link" : ""}${isIconActive ? " nav-icon-link--active" : ""}`}
                 onClick={(event) => {
+                  if (isIconActive) {
+                    event.preventDefault();
+                    returnHome();
+                    return;
+                  }
                   if (isProfileIcon && !customer) {
                     event.preventDefault();
                     openAuth();
@@ -125,7 +174,7 @@ export default function Header() {
                 }}
               >
                 <Image
-                  src={item.icon}
+                  src={icon}
                   alt=""
                   width={30}
                   height={30}

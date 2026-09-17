@@ -24,7 +24,7 @@ function DiscountTimer({ endsAt }: { endsAt: string }) {
     };
     update(); const timer = window.setInterval(update, 30_000); return () => window.clearInterval(timer);
   }, [endsAt]);
-  return remaining ? <small className="product-card-timer">CHEGIRMA · {remaining}</small> : null;
+  return remaining ? <small className="product-card-status product-card-timer">CHEGIRMA · {remaining}</small> : null;
 }
 
 export default function ProductCard({ product, small = false }: Props) {
@@ -86,7 +86,7 @@ export default function ProductCard({ product, small = false }: Props) {
         <strong className={product.discountPercent ? "product-card-price--sale" : ""}>{product.price}</strong>
         {product.oldPrice && <del className="product-card-old-price">{product.oldPrice}</del>}
         {product.discountPercent && product.discountEndsAt && <DiscountTimer endsAt={product.discountEndsAt} />}
-        {product.available === false && <small className="product-card-stock">НЕТ В НАЛИЧИИ</small>}
+        {product.available === false && <small className="product-card-status product-card-stock">НЕТ В НАЛИЧИИ</small>}
       </Link>
     </article>
   );

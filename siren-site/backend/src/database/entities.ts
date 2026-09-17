@@ -83,6 +83,12 @@ export class Product {
   @Column({ length: 220 }) title!: string;
   @Column({ type: 'text', default: '' }) description!: string;
   @Column({ type: 'enum', enum: ProductStatus, default: ProductStatus.DRAFT }) status!: ProductStatus;
+  // A scheduled product remains a draft until this instant.  Keeping the
+  // scheduling data on the product makes the public launch timer and the
+  // actual publication use one source of truth.
+  @Index() @Column({ name: 'scheduled_at', type: 'timestamptz', nullable: true }) scheduledAt!: Date | null;
+  @Column({ name: 'show_launch_countdown', default: false }) showLaunchCountdown!: boolean;
+  @Column({ name: 'launch_countdown_text', type: 'varchar', length: 180, nullable: true }) launchCountdownText!: string | null;
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 }) price!: string;
   @Column({ name: 'compare_at_price', type: 'numeric', precision: 12, scale: 2, nullable: true }) compareAtPrice!: string | null;
   @Column({ name: 'currency_code', length: 3, default: 'UZS' }) currencyCode!: string;
@@ -154,6 +160,24 @@ export class AuthOtp {
   @Column({ type: 'int', default: 0 }) attempts!: number;
   @Column({ name: 'used_at', type: 'timestamptz', nullable: true }) usedAt!: Date | null;
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+}
+
+// Refresh tokens are represented by server-side sessions.  The browser only
+// receives a signed token; its bcrypt hash is stored here so a token can be
+// rotated and revoked immediately without waiting for its JWT expiry.
+@Entity('auth_sessions')
+@Index(['userId', 'revokedAt'])
+@Index(['customerId', 'revokedAt'])
+export class AuthSession {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'user_id', type: 'uuid', nullable: true }) userId!: string | null;
+  @Column({ name: 'customer_id', type: 'uuid', nullable: true }) customerId!: string | null;
+  @Column({ length: 20 }) kind!: 'admin' | 'customer';
+  @Column({ name: 'token_hash', length: 255, select: false }) tokenHash!: string;
+  @Column({ name: 'expires_at', type: 'timestamptz' }) expiresAt!: Date;
+  @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true }) revokedAt!: Date | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
 }
 
 @Entity('customer_addresses')
@@ -447,7 +471,7 @@ export class PartnerComment {
 }
 
 export const entities = [
-  User, Category, CollectionEntity, Product, ProductVariant, Customer, AuthOtp,
+  User, Category, CollectionEntity, Product, ProductVariant, Customer, AuthOtp, AuthSession,
   CustomerAddress, Order, OrderItem, Banner, Page, PageSection, BlogPost,
   LookbookEntry, MusicRecord, SiteSetting, AuditLog, InventoryTransfer, OfflineSale, OfflineSaleItem, OfflineSaleNote, OfflineDailyReport, ProductDiscount, Partner, PartnerPromoUsage, PartnerComment,
 ];

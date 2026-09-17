@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { randomUUID } from 'node:crypto';
-import { Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, SiteSetting } from '../database/entities';
+import { Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, Product, ProductStatus, SiteSetting } from '../database/entities';
 
 const DEFAULT_NAVIGATION = [
   { id: 'shop', href: '/shop', label: 'shop', translationKey: 'shop', isActive: true, isBuiltIn: true },
@@ -20,6 +20,7 @@ export class CmsService {
     @InjectRepository(BlogPost) private readonly posts: Repository<BlogPost>,
     @InjectRepository(LookbookEntry) private readonly lookbook: Repository<LookbookEntry>,
     @InjectRepository(MusicRecord) private readonly records: Repository<MusicRecord>,
+    @InjectRepository(Product) private readonly products: Repository<Product>,
     @InjectRepository(SiteSetting) private readonly settings: Repository<SiteSetting>,
   ) {}
   bannersForStorefront() { return this.banners.find({ where: { isActive: true }, order: { position: 'ASC' } }); }
@@ -50,6 +51,47 @@ export class CmsService {
         };
       })
       .filter((item) => item.id && item.label && item.href);
+  }
+  async headerMessageForStorefront() {
+    // Resolve overdue launches first.  The endpoint is polled by the header,
+    // so an open storefront turns the product active at its scheduled time
+    // without relying on a browser-only timer.
+    await this.activateDueProductsWithNotification();
+    const upcoming = await this.products.find({ where: { status: ProductStatus.DRAFT, showLaunchCountdown: true }, order: { scheduledAt: 'ASC' } });
+    const next = upcoming.find((product) => product.scheduledAt && product.scheduledAt.getTime() > Date.now());
+    if (next?.scheduledAt) return { kind: 'countdown' as const, text: next.launchCountdownText?.trim() || 'YANGI DROP', targetAt: next.scheduledAt.toISOString() };
+    const setting = await this.settings.findOneBy({ key: 'header-quotes' });
+    const quotes = Array.isArray(setting?.value?.items)
+      ? setting.value.items
+        .filter((item): item is { text?: unknown; isActive?: unknown } => Boolean(item && typeof item === 'object' && (item as { isActive?: unknown }).isActive !== false))
+        .map((item) => typeof item.text === 'string' ? item.text.trim() : '')
+        .filter(Boolean)
+      : [];
+    return { kind: 'quote' as const, quotes };
+  }
+
+  private async activateDueProductsWithNotification() {
+    const due = await this.products.createQueryBuilder('product')
+      .where('product.status = :draft', { draft: ProductStatus.DRAFT })
+      .andWhere('product.scheduled_at IS NOT NULL AND product.scheduled_at <= NOW()').getMany();
+    for (const product of due) {
+      const result = await this.products.createQueryBuilder().update(Product).set({ status: ProductStatus.ACTIVE })
+        .where('id = :id AND status = :draft', { id: product.id, draft: ProductStatus.DRAFT }).execute();
+      if (result.affected) await this.appendLaunchNotification(product);
+    }
+  }
+
+  private async appendLaunchNotification(product: Product) {
+    const setting = await this.settings.findOneBy({ key: 'site-notifications' });
+    const items = Array.isArray(setting?.value?.items) ? setting.value.items : [];
+    const imageUrl = [...(product.media ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? '';
+    const item = {
+      id: randomUUID(), kind: 'products',
+      title: { ru: `Дроп уже вышел: ${product.title}`, uz: `Drop chiqdi: ${product.title}`, en: `Drop is live: ${product.title}` },
+      text: { ru: 'Товар уже доступен. Откройте карточку товара.', uz: 'Mahsulot endi sotuvda. Mahsulot kartasini oching.', en: 'The product is now available. Open the product card.' },
+      imageUrl, href: `/products/${product.slug}`, createdAt: new Date().toISOString(), isActive: true, clicks: 0, clickVisitorIds: [],
+    };
+    await this.settings.save(setting ? { ...setting, value: { ...setting.value, items: [item, ...items] } } : this.settings.create({ key: 'site-notifications', value: { items: [item] } }));
   }
   async pageForStorefront(slug: string) {
     const page = await this.pages.findOneBy({ slug, isPublished: true });

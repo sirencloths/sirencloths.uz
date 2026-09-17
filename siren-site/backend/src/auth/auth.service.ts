@@ -5,11 +5,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { IsNull, Repository } from 'typeorm';
-import { AuditLog, AuthOtp, Customer, CustomerAddress, User, UserRole } from '../database/entities';
+import { AuditLog, AuthOtp, AuthSession, Customer, CustomerAddress, User, UserRole } from '../database/entities';
 import { EmailService } from './email.service';
 
 type OtpPurpose = 'registration' | 'password_reset' | 'password_change';
 type CustomerProfile = { firstName: string; lastName: string; phone: string; region: string; address?: string; notificationPreferences?: { blog?: boolean; discounts?: boolean; products?: boolean } };
+type SessionKind = 'admin' | 'customer';
+type RefreshPayload = { sub: string; email: string | null; role?: UserRole; kind?: 'customer'; sessionId: string; tokenType: 'refresh' };
+
+const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
+const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 @Injectable()
 export class AuthService implements OnApplicationBootstrap {
@@ -18,6 +23,7 @@ export class AuthService implements OnApplicationBootstrap {
     @InjectRepository(Customer) private readonly customers: Repository<Customer>,
     @InjectRepository(CustomerAddress) private readonly addresses: Repository<CustomerAddress>,
     @InjectRepository(AuthOtp) private readonly otps: Repository<AuthOtp>,
+    @InjectRepository(AuthSession) private readonly sessions: Repository<AuthSession>,
     @InjectRepository(AuditLog) private readonly auditLogs: Repository<AuditLog>,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
@@ -42,8 +48,11 @@ export class AuthService implements OnApplicationBootstrap {
       throw new UnauthorizedException('Invalid email or password');
     }
     await this.auditLogs.save(this.auditLogs.create({ actorId: user.id, action: 'logged_in', entityType: 'admin_session', entityId: user.id, payload: { email: user.email } }));
-    return { accessToken: await this.sign(user), user: this.sanitize(user) };
+    return { ...(await this.issueAdminSession(user)), user: this.sanitize(user) };
   }
+
+  async refreshAdmin(refreshToken: string) { return this.refreshSession(refreshToken, 'admin'); }
+  async logoutAdmin(refreshToken: string) { await this.revokeSession(refreshToken, 'admin'); return { success: true }; }
 
   async me(id: string) {
     const user = await this.users.findOneByOrFail({ id });
@@ -101,7 +110,7 @@ export class AuthService implements OnApplicationBootstrap {
     const saved = await this.customers.save(customer);
     await this.saveDefaultAddress(saved.id, profile.region, profile.address);
     await this.auditLogs.save(this.auditLogs.create({ actorId: null, action: 'registered', entityType: 'customer', entityId: saved.id, payload: { email: saved.email } }));
-    return { accessToken: await this.signCustomer(saved), customer: await this.customerMe(saved.id) };
+    return { ...(await this.issueCustomerSession(saved)), customer: await this.customerMe(saved.id) };
   }
 
   async customerLogin(value: string, password: string) {
@@ -112,7 +121,7 @@ export class AuthService implements OnApplicationBootstrap {
     customer.lastLoginAt = new Date();
     await this.customers.save(customer);
     await this.auditLogs.save(this.auditLogs.create({ actorId: null, action: 'logged_in', entityType: 'customer', entityId: customer.id, payload: { email: customer.email } }));
-    return { accessToken: await this.signCustomer(customer), customer: await this.customerMe(customer.id) };
+    return { ...(await this.issueCustomerSession(customer)), customer: await this.customerMe(customer.id) };
   }
 
   async beginPasswordReset(value: string, purpose: OtpPurpose = 'password_reset') {
@@ -134,8 +143,12 @@ export class AuthService implements OnApplicationBootstrap {
     customer.passwordHash = await bcrypt.hash(password, 12);
     customer.lastLoginAt = new Date();
     await this.customers.save(customer);
-    return { accessToken: await this.signCustomer(customer), customer: await this.customerMe(customer.id) };
+    await this.sessions.update({ customerId: customer.id, revokedAt: IsNull() }, { revokedAt: new Date() });
+    return { ...(await this.issueCustomerSession(customer)), customer: await this.customerMe(customer.id) };
   }
+
+  async refreshCustomer(refreshToken: string) { return this.refreshSession(refreshToken, 'customer'); }
+  async logoutCustomer(refreshToken: string) { await this.revokeSession(refreshToken, 'customer'); return { success: true }; }
 
   async customerMe(id: string) {
     const customer = await this.customers.findOneByOrFail({ id });
@@ -197,7 +210,107 @@ export class AuthService implements OnApplicationBootstrap {
     } catch { throw new UnauthorizedException('Verification has expired. Request a new code.'); }
   }
 
-  private signCustomer(customer: Customer) { return this.jwt.signAsync({ sub: customer.id, email: customer.email, kind: 'customer' }, { expiresIn: '12h' }); }
+  private async issueAdminSession(user: User) {
+    return this.issueSession('admin', user.id, user.email, user.role);
+  }
+
+  private async issueCustomerSession(customer: Customer) {
+    return this.issueSession('customer', customer.id, customer.email);
+  }
+
+  private async issueSession(kind: SessionKind, subjectId: string, email: string | null, role?: UserRole) {
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
+    const session = await this.sessions.save(this.sessions.create({
+      userId: kind === 'admin' ? subjectId : null,
+      customerId: kind === 'customer' ? subjectId : null,
+      kind,
+      // It is replaced immediately below after the signed token is created.
+      tokenHash: 'pending',
+      expiresAt,
+      revokedAt: null,
+    }));
+    const accessToken = await this.signAccessToken(kind, subjectId, email, role);
+    const refreshToken = await this.jwt.signAsync(
+      kind === 'admin'
+        ? { sub: subjectId, email, role, sessionId: session.id, tokenType: 'refresh' }
+        : { sub: subjectId, email, kind: 'customer', sessionId: session.id, tokenType: 'refresh' },
+      { secret: this.refreshSecret(), expiresIn: '30d' },
+    );
+    session.tokenHash = await bcrypt.hash(refreshToken, 12);
+    await this.sessions.save(session);
+    return {
+      accessToken,
+      refreshToken,
+      accessTokenExpiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      refreshTokenExpiresIn: REFRESH_TOKEN_TTL_SECONDS,
+    };
+  }
+
+  private async refreshSession(refreshToken: string, kind: SessionKind) {
+    const payload = await this.readRefreshPayload(refreshToken, kind);
+    const session = await this.sessions.createQueryBuilder('session')
+      .addSelect('session.tokenHash')
+      .where('session.id = :id AND session.kind = :kind', { id: payload.sessionId, kind })
+      .getOne();
+    const sessionOwnerId = kind === 'admin' ? session?.userId : session?.customerId;
+    if (!session || session.revokedAt || session.expiresAt.getTime() <= Date.now() || sessionOwnerId !== payload.sub || !(await bcrypt.compare(refreshToken, session.tokenHash))) {
+      throw new UnauthorizedException('Refresh token is invalid or has expired');
+    }
+
+    if (kind === 'admin') {
+      const user = await this.users.findOneBy({ id: payload.sub });
+      if (!user?.isActive) throw new UnauthorizedException('Account is unavailable');
+      return this.refreshResult('admin', user.id, user.email, refreshToken, session.expiresAt, user.role);
+    }
+    const customer = await this.customers.findOneBy({ id: payload.sub });
+    if (!customer?.isActive) throw new UnauthorizedException('Account is unavailable');
+    return this.refreshResult('customer', customer.id, customer.email, refreshToken, session.expiresAt);
+  }
+
+  private async refreshResult(kind: SessionKind, subjectId: string, email: string | null, refreshToken: string, expiresAt: Date, role?: UserRole) {
+    return {
+      accessToken: await this.signAccessToken(kind, subjectId, email, role),
+      // The refresh token stays valid for its original 30-day session.  This
+      // avoids a browser reload interrupting a rotation response and leaving
+      // the client with a revoked token.
+      refreshToken,
+      accessTokenExpiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      refreshTokenExpiresIn: Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
+    };
+  }
+
+  private signAccessToken(kind: SessionKind, subjectId: string, email: string | null, role?: UserRole) {
+    return this.jwt.signAsync(
+      kind === 'admin'
+        ? { sub: subjectId, email, role, tokenType: 'access' }
+        : { sub: subjectId, email, kind: 'customer', tokenType: 'access' },
+      { expiresIn: '1h' },
+    );
+  }
+
+  private async revokeSession(refreshToken: string, kind: SessionKind) {
+    try {
+      const payload = await this.readRefreshPayload(refreshToken, kind);
+      await this.sessions.update({ id: payload.sessionId, kind }, { revokedAt: new Date() });
+    } catch {
+      // Sign-out is idempotent.  Clients clear their local session even when a
+      // refresh token has already expired or was rotated in another tab.
+    }
+  }
+
+  private async readRefreshPayload(token: string, kind: SessionKind): Promise<RefreshPayload> {
+    try {
+      const payload = await this.jwt.verifyAsync<RefreshPayload>(token, { secret: this.refreshSecret() });
+      const isExpectedKind = kind === 'admin' ? !payload.kind : payload.kind === 'customer';
+      if (payload.tokenType !== 'refresh' || !payload.sessionId || !isExpectedKind) throw new Error('Unexpected token');
+      return payload;
+    } catch {
+      throw new UnauthorizedException('Refresh token is invalid or has expired');
+    }
+  }
+
+  private refreshSecret() { return this.config.get<string>('JWT_REFRESH_SECRET') || this.config.getOrThrow<string>('JWT_SECRET'); }
+
   private welcomeDiscountExpiresAt(customer: Customer) {
     // Existing accounts created before this field was introduced get a
     // deterministic expiry from their registration timestamp, never a new 24h window.
@@ -228,10 +341,6 @@ export class AuthService implements OnApplicationBootstrap {
   private sanitizeCustomer(customer: Customer) {
     const { passwordHash: _passwordHash, ...safe } = customer;
     return safe;
-  }
-
-  private sign(user: User) {
-    return this.jwt.signAsync({ sub: user.id, email: user.email, role: user.role });
   }
 
   private sanitize(user: User) {

@@ -19,6 +19,9 @@ class ProductDto {
   @IsOptional() @IsArray() media?: Array<{ url: string; alt?: string; position?: number }>;
   @IsOptional() @IsObject() seo?: Record<string, unknown>;
   @IsOptional() @IsObject() metadata?: Record<string, unknown>;
+  @IsOptional() @IsDateString() scheduledAt?: string | null;
+  @IsOptional() @IsBoolean() showLaunchCountdown?: boolean;
+  @IsOptional() @IsString() launchCountdownText?: string | null;
 }
 class VariantDto {
   @IsString() sku!: string;
@@ -83,8 +86,8 @@ export class CatalogController {
 export class AdminCatalogController {
   constructor(private readonly catalog: CatalogService) {}
   @Get('products') products() { return this.catalog.adminProducts(); }
-  @Post('products') createProduct(@Body() body: ProductDto) { return this.catalog.createProduct(body); }
-  @Patch('products/:id') updateProduct(@Param('id') id: string, @Body() body: Partial<ProductDto>) { return this.catalog.updateProduct(id, body); }
+  @Post('products') createProduct(@Body() body: ProductDto) { return this.catalog.createProduct({ ...body, scheduledAt: body.scheduledAt ? new Date(body.scheduledAt) : null }); }
+  @Patch('products/:id') updateProduct(@Param('id') id: string, @Body() body: Partial<ProductDto>) { const { scheduledAt, ...rest } = body; return this.catalog.updateProduct(id, { ...rest, ...(scheduledAt !== undefined ? { scheduledAt: scheduledAt ? new Date(scheduledAt) : null } : {}) }); }
   @Delete('products/:id') removeProduct(@Param('id') id: string) { return this.catalog.removeProduct(id); }
   @Get('products/:id/variants') variants(@Param('id') id: string) { return this.catalog.variantsFor(id); }
   @Post('products/:id/variants') createVariant(@Param('id') id: string, @Body() body: VariantDto) { return this.catalog.createVariant(id, body); }

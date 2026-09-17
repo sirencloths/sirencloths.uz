@@ -21,6 +21,7 @@ class RegisterDto {
   @IsOptional() @IsString() address?: string;
 }
 class ResetDto { @IsString() verificationToken!: string; @IsString() @MinLength(8) password!: string; }
+class RefreshDto { @IsString() @MinLength(20) refreshToken!: string; }
 class CustomerUpdateDto {
   @IsOptional() @IsString() firstName?: string;
   @IsOptional() @IsString() lastName?: string;
@@ -35,6 +36,8 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('login') login(@Body() body: LoginDto) { return this.auth.login(body.email, body.password); }
+  @Post('refresh') refresh(@Body() body: RefreshDto) { return this.auth.refreshAdmin(body.refreshToken); }
+  @Post('logout') logout(@Body() body: RefreshDto) { return this.auth.logoutAdmin(body.refreshToken); }
 
   @UseGuards(JwtAuthGuard)
   @Get('me') me(@CurrentUser() user: { id: string }) { return this.auth.me(user.id); }
@@ -43,6 +46,8 @@ export class AuthController {
   @Post('customer/verify-registration') verifyRegistration(@Body() body: OtpDto) { return this.auth.verifyCustomerOtp(body.email, body.code, 'registration'); }
   @Post('customer/register') register(@Body() body: RegisterDto) { return this.auth.registerCustomer(body.verificationToken, body); }
   @Post('customer/login') customerLogin(@Body() body: CustomerLoginDto) { return this.auth.customerLogin(body.email, body.password); }
+  @Post('customer/refresh') customerRefresh(@Body() body: RefreshDto) { return this.auth.refreshCustomer(body.refreshToken); }
+  @Post('customer/logout') customerLogout(@Body() body: RefreshDto) { return this.auth.logoutCustomer(body.refreshToken); }
   @Post('customer/password-reset/request') passwordResetRequest(@Body() body: EmailDto) { return this.auth.beginPasswordReset(body.email); }
   @Post('customer/password-reset/verify') passwordResetVerify(@Body() body: OtpDto) { return this.auth.verifyCustomerOtp(body.email, body.code, 'password_reset'); }
   @Post('customer/password-reset/complete') passwordResetComplete(@Body() body: ResetDto) { return this.auth.resetCustomerPassword(body.verificationToken, body.password); }

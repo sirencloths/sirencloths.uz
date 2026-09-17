@@ -15,6 +15,7 @@ import { heroProducts, type Product } from "@/lib/data";
 import { useLanguage } from "./LanguageProvider";
 import { getStorefrontProducts, getStorefrontRandomProducts, storefrontAssetUrl, toStorefrontColorCards } from "@/lib/api";
 import { useOverlayHistory } from "./OverlayHistoryProvider";
+import { useModalLock } from "./useModalLock";
 
 type SearchContextValue = {
   isSearchOpen: boolean;
@@ -27,14 +28,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const { isOverlayOpen, openOverlay, closeOverlay } = useOverlayHistory();
   const isSearchOpen = isOverlayOpen("search");
   const closeSearch = () => closeOverlay("search");
+  useModalLock(isSearchOpen);
 
   useEffect(() => {
     if (!isSearchOpen) return;
-    const previousOverflow = document.body.style.overflow;
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") closeSearch(); };
-    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
-    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKeyDown); };
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [isSearchOpen, closeSearch]);
 
   const value = useMemo(() => ({

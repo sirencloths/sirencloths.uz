@@ -1,6 +1,5 @@
 "use client";
 
-import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import { getStorefrontPage, type ApiPage } from "@/lib/api";
 import { useParams } from "next/navigation";
@@ -21,7 +20,6 @@ export default function ManagedPage() {
 
   return (
     <>
-      <FixedTop />
       <main className="managed-page">
         <p className="ui-overline">SIREN</p>
         <h1>{page?.title ?? (missing ? "SAHIFA TOPILMADI" : "YUKLANMOQDA")}</h1>

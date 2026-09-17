@@ -13,6 +13,7 @@ import CartDrawer from "@/components/CartDrawer";
 import { CustomerAuthProvider } from "@/components/CustomerAuthProvider";
 import { MusicPlayerProvider } from "@/components/MusicPlayer";
 import { OverlayHistoryProvider } from "@/components/OverlayHistoryProvider";
+import SiteChrome from "@/components/SiteChrome";
 
 const gilroy = localFont({
   src: "../public/fonts/Gilroy-Extrabold.ttf",
@@ -34,7 +35,7 @@ export default function RootLayout({
     <html lang="ru" className={gilroy.variable}>
       <body>
         <LanguageProvider>
-          <FavoriteProvider><OverlayHistoryProvider><CustomerAuthProvider><SearchProvider><CartProvider><MusicPlayerProvider>{children}<CartDrawer /><MobileBottomNav /><aside className="site-test-notice" role="status">САЙТ ТЕСТИРУЕТСЯ</aside></MusicPlayerProvider></CartProvider></SearchProvider></CustomerAuthProvider></OverlayHistoryProvider></FavoriteProvider>
+          <FavoriteProvider><OverlayHistoryProvider><CustomerAuthProvider><SearchProvider><CartProvider><MusicPlayerProvider><SiteChrome />{children}<CartDrawer /><MobileBottomNav /><aside className="site-test-notice" role="status">САЙТ ТЕСТИРУЕТСЯ</aside></MusicPlayerProvider></CartProvider></SearchProvider></CustomerAuthProvider></OverlayHistoryProvider></FavoriteProvider>
         </LanguageProvider>
       </body>
     </html>

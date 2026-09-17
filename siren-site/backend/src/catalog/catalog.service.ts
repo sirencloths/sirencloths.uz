@@ -8,6 +8,7 @@ export type ProductInput = {
   slug: string; title: string; description?: string; status?: ProductStatus; price: string;
   compareAtPrice?: string | null; currencyCode?: string; categoryId?: string | null; gender?: ProductGender;
   media?: Array<{ url: string; alt?: string; position?: number }>; seo?: Record<string, unknown>; metadata?: Record<string, unknown>;
+  scheduledAt?: Date | null; showLaunchCountdown?: boolean; launchCountdownText?: string | null;
 };
 export type VariantInput = { sku: string; name?: string; barcode?: string | null; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity?: number; isActive?: boolean; attributes?: Record<string, unknown> };
 export type TaxonomyInput = { slug: string; name: string; description?: string | null; imageUrl?: string | null; heroImageUrl?: string | null; position?: number; isVisible?: boolean };
@@ -80,6 +81,7 @@ export class CatalogService {
   }
 
   async publicProducts() {
+    await this.activateDueProducts();
     const products = await this.products.find({ where: { status: ProductStatus.ACTIVE }, relations: { variants: true, category: true }, order: { createdAt: 'DESC' } });
     const discounted = await this.applyDiscounts(await this.ensureVariantEan13(products));
     // This endpoint also drives the home page and search, so sale-first order
@@ -124,6 +126,7 @@ export class CatalogService {
     return products.slice(0, take);
   }
   async publicProduct(slug: string) {
+    await this.activateDueProducts();
     const product = await this.products.findOne({ where: { slug, status: ProductStatus.ACTIVE }, relations: { variants: true, category: true } });
     if (!product) throw new NotFoundException('Product not found');
     await this.ensureVariantEan13([product]);
@@ -134,6 +137,7 @@ export class CatalogService {
   publicCollections() { return this.collections.find({ where: { isVisible: true }, order: { position: 'ASC', name: 'ASC' } }); }
 
   async adminProducts() {
+    await this.activateDueProducts();
     const [products, soldRows] = await Promise.all([
       this.products.find({ relations: { variants: true, category: true }, order: { updatedAt: 'DESC' } }),
       this.orderItems.createQueryBuilder('item')
@@ -151,16 +155,44 @@ export class CatalogService {
   }
   async createProduct(input: ProductInput) {
     await this.validateProductAssignment(input, true);
-    const product = await this.products.save(this.products.create({ ...input, media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} }));
+    const product = await this.products.save(this.products.create({ ...this.scheduleProduct(input), media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} }));
     if (product.status === ProductStatus.ACTIVE) await this.appendProductNotification(product);
     return product;
   }
   async updateProduct(id: string, input: Partial<ProductInput>) {
-    await this.validateProductAssignment(input, false); const product = await this.products.preload({ id, ...input });
+    await this.validateProductAssignment(input, false); const before = await this.products.findOneBy({ id });
+    const product = await this.products.preload({ id, ...input });
     if (!product) throw new NotFoundException('Product not found');
-    return this.products.save(product);
+    const saved = await this.products.save(this.scheduleProduct(product));
+    if (saved.status === ProductStatus.ACTIVE && before?.status !== ProductStatus.ACTIVE) await this.appendProductNotification(saved);
+    return saved;
   }
   async removeProduct(id: string) { await this.products.delete(id); return { deleted: true }; }
+
+  private scheduleProduct<T extends { status?: ProductStatus; scheduledAt?: Date | null }>(product: T): T & { status: ProductStatus; scheduledAt: Date | null } {
+    const scheduledAt = product.scheduledAt ? new Date(product.scheduledAt) : null;
+    if (scheduledAt && Number.isNaN(scheduledAt.getTime())) throw new BadRequestException('Rejalashtirilgan vaqt noto‘g‘ri.');
+    // A future launch can never leak into catalog reads as an active product.
+    if (scheduledAt && scheduledAt.getTime() > Date.now()) return { ...product, status: ProductStatus.DRAFT, scheduledAt };
+    // A schedule that is already due becomes active immediately.
+    if (scheduledAt && (product.status ?? ProductStatus.DRAFT) === ProductStatus.DRAFT) return { ...product, status: ProductStatus.ACTIVE, scheduledAt };
+    return { ...product, status: product.status ?? ProductStatus.DRAFT, scheduledAt };
+  }
+
+  private async activateDueProducts() {
+    const due = await this.products.createQueryBuilder('product')
+      .where('product.status = :draft', { draft: ProductStatus.DRAFT })
+      .andWhere('product.scheduled_at IS NOT NULL AND product.scheduled_at <= NOW()')
+      .getMany();
+    for (const product of due) {
+      // The guarded update makes the launch idempotent if two storefront
+      // requests arrive at the same second: only the request that activated
+      // the product is allowed to create its customer notification.
+      const result = await this.products.createQueryBuilder().update(Product).set({ status: ProductStatus.ACTIVE })
+        .where('id = :id AND status = :draft', { id: product.id, draft: ProductStatus.DRAFT }).execute();
+      if (result.affected) await this.appendProductNotification(product);
+    }
+  }
 
   variantsFor(productId: string) { return this.variants.find({ where: { productId }, order: { sku: 'ASC' } }); }
   async createVariant(productId: string, input: VariantInput) {

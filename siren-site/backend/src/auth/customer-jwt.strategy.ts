@@ -9,8 +9,8 @@ export class CustomerJwtStrategy extends PassportStrategy(Strategy, 'customer-jw
   constructor(config: ConfigService) {
     super({ jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), ignoreExpiration: false, secretOrKey: config.getOrThrow<string>('JWT_SECRET') });
   }
-  validate(payload: { sub: string; email: string; kind?: string }) {
-    if (payload.kind !== 'customer') return false;
+  validate(payload: { sub: string; email: string; kind?: string; tokenType?: 'access' | 'refresh' }) {
+    if (payload.kind !== 'customer' || payload.tokenType === 'refresh') return false;
     return { id: payload.sub, email: payload.email, kind: payload.kind };
   }
 }

@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useModalLock } from "./useModalLock";
 
 export const languages = [
   { code: "uz", label: "O'zbekcha", flag: "🇺🇿" },
@@ -80,6 +81,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState<Locale>("ru");
   const [isOpen, setIsOpen] = useState(false);
   const [pendingLocale, setPendingLocale] = useState<Locale>("ru");
+  useModalLock(isOpen);
 
   useEffect(() => {
     const stored = localStorage.getItem("siren-locale") as Locale | null;

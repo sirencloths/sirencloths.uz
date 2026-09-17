@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { useCart } from "./CartContext";
 import { useLanguage } from "./LanguageProvider";
 import { cartItemPrice, shippingCost } from "@/lib/commerce";
+import { useModalLock } from "./useModalLock";
 
 const money = (value: number, locale: string) => `${value.toLocaleString(locale)} СУМ`;
 const assetOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
 const cartImageUrl = (value: string) => value.startsWith("/uploads/") ? `${assetOrigin}${value}` : value;
+const DRAWER_TRANSITION_MS = 500;
 
 export default function CartDrawer() {
   const router = useRouter();
@@ -18,25 +20,35 @@ export default function CartDrawer() {
   const [visible, setVisible] = useState(false);
   const delivery = shippingCost(subtotal, cartCount);
   const total = Math.max(0, subtotal + delivery);
+  useModalLock(isCartOpen);
 
   useEffect(() => {
     if (isCartOpen) {
       setMounted(true);
-      const frame = window.requestAnimationFrame(() => setVisible(true));
-      return () => window.cancelAnimationFrame(frame);
+      // The first frame paints the drawer just outside the viewport; the
+      // second starts the transition. A single frame can be coalesced by the
+      // browser, which made the drawer appear instantly instead of sliding in.
+      let nextFrame = 0;
+      const frame = window.requestAnimationFrame(() => {
+        nextFrame = window.requestAnimationFrame(() => setVisible(true));
+      });
+      return () => {
+        window.cancelAnimationFrame(frame);
+        window.cancelAnimationFrame(nextFrame);
+      };
     }
     setVisible(false);
-    const timeout = window.setTimeout(() => setMounted(false), 280);
+    // Keep the layer mounted for the exact visual transition.  Removing it
+    // early used to make close feel abruptly faster than open.
+    const timeout = window.setTimeout(() => setMounted(false), DRAWER_TRANSITION_MS);
     return () => window.clearTimeout(timeout);
   }, [isCartOpen]);
 
   useEffect(() => {
     if (!isCartOpen) return;
-    const priorOverflow = document.body.style.overflow;
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") closeCart(); };
-    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
-    return () => { document.body.style.overflow = priorOverflow; window.removeEventListener("keydown", onKeyDown); };
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [isCartOpen, closeCart]);
 
   if (!mounted) return null;

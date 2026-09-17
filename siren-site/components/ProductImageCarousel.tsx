@@ -26,7 +26,7 @@ export default function ProductImageCarousel({ images, alt }: Props) {
       <CarouselContent className="product-mobile-carousel-track">
         {images.map((image, frame) => (
           <CarouselItem className="product-mobile-carousel-slide" key={`${image}-${frame}`} aria-hidden={active !== frame}>
-            <ProductZoomImage src={image} alt={frame === active ? alt : "Mahsulot rasmi"} priority={frame === 0} />
+            <ProductZoomImage src={image} images={images} initialIndex={frame} alt={frame === active ? alt : "Mahsulot rasmi"} priority={frame === 0} />
           </CarouselItem>
         ))}
       </CarouselContent>

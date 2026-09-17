@@ -1,6 +1,5 @@
 "use client";
 
-import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import Image from "next/image";
 import { heroProducts, type Product } from "@/lib/data";
@@ -17,8 +16,6 @@ export default function CollectionsPage() {
 
   return (
     <>
-      <FixedTop />
-
       <main className="collections-page">
 
         {/* TITLE */}

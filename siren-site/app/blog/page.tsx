@@ -1,4 +1,3 @@
-import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import BlogGallery from "@/components/BlogGallery";
 import { blogArticles } from "@/lib/data";
@@ -14,7 +13,6 @@ export default async function BlogPage() {
 
   return (
     <>
-      <FixedTop />
       <main className="blog-page">
         <div className="blog-page-heading">
           <h1>БЛОГ</h1>

@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import { heroProducts, type Product } from "@/lib/data";
@@ -48,7 +47,6 @@ export default function FavoritesPage() {
 
   return (
     <>
-      <FixedTop />
       <main className="favorites-page">
         <section className="favorites-list">
           <h1>{title} <span>({favorites.length})</span></h1>

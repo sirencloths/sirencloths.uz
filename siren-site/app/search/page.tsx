@@ -1,7 +1,6 @@
 "use client";
 
 import { useLayoutEffect, useState, type CSSProperties } from "react";
-import FixedTop from "@/components/FixedTop";
 import { SearchContents } from "@/components/SearchProvider";
 
 export default function SearchPage() {
@@ -20,7 +19,6 @@ export default function SearchPage() {
 
   return (
     <>
-      <FixedTop />
       <main className="search-page" style={headerBottom === null ? undefined : { "--search-page-header-bottom": `${headerBottom}px` } as CSSProperties}>
         <div className="search-page-content">
           <SearchContents />

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, SiteSetting } from '../database/entities';
+import { Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, Product, SiteSetting } from '../database/entities';
 import { CmsController, AdminCmsController } from './cms.controller';
 import { CmsService } from './cms.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, SiteSetting])],
+  imports: [TypeOrmModule.forFeature([Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, Product, SiteSetting])],
   controllers: [CmsController, AdminCmsController],
   providers: [CmsService],
 })

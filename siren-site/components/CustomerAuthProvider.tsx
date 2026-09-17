@@ -1,19 +1,72 @@
 "use client";
 
-import { createContext, FormEvent, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, FormEvent, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useOverlayHistory } from "./OverlayHistoryProvider";
+import { useModalLock } from "./useModalLock";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+const API = process.env.NEXT_PUBLIC_API_URL ?? (typeof window === "undefined" ? "http://localhost:4000/api" : `${window.location.protocol}//${window.location.hostname}:4000/api`);
 const TOKEN_KEY = "siren-customer-token";
+const REFRESH_TOKEN_KEY = "siren-customer-refresh-token";
 type Customer = { id: string; email: string; firstName: string; lastName: string; phone?: string | null; region?: string | null; address?: string; emailVerifiedAt?: string | null; welcomeDiscountEligible?: boolean; welcomeDiscountPercent?: number; welcomeDiscountExpiresAt?: string | null; metadata?: { notificationPreferences?: { blog?: boolean; discounts?: boolean; products?: boolean } } };
 type Step = "email" | "password" | "otp" | "details" | "forgot" | "reset";
 type Context = { customer: Customer | null; loading: boolean; openAuth: () => void; signOut: () => void; refresh: () => Promise<void> };
 const CustomerAuthContext = createContext<Context | null>(null);
 const regions = ["Toshkent", "Andijon", "Buxoro", "Farg‘ona", "Jizzax", "Namangan", "Navoiy", "Qashqadaryo", "Qoraqalpog‘iston", "Samarqand", "Sirdaryo", "Surxondaryo", "Xorazm"];
 
+type TokenPair = { accessToken: string; refreshToken: string; accessTokenExpiresIn: number; refreshTokenExpiresIn: number };
+let customerRefreshInFlight: Promise<string | null> | null = null;
+
+function storeCustomerTokens(tokens: TokenPair) {
+  localStorage.setItem(TOKEN_KEY, tokens.accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+}
+
+function clearCustomerTokens() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+async function refreshCustomerAccessToken() {
+  if (typeof window === "undefined") return null;
+  if (!customerRefreshInFlight) {
+    customerRefreshInFlight = (async () => {
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (!refreshToken) return null;
+      const response = await fetch(`${API}/auth/customer/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.accessToken || !payload.refreshToken) {
+        // Only an explicit authentication rejection means the 30-day session
+        // is over.  A temporary network/server error must never erase a valid
+        // browser session during a page reload.
+        if (response.status === 401 || response.status === 403) {
+          clearCustomerTokens();
+          window.dispatchEvent(new Event("siren-customer-unauthorized"));
+        }
+        return null;
+      }
+      storeCustomerTokens(payload as TokenPair);
+      return payload.accessToken as string;
+    })().catch(() => null).finally(() => { customerRefreshInFlight = null; });
+  }
+  return customerRefreshInFlight;
+}
+
 export async function customerApi(path: string, body?: unknown, token?: string, method = body ? "POST" : "GET") {
-  const res = await fetch(`${API}${path}`, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const send = (accessToken?: string) => fetch(`${API}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let res = await send(token);
+  if (res.status === 401 && token) {
+    const renewedToken = await refreshCustomerAccessToken();
+    if (renewedToken) res = await send(renewedToken);
+  }
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(payload.message || "Something went wrong");
   return payload;
@@ -25,12 +78,16 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { isOverlayOpen, openOverlay, closeOverlay } = useOverlayHistory();
   const isOpen = isOverlayOpen("auth");
+  useModalLock(isOpen);
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
-  const refresh = async () => {
-    const token = localStorage.getItem(TOKEN_KEY);
+  const refresh = useCallback(async () => {
+    // On a new page load renew first.  The stored access token remains a
+    // fallback during a temporary backend/network interruption.
+    const renewedToken = localStorage.getItem(REFRESH_TOKEN_KEY) ? await refreshCustomerAccessToken() : null;
+    const token = renewedToken || localStorage.getItem(TOKEN_KEY);
     if (!token) { setCustomer(null); return; }
-    try { setCustomer(await request("/auth/customer/me", undefined, token)); } catch { localStorage.removeItem(TOKEN_KEY); setCustomer(null); }
-  };
+    try { setCustomer(await request("/auth/customer/me", undefined, token)); } catch { setCustomer(null); }
+  }, []);
   useEffect(() => { void refresh().finally(() => setLoading(false)); }, []);
   useEffect(() => {
     if (!isAdminRoute && !loading && !customer && !sessionStorage.getItem("siren-auth-dismissed")) {
@@ -38,9 +95,14 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       return () => window.clearTimeout(id);
     }
   }, [isAdminRoute, loading, customer]);
-  const signOut = () => { localStorage.removeItem(TOKEN_KEY); setCustomer(null); };
+  const signOut = () => {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (refreshToken) void fetch(`${API}/auth/customer/logout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken }) }).catch(() => undefined);
+    clearCustomerTokens();
+    setCustomer(null);
+  };
   const value = useMemo(() => ({ customer, loading, openAuth: () => openOverlay("auth"), signOut, refresh }), [customer, loading, openOverlay]);
-  return <CustomerAuthContext.Provider value={value}>{children}{!isAdminRoute && <WelcomeDiscountTimer customer={customer} onExpired={refresh} />}{!isAdminRoute && isOpen && <AuthModal onClose={() => { sessionStorage.setItem("siren-auth-dismissed", "1"); closeOverlay("auth"); }} onAuthenticated={(result) => { localStorage.setItem(TOKEN_KEY, result.accessToken); setCustomer(result.customer); closeOverlay("auth"); }} />}</CustomerAuthContext.Provider>;
+  return <CustomerAuthContext.Provider value={value}>{children}{!isAdminRoute && <WelcomeDiscountTimer customer={customer} onExpired={refresh} />}{!isAdminRoute && isOpen && <AuthModal onClose={() => { sessionStorage.setItem("siren-auth-dismissed", "1"); closeOverlay("auth"); }} onAuthenticated={(result) => { storeCustomerTokens(result); setCustomer(result.customer); closeOverlay("auth"); }} />}</CustomerAuthContext.Provider>;
 }
 export const useCustomerAuth = () => {
   const context = useContext(CustomerAuthContext);
@@ -51,11 +113,22 @@ export const useCustomerAuth = () => {
 function WelcomeDiscountTimer({ customer, onExpired }: { customer: Customer | null; onExpired: () => Promise<void> }) {
   const expiresAt = customer?.welcomeDiscountExpiresAt;
   const [remaining, setRemaining] = useState("");
+  const handledExpiry = useRef<string | null>(null);
   useEffect(() => {
-    if (!customer?.welcomeDiscountEligible || !expiresAt) { setRemaining(""); return; }
+    if (!customer?.welcomeDiscountEligible || !expiresAt) { setRemaining(""); handledExpiry.current = null; return; }
+    const expiryKey = `${customer.id}:${expiresAt}`;
     const update = () => {
       const seconds = Math.max(0, Math.ceil((new Date(expiresAt).valueOf() - Date.now()) / 1000));
-      if (!seconds) { setRemaining(""); void onExpired(); return; }
+      if (!seconds) {
+        setRemaining("");
+        // The account is refreshed once when this offer expires.  Without this
+        // guard an expired offer could trigger refresh → render → refresh.
+        if (handledExpiry.current !== expiryKey) {
+          handledExpiry.current = expiryKey;
+          void onExpired();
+        }
+        return;
+      }
       const hours = Math.floor(seconds / 3600); const minutes = Math.floor(seconds % 3600 / 60); const secs = seconds % 60;
       setRemaining(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`);
     };
@@ -65,7 +138,7 @@ function WelcomeDiscountTimer({ customer, onExpired }: { customer: Customer | nu
   return <aside className="welcome-discount-timer" role="status" aria-label="Welcome chegirma taymeri"><span>WELCOME</span><b>−{customer.welcomeDiscountPercent || 15}%</b><time>{remaining}</time><Link href="/shop">XARID QILISH</Link></aside>;
 }
 
-function AuthModal({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (result: { accessToken: string; customer: Customer }) => void }) {
+function AuthModal({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (result: TokenPair & { customer: Customer }) => void }) {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [code, setCode] = useState(""); const [token, setToken] = useState("");
   const [details, setDetails] = useState({ firstName: "", lastName: "", phone: "+998", region: "", address: "", password: "" });

@@ -3,7 +3,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import { blogArticles } from "@/lib/data";
 import { getStorefrontPosts, type ApiBlogPost } from "@/lib/api";
@@ -37,7 +36,7 @@ export default function BlogImageViewerPage() {
     return () => { active = false; };
   }, [id]);
 
-  if (!post) return <><FixedTop /><main className="blog-viewer-page"><div className="blog-viewer-loading" aria-busy="true">GALEREYA YUKLANMOQDA…</div></main><Footer /></>;
+  if (!post) return <><main className="blog-viewer-page"><div className="blog-viewer-loading" aria-busy="true">GALEREYA YUKLANMOQDA…</div></main><Footer /></>;
 
   const activePost = post;
   const count = activePost.images.length;
@@ -55,7 +54,7 @@ export default function BlogImageViewerPage() {
     if (Math.abs(distance) > 36) change(routeIndex + (distance < 0 ? 1 : -1));
   };
 
-  return <><FixedTop /><main className="blog-viewer-page">
+  return <><main className="blog-viewer-page">
     <header className="blog-viewer-toolbar"><button type="button" onClick={() => router.back()}>← BLOGGA QAYTISH</button><div><span>GALEREYA</span><b>{routeIndex + 1} / {count}</b></div></header>
     <article className="blog-viewer-layout">
       <div className="blog-viewer-frame" onPointerDown={(event) => { startX.current = event.clientX; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={(event) => finishSwipe(event.clientX)} onPointerCancel={() => { startX.current = null; }}>

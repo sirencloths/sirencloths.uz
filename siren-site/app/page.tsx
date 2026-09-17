@@ -1,6 +1,5 @@
 import Blog from "@/components/Blog";
 import Collection from "@/components/Collection";
-import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
 import ManagedHomepageSections from "@/components/ManagedHomepageSections";
@@ -24,8 +23,6 @@ export default async function Home() {
 
   return (
     <>
-      <FixedTop />
-
       <main>
         <Hero banners={adminBanners} />
 

@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import FixedTop from "@/components/FixedTop";
 import Footer from "@/components/Footer";
 import { useCart } from "@/components/CartContext";
 import { useEffect, useState } from "react";
@@ -124,8 +123,6 @@ export default function CartPage() {
 
   return (
     <>
-      <FixedTop />
-
       <main className="cart-page">
 
         <div className="cart-mobile-heading">
