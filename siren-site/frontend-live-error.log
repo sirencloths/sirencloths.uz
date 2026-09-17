@@ -1,0 +1,2706 @@
+⚠ Fast Refresh had to perform a full reload when ./components/AdminConsole.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+⚠ Fast Refresh had to perform a full reload when ./lib/api.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./lib/api.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] ⨯ unhandledRejection: Error: Cannot PATCH /api/admin/catalog/discounts/78173391-5845-4e33-b827-e140cf515b93
+    at api (components/AdminConsole.tsx:436:11)
+    at async toggleActive (components/AdminConsole.tsx:903:88)
+  434 |   }
+  435 |   if (!r.ok)
+> 436 |     throw new Error(
+      |           ^
+  437 |       Array.isArray(body.message)
+  438 |         ? body.message.join(", ")
+  439 |         : (body.message ?? "So‘rov bajarilmadi"),
+[browser] ⨯ unhandledRejection: Error: Cannot PATCH /api/admin/catalog/discounts/78173391-5845-4e33-b827-e140cf515b93
+    at api (components/AdminConsole.tsx:436:11)
+    at async toggleActive (components/AdminConsole.tsx:903:88)
+  434 |   }
+  435 |   if (!r.ok)
+> 436 |     throw new Error(
+      |           ^
+  437 |       Array.isArray(body.message)
+  438 |         ? body.message.join(", ")
+  439 |         : (body.message ?? "So‘rov bajarilmadi"),
+[browser] ⨯ unhandledRejection: Error: Cannot PATCH /api/admin/catalog/discounts/78173391-5845-4e33-b827-e140cf515b93
+    at api (components/AdminConsole.tsx:436:11)
+    at async toggleActive (components/AdminConsole.tsx:903:88)
+  434 |   }
+  435 |   if (!r.ok)
+> 436 |     throw new Error(
+      |           ^
+  437 |       Array.isArray(body.message)
+  438 |         ? body.message.join(", ")
+  439 |         : (body.message ?? "So‘rov bajarilmadi"),
+[browser] ⨯ unhandledRejection: Error: Cannot PATCH /api/admin/catalog/discounts/78173391-5845-4e33-b827-e140cf515b93
+    at api (components/AdminConsole.tsx:436:11)
+    at async toggleActive (components/AdminConsole.tsx:903:88)
+  434 |   }
+  435 |   if (!r.ok)
+> 436 |     throw new Error(
+      |           ^
+  437 |       Array.isArray(body.message)
+  438 |         ? body.message.join(", ")
+  439 |         : (body.message ?? "So‘rov bajarilmadi"),
+⚠ Fast Refresh had to perform a full reload when ./components/CustomerAuthProvider.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./components/CustomerAuthProvider.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/collection-banner.jpg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[browser] Image with src "/images/banner.jpg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[browser] Image with src "https://i.pinimg.com/736x/b1/a1/62/b1a1620889a8050c25c0de9a6e75176c.jpg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  [90m47 |[0m } [36mfrom[0m [32m"./ui/card"[0m;
+  [90m48 |[0m [36mimport[0m { [33mTabs[0m, [33mTabsContent[0m, [33mTabsList[0m, [33mTabsTrigger[0m } [36mfrom[0m [32m"./ui/tabs"[0m;
+[31m[1m>[0m [90m49 |[0m [36mimport[0m [33mPartnerManager[0m [36mfrom[0m [32m"./PartnerManager"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m50 |[0m
+  [90m51 |[0m [36mconst[0m [33mAPI[0m = process.env.[33mNEXT_PUBLIC_API_URL[0m ?? [32m"http://localhost:4000/api"[0m;
+  [90m52 |[0m [36mtype[0m [33mTab[0m =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+[browser] Uncaught Error: ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  47 | } from "./ui/card";
+  48 | import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+> 49 | import PartnerManager from "./PartnerManager";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  50 |
+  51 | const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+  52 | type Tab =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (Error: ./components/AdminConsole.tsx:49:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (Error: (./components/AdminConsole.tsx:49:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+[browser] Uncaught Error: ./components/AdminConsole.tsx:49:1
+Module not found: Can't resolve './PartnerManager'
+  47 | } from "./ui/card";
+  48 | import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+> 49 | import PartnerManager from "./PartnerManager";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  50 |
+  51 | const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+  52 | type Tab =
+
+
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (Error: ./components/AdminConsole.tsx:49:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (Error: (./components/AdminConsole.tsx:49:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+⨯ ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  [90m2135 |[0m           </[33mCard[0m>
+  [90m2136 |[0m         </[33mTabsContent[0m>
+[31m[1m>[0m [90m2137 |[0m       </main>
+  [90m     |[0m              [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[31m[1m>[0m [90m2138 |[0m     </[33mTabs[0m>
+  [90m     |[0m [31m[1m^^^^[0m
+  [90m2139 |[0m   );
+  [90m2140 |[0m }
+  [90m2141 |[0m [36mfunction[0m [33mTaxonomy[0m({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+⨯ ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  [90m2135 |[0m           </[33mCard[0m>
+  [90m2136 |[0m         </[33mTabsContent[0m>
+[31m[1m>[0m [90m2137 |[0m       </main>
+  [90m     |[0m              [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[31m[1m>[0m [90m2138 |[0m     </[33mTabs[0m>
+  [90m     |[0m [31m[1m^^^^[0m
+  [90m2139 |[0m   );
+  [90m2140 |[0m }
+  [90m2141 |[0m [36mfunction[0m [33mTaxonomy[0m({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+
+⨯ ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  [90m2135 |[0m           </[33mCard[0m>
+  [90m2136 |[0m         </[33mTabsContent[0m>
+[31m[1m>[0m [90m2137 |[0m       </main>
+  [90m     |[0m              [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[31m[1m>[0m [90m2138 |[0m     </[33mTabs[0m>
+  [90m     |[0m [31m[1m^^^^[0m
+  [90m2139 |[0m   );
+  [90m2140 |[0m }
+  [90m2141 |[0m [36mfunction[0m [33mTaxonomy[0m({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+
+⨯ ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  [90m2135 |[0m           </[33mCard[0m>
+  [90m2136 |[0m         </[33mTabsContent[0m>
+[31m[1m>[0m [90m2137 |[0m       </main>
+  [90m     |[0m              [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[31m[1m>[0m [90m2138 |[0m     </[33mTabs[0m>
+  [90m     |[0m [31m[1m^^^^[0m
+  [90m2139 |[0m   );
+  [90m2140 |[0m }
+  [90m2141 |[0m [36mfunction[0m [33mTaxonomy[0m({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+
+[browser] Uncaught Error: ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+
+    at <unknown> (Error: ./components/AdminConsole.tsx:2137:14)
+    at <unknown> (Error: (./components/AdminConsole.tsx:2137:14)
+[browser] Uncaught Error: ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx
+
+
+    at <unknown> (Error: ./components/AdminConsole.tsx:2137:14)
+    at <unknown> (Error: (./components/AdminConsole.tsx:2137:14)
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+[browser] ./components/AdminConsole.tsx:2137:14
+Expected '</', got 'jsx text'
+  2135 |           </Card>
+  2136 |         </TabsContent>
+> 2137 |       </main>
+       |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 2138 |     </Tabs>
+       | ^^^^
+  2139 |   );
+  2140 | }
+  2141 | function Taxonomy({
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./components/AdminConsole.tsx
+    ./app/admin/page.tsx 
+⨯ Error: useLanguage must be used inside LanguageProvider
+    at useLanguage (components\LanguageProvider.tsx:132:23)
+    at TopBar (components\TopBar.tsx:15:68)
+  130 | export function useLanguage() {
+  131 |   const context = useContext(LanguageContext);
+> 132 |   if (!context) throw new Error("useLanguage must be used inside LanguageProvider");
+      |                       ^
+  133 |   return context;
+  134 | }
+  135 | {
+  digest: '474849666'
+}
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Uncaught ReferenceError: Bell is not defined
+    at AdminConsole (components/AdminConsole.tsx:1544:35)
+    at AdminPage (app\admin\page.tsx:6:10)
+  1542 |     ["content", "Kontent", FileText],
+  1543 |     ["pages", "Sahifalar", FileText],
+> 1544 |     ["notifications", "Xabarlar", Bell],
+       |                                   ^
+  1545 |     ["team", "Jamoa", Users],
+  1546 |     ["audit", "Audit", ShieldCheck],
+  1547 |     ["settings", "Sozlamalar", Settings2],
+[browser] Uncaught ReferenceError: Bell is not defined
+    at AdminConsole (components/AdminConsole.tsx:1544:35)
+    at AdminPage (app\admin\page.tsx:6:10)
+  1542 |     ["content", "Kontent", FileText],
+  1543 |     ["pages", "Sahifalar", FileText],
+> 1544 |     ["notifications", "Xabarlar", Bell],
+       |                                   ^
+  1545 |     ["team", "Jamoa", Users],
+  1546 |     ["audit", "Audit", ShieldCheck],
+  1547 |     ["settings", "Sozlamalar", Settings2],
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[browser] Uncaught ReferenceError: Bell is not defined
+    at AdminConsole (components/AdminConsole.tsx:1544:35)
+    at AdminPage (app\admin\page.tsx:6:10)
+  1542 |     ["content", "Kontent", FileText],
+  1543 |     ["pages", "Sahifalar", FileText],
+> 1544 |     ["notifications", "Xabarlar", Bell],
+       |                                   ^
+  1545 |     ["team", "Jamoa", Users],
+  1546 |     ["audit", "Audit", ShieldCheck],
+  1547 |     ["settings", "Sozlamalar", Settings2],
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[browser] Image with src "/icons/logo.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/visa.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/Mastercard.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/PayPal.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/American%20Express.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/image%204-1.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/paynet.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/image%204.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[TypeError: fetch failed] {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'EACCES',
+    [errors]: [
+      [Error], [Error],
+      [Error], [Error],
+      [Error], [Error],
+      [Error], [Error],
+      [Error]
+    ]
+  }
+}
+[browser] Image with src "/images/payments/visa.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/Mastercard.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/PayPal.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/American%20Express.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/image%204-1.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/image%204.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/images/payments/paynet.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[TypeError: fetch failed] {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'EACCES',
+    [errors]: [
+      [Error], [Error],
+      [Error], [Error],
+      [Error], [Error],
+      [Error]
+    ]
+  }
+}
+[TypeError: fetch failed] {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'EACCES',
+    [errors]: [
+      [Error], [Error],
+      [Error], [Error],
+      [Error], [Error],
+      [Error]
+    ]
+  }
+}
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+[browser] Uncaught Error: ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+[browser] Uncaught Error: ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+[browser] Uncaught Error: ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+[browser] Uncaught Error: ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+⨯ ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/header-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/header-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/home-mobile.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/home-mobile.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/search-ui.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Client Component Browser:
+    ./app/search-ui.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+[browser] Uncaught Error: ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+
+[browser] Uncaught Error: ./app/gilroy_779a2a2e.module.css
+Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[root-of-the-server]__0oj80bi._.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\chunks\[turbopack]_runtime.js
+- C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\.next\dev\build\56416d4ae4ce586f.js
+    [at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)]
+    [at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)]
+    [at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)]
+    [at Module._load (node:internal/modules/cjs/loader:1294:5)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1617:12)]
+    [at require (node:internal/modules/helpers:153:16)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:49:25)]
+    [at <anonymous>]
+
+Import trace:
+  Server Component:
+    ./app/gilroy_779a2a2e.module.css
+    ./app/gilroy_779a2a2e.js
+    ./app/layout.tsx
+
+

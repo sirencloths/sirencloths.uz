@@ -1,0 +1,70 @@
+(node:33708) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Nest] 33708  - 09/15/2026, 2:38:53 PM   ERROR [ExceptionsHandler] QueryFailedError: duplicate key value violates unique constraint "IDX_69d9ca02314728e84e28d8b915"
+    at PostgresQueryRunner.query (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\driver\postgres\PostgresQueryRunner.js:216:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async InsertQueryBuilder.execute (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\query-builder\InsertQueryBuilder.js:106:33)
+    at async SubjectExecutor.executeInsertOperations (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\persistence\SubjectExecutor.js:260:42)
+    at async SubjectExecutor.execute (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\persistence\SubjectExecutor.js:92:9)
+    at async EntityPersistExecutor.execute (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\persistence\EntityPersistExecutor.js:140:21)
+    at async PartnersService.create (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\dist\partners\partners.service.js:30:209)
+    at async C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\router\router-execution-context.js:55:62
+    at async C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  query: 'INSERT INTO "partners"("id", "name", "type", "email", "phone", "social", "promo_code", "discount_percent", "product_ids", "per_customer_limit", "is_active", "archived_at", "created_at", "updated_at") VALUES (DEFAULT, $1, $2, $3, $4, DEFAULT, $5, $6, $7, $8, DEFAULT, DEFAULT, DEFAULT, DEFAULT) RETURNING "id", "discount_percent", "product_ids", "is_active", "created_at", "updated_at"',
+  parameters: [
+    'UZGUR',
+    'referral',
+    'abdullaevakbar104@gmail.com',
+    '+998 88 362 22 00',
+    'UZGUR10',
+    10,
+    '["58de8235-a7fa-4182-aefc-a74e16265833"]',
+    1
+  ],
+  driverError: error: duplicate key value violates unique constraint "IDX_69d9ca02314728e84e28d8b915"
+      at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\pg\lib\client.js:694:17
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async PostgresQueryRunner.query (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\driver\postgres\PostgresQueryRunner.js:181:25)
+      at async InsertQueryBuilder.execute (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\query-builder\InsertQueryBuilder.js:106:33)
+      at async SubjectExecutor.executeInsertOperations (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\persistence\SubjectExecutor.js:260:42)
+      at async SubjectExecutor.execute (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\persistence\SubjectExecutor.js:92:9)
+      at async EntityPersistExecutor.execute (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typeorm\persistence\EntityPersistExecutor.js:140:21)
+      at async PartnersService.create (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\dist\partners\partners.service.js:30:209)
+      at async C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\router\router-execution-context.js:55:62
+      at async C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+    length: 237,
+    severity: 'ERROR',
+    code: '23505',
+    detail: 'Key (promo_code)=(UZGUR10) already exists.',
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: 'public',
+    table: 'partners',
+    column: undefined,
+    dataType: undefined,
+    constraint: 'IDX_69d9ca02314728e84e28d8b915',
+    file: 'nbtinsert.c',
+    line: '673',
+    routine: '_bt_check_unique'
+  },
+  length: 237,
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key (promo_code)=(UZGUR10) already exists.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'partners',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'IDX_69d9ca02314728e84e28d8b915',
+  file: 'nbtinsert.c',
+  line: '673',
+  routine: '_bt_check_unique'
+}

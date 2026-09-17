@@ -1,0 +1,187 @@
+(node:16288) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:45780) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Nest] 45780  - 09/09/2026, 5:26:07 PM   ERROR [NestApplication] Error: listen EADDRINUSE: address already in use :::4000 +1ms
+node:net:2167
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:2167:16)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2344:7)
+    at ExpressAdapter.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:191:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:181:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async bootstrap (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\src\main.ts:25:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v24.19.0
+(node:12584) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Nest] 12584  - 09/09/2026, 5:46:05 PM   ERROR [NestApplication] Error: listen EADDRINUSE: address already in use :::4000 +2ms
+node:net:2167
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:2167:16)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2344:7)
+    at ExpressAdapter.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:191:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:181:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async bootstrap (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\src\main.ts:25:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v24.19.0
+(node:18840) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Nest] 18840  - 09/09/2026, 5:46:27 PM   ERROR [NestApplication] Error: listen EADDRINUSE: address already in use :::4000 +1ms
+node:net:2167
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:2167:16)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2344:7)
+    at ExpressAdapter.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:191:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:181:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async bootstrap (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\src\main.ts:25:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v24.19.0
+(node:40744) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Nest] 40744  - 09/09/2026, 6:36:15 PM   ERROR [NestApplication] Error: listen EADDRINUSE: address already in use :::4000 +4ms
+node:net:2167
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:2167:16)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2344:7)
+    at ExpressAdapter.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:191:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:181:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async bootstrap (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\src\main.ts:25:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v24.19.0
+(node:45480) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Nest] 45480  - 09/09/2026, 7:39:45 PM   ERROR [NestApplication] Error: listen EADDRINUSE: address already in use :::4000 +4ms
+node:net:2167
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:2167:16)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2344:7)
+    at ExpressAdapter.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:191:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:181:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async bootstrap (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\src\main.ts:25:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v24.19.0
+Ошибка: Не удается завершить процесс с идентификатором 45480, дочерний процесса 41056.
+Причина: Данная операция не поддерживается.
+Ошибка: Не удается завершить процесс с идентификатором 41056, дочерний процесса 40996.
+Причина: Ни один из экземпляров этого задания не запущен.
+Ошибка: Не удается найти процесс "41056".
+node:child_process:1017
+    throw err;
+    ^
+
+Error: Command failed: taskkill /pid 41056 /T /F
+я┐╜шибя┐╜я┐╜: я┐╜я┐╜ удая┐╜я┐╜я┐╜я┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜ я┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜фикя┐╜я┐╜ром 45480, я┐╜я┐╜я┐╜рния┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜ 41056.
+я┐╜я┐╜чиня┐╜: я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜ я┐╜я┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜ржия┐╜я┐╜я┐╜я┐╜я┐╜я┐╜.
+я┐╜шибя┐╜я┐╜: я┐╜я┐╜ удая┐╜я┐╜я┐╜я┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜ я┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜фикя┐╜я┐╜ром 41056, я┐╜я┐╜я┐╜рния┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜ 40996.
+я┐╜я┐╜чиня┐╜: я┐╜я┐╜ я┐╜я┐╜я┐╜я┐╜ я┐╜я┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜ров я┐╜тогя┐╜ я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜ я┐╜я┐╜ я┐╜я┐╜я┐╜я┐╜щен.
+
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:942:11)
+    at execSync (node:child_process:1014:15)
+    at treeKillSync (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\cli\lib\utils\tree-kill.js:7:38)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\cli\actions\start.action.js:92:46
+    at Object.onWatchStatusChange (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\cli\lib\compiler\watch-compiler.js:82:17)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typescript\lib\typescript.js:133916:30
+    at emitFilesAndReportErrors (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typescript\lib\typescript.js:133737:5)
+    at result.afterProgramCreate (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typescript\lib\typescript.js:133912:5) {
+  status: 128,
+  signal: null,
+  output: [
+    null,
+    Buffer(0) [Uint8Array] [],
+    Buffer(282) [Uint8Array] [
+      142, 232, 168, 161, 170, 160,  58,  32, 141, 165,  32, 227,
+      164, 160, 165, 226, 225, 239,  32, 167, 160, 162, 165, 224,
+      232, 168, 226, 236,  32, 175, 224, 174, 230, 165, 225, 225,
+       32, 225,  32, 168, 164, 165, 173, 226, 168, 228, 168, 170,
+      160, 226, 174, 224, 174, 172,  32,  52,  53,  52,  56,  48,
+       44,  32, 164, 174, 231, 165, 224, 173, 168, 169,  32, 175,
+      224, 174, 230, 165, 225, 225, 160,  32,  52,  49,  48,  53,
+       54,  46,  13,  10, 143, 224, 168, 231, 168, 173, 160,  58,
+       32, 132, 160, 173,
+      ... 182 more items
+    ]
+  ],
+  pid: 36424,
+  stdout: Buffer(0) [Uint8Array] [],
+  stderr: Buffer(282) [Uint8Array] [
+    142, 232, 168, 161, 170, 160,  58,  32, 141, 165,  32, 227,
+    164, 160, 165, 226, 225, 239,  32, 167, 160, 162, 165, 224,
+    232, 168, 226, 236,  32, 175, 224, 174, 230, 165, 225, 225,
+     32, 225,  32, 168, 164, 165, 173, 226, 168, 228, 168, 170,
+    160, 226, 174, 224, 174, 172,  32,  52,  53,  52,  56,  48,
+     44,  32, 164, 174, 231, 165, 224, 173, 168, 169,  32, 175,
+    224, 174, 230, 165, 225, 225, 160,  32,  52,  49,  48,  53,
+     54,  46,  13,  10, 143, 224, 168, 231, 168, 173, 160,  58,
+     32, 132, 160, 173,
+    ... 182 more items
+  ]
+}
+
+Node.js v24.19.0

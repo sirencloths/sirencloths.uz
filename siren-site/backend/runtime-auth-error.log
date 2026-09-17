@@ -1,0 +1,92 @@
+(node:4700) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Nest] 4700  - 09/09/2026, 5:11:08 PM   ERROR [NestApplication] Error: listen EADDRINUSE: address already in use :::4000 +2ms
+node:net:2167
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:2167:16)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2344:7)
+    at ExpressAdapter.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:191:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:181:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async bootstrap (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\src\main.ts:25:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v24.19.0
+ERROR: Access denied
+ERROR: Access denied
+node:child_process:1017
+    throw err;
+    ^
+
+Error: Command failed: taskkill /pid 1504 /T /F
+ERROR: Access denied
+
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:942:11)
+    at execSync (node:child_process:1014:15)
+    at treeKillSync (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\cli\lib\utils\tree-kill.js:7:38)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\cli\actions\start.action.js:92:46
+    at Object.onWatchStatusChange (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\cli\lib\compiler\watch-compiler.js:82:17)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typescript\lib\typescript.js:133916:30
+    at emitFilesAndReportErrors (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typescript\lib\typescript.js:133737:5)
+    at result.afterProgramCreate (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\typescript\lib\typescript.js:133912:5) {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    Buffer(0) [Uint8Array] [],
+    Buffer(23) [Uint8Array] [
+       69,  82,  82,  79,  82,  58, 32,
+       65,  99,  99, 101, 115, 115, 32,
+      100, 101, 110, 105, 101, 100, 13,
+       13,  10
+    ]
+  ],
+  pid: 25188,
+  stdout: Buffer(0) [Uint8Array] [],
+  stderr: Buffer(23) [Uint8Array] [
+     69,  82,  82,  79,  82,  58, 32,
+     65,  99,  99, 101, 115, 115, 32,
+    100, 101, 110, 105, 101, 100, 13,
+     13,  10
+  ]
+}
+
+Node.js v24.19.0
+(node:12804) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Nest] 12804  - 09/09/2026, 5:26:04 PM   ERROR [NestApplication] Error: listen EADDRINUSE: address already in use :::4000 +2ms
+node:net:2167
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:2167:16)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2344:7)
+    at ExpressAdapter.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:191:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\node_modules\@nestjs\core\nest-application.js:181:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async bootstrap (C:\Users\abdul\OneDrive\Desktop\siren-site\siren-site\backend\src\main.ts:25:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v24.19.0

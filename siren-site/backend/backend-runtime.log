@@ -1,0 +1,98 @@
+
+> siren-backend@1.0.0 start
+> node dist/main
+
+[Nest] 28596  - 09/02/2026, 2:23:18 PM     LOG [NestFactory] Starting Nest application...
+[Nest] 28596  - 09/02/2026, 2:23:18 PM     LOG [InstanceLoader] AppModule dependencies initialized +12ms
+[Nest] 28596  - 09/02/2026, 2:23:18 PM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:18 PM     LOG [InstanceLoader] PassportModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:18 PM     LOG [InstanceLoader] ConfigHostModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:18 PM     LOG [InstanceLoader] ConfigModule dependencies initialized +1ms
+[Nest] 28596  - 09/02/2026, 2:23:18 PM     LOG [InstanceLoader] ConfigModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] JwtModule dependencies initialized +673ms
+(node:28596) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] TypeOrmCoreModule dependencies initialized +283ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] AuthModule dependencies initialized +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] CatalogModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] CommerceModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] CmsModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [InstanceLoader] AdminModule dependencies initialized +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RoutesResolver] AuthController {/api/auth}: +47ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/auth/login, POST} route +2ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/auth/me, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RoutesResolver] CatalogController {/api/catalog}: +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/catalog/products, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/catalog/products/:slug, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/catalog/categories, GET} route +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/catalog/collections, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RoutesResolver] AdminCatalogController {/api/admin/catalog}: +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/products, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/products, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/products/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/products/:id, DELETE} route +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/products/:id/variants, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/products/:id/variants, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/variants/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/variants/:id, DELETE} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/categories, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/categories, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/categories/:id, PATCH} route +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/categories/:id, DELETE} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/collections, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/collections, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/collections/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/catalog/collections/:id, DELETE} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RoutesResolver] CheckoutController {/api/checkout}: +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/checkout/orders, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RoutesResolver] AdminCommerceController {/api/admin}: +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/orders, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/orders/:id, PATCH} route +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/customers, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RoutesResolver] CmsController {/api/content}: +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/content/banners, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/content/posts, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/content/lookbook, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/content/custom-sections, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/content/records, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/content/pages/:slug, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RoutesResolver] AdminCmsController {/api/admin/content}: +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/banners, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/banners, POST} route +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/banners/upload, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/banners/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/banners/:id, DELETE} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/posts, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/posts, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/posts/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/posts/:id, DELETE} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/lookbook, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/lookbook, POST} route +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/lookbook/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/lookbook/:id, DELETE} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/records, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/records, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/records/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/records/:id, DELETE} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/records/upload, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/pages, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/pages, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/pages/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/pages/:id/sections, GET} route +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/pages/:id/sections, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/sections/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/sections/:id, DELETE} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/settings, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/content/settings/:key, PUT} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RoutesResolver] AdminController {/api/admin}: +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/dashboard, GET} route +1ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/audit-logs, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/users, GET} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/users, POST} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [RouterExplorer] Mapped {/api/admin/users/:id, PATCH} route +0ms
+[Nest] 28596  - 09/02/2026, 2:23:19 PM     LOG [NestApplication] Nest application successfully started +8ms
