@@ -9,6 +9,6 @@ import FixedTop from "./FixedTop";
  */
 export default function SiteChrome() {
   const pathname = usePathname();
-  if (pathname.startsWith("/admin") || pathname.startsWith("/checkout")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/checkout") || pathname.startsWith("/social")) return null;
   return <FixedTop />;
 }

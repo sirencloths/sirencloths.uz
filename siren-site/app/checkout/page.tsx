@@ -3,14 +3,17 @@
 import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Check, ChevronDown, CreditCard, LocateFixed, LockKeyhole, MapPin, Truck } from "lucide-react";
 import { useCart } from "@/components/CartContext";
 import { customerApi, useCustomerAuth } from "@/components/CustomerAuthProvider";
+import { useLanguage } from "@/components/LanguageProvider";
 import { cartItemPrice, cartSubtotal, shippingCost } from "@/lib/commerce";
 import type { Order, OrderStatus } from "@/lib/orders";
 
 const payments = ["КАРТА", "PAYME", "CLICK", "PAYNET"] as const;
 const countries = ["Узбекистан", "Казахстан", "Кыргызстан", "Таджикистан"];
 type Payment = (typeof payments)[number];
+type CheckoutPartner = { id: string; name: string; logoUrl: string };
 const TEST_CUSTOMER_EMAIL = "skulofdemons@gmail.com";
 const assetOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
 const checkoutImageUrl = (value: string) => value.startsWith("/uploads/") ? `${assetOrigin}${value}` : value;
@@ -18,11 +21,15 @@ const checkoutImageUrl = (value: string) => value.startsWith("/uploads/") ? `${a
 export default function CheckoutPage() {
   const { cart, clearCart } = useCart();
   const { customer } = useCustomerAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [payment, setPayment] = useState<Payment>("КАРТА");
   const [country, setCountry] = useState("Узбекистан");
   const [countryOpen, setCountryOpen] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [checkoutPartners, setCheckoutPartners] = useState<CheckoutPartner[]>([]);
+  const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationMessage, setLocationMessage] = useState("");
   const [form, setForm] = useState({ email: "", firstName: "", lastName: "", address: "", city: "", phone: "", card: "", expiry: "", cvc: "" });
   const [promo, setPromo] = useState("");
   const [promoApplied, setPromoApplied] = useState<{ code: string; percent: number } | null>(null);
@@ -38,11 +45,17 @@ export default function CheckoutPage() {
   const total = subtotal - discount + shipping;
   const money = (value: number) => `${value.toLocaleString("ru-RU")} СУМ`;
   const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const selectDeliveryLocation = () => {
+    if (!navigator.geolocation) { setLocationMessage("Brauzeringiz joylashuvni aniqlashni qo‘llamaydi."); return; }
+    setLocationMessage("Joylashuv aniqlanmoqda...");
+    navigator.geolocation.getCurrentPosition(({ coords }) => { setDeliveryLocation({ latitude: coords.latitude, longitude: coords.longitude }); setLocationMessage("Uy nuqtasi tanlandi va buyurtmaga qo‘shiladi."); }, () => setLocationMessage("Joylashuvga ruxsat bering yoki manzilni qo‘lda kiriting."), { enableHighAccuracy: true, timeout: 12000 });
+  };
 
   useEffect(() => {
-    if (!isTestCustomer || !customer) return;
+    if (!customer) return;
     setForm((current) => ({ ...current, email: customer.email, firstName: customer.firstName || current.firstName, lastName: customer.lastName || current.lastName, phone: customer.phone || current.phone, address: customer.address || current.address, city: customer.region || current.city }));
-  }, [customer, isTestCustomer]);
+  }, [customer]);
+  useEffect(() => { if (!customer) { setCheckoutPartners([]); return; } void fetch(`${assetOrigin}/api/partners/checkout`).then((response) => response.ok ? response.json() : []).then((items) => setCheckoutPartners(Array.isArray(items) ? items : [])).catch(() => setCheckoutPartners([])); }, [customer]);
 
   const pay = async (event: FormEvent) => {
     event.preventDefault();
@@ -53,7 +66,7 @@ export default function CheckoutPage() {
     }
     try {
       const token = localStorage.getItem("siren-customer-token") || undefined;
-      const created = await customerApi("/checkout/orders", { email: form.email, firstName: form.firstName, lastName: form.lastName, phone: form.phone, shippingAddress: { country, city: form.city, address: form.address }, paymentMethod: isTestCustomer ? "test_paid" : payment.toLowerCase(), promoCode: promoApplied?.code, note: isTestCustomer ? "Test buyurtma — to‘langan deb belgilandi" : undefined, items: cart.map((item) => ({ variantId: item.id, quantity: item.quantity })) }, token);
+      const created = await customerApi("/checkout/orders", { email: form.email, firstName: form.firstName, lastName: form.lastName, phone: form.phone, shippingAddress: { country, city: form.city, address: form.address, location: deliveryLocation }, paymentMethod: isTestCustomer ? "test_paid" : payment.toLowerCase(), promoCode: promoApplied?.code, note: isTestCustomer ? "Test buyurtma — to‘langan deb belgilandi" : undefined, items: cart.map((item) => ({ variantId: item.id, quantity: item.quantity })) }, token);
       const order: Order = { id: String(created.orderNumber || created.id).slice(0, 12).toUpperCase(), paidAt: new Date().toISOString(), status: "in_transit" as OrderStatus, items: cart, total: money(Number(created.totalAmount ?? total)) };
       const saved = JSON.parse(localStorage.getItem("siren-orders") ?? "[]");
       localStorage.setItem("siren-orders", JSON.stringify([order, ...(Array.isArray(saved) ? saved : [])]));
@@ -68,50 +81,19 @@ export default function CheckoutPage() {
 
   if (!cart.length) return <main className="checkout-empty"><Image src="/icons/logo.svg" alt="SIREN" width={132} height={32} /><h1>КОРЗИНА ПУСТА</h1><button onClick={() => router.push("/shop")}>В МАГАЗИН</button></main>;
 
-  const paymentImage = (item: Payment) => item === "PAYME" ? "/images/payments/image%204.png" : item === "CLICK" ? "/images/payments/image%204-1.png" : "/images/payments/paynet.png";
-
-  return <main className="checkout-page">
-    <header className="checkout-header"><Image src="/icons/logo.svg" alt="SIREN" width={132} height={32} /><Image src="/icons/cart.svg" alt="" width={22} height={22} /></header>
-    <form className="checkout-form" onSubmit={pay}>
-      <section className="checkout-main">
-        <section className={`checkout-mobile-summary${mobileSummaryOpen ? " is-open" : ""}`}>
-          <button type="button" className="checkout-mobile-summary-toggle" onClick={() => setMobileSummaryOpen((open) => !open)} aria-expanded={mobileSummaryOpen}><span>Сводка заказа</span><Image src="/icons/arrow-down.svg" alt="" width={14} height={8} /><span className="checkout-mobile-summary-total"><small>СУМ</small><b>{total.toLocaleString("ru-RU")}</b></span></button>
-          <div className="checkout-mobile-summary-details">{cart.map((item) => <div key={`mobile-${item.id}-${item.size}`}><span>{item.title} × {item.quantity}</span><b>{money(cartItemPrice(item.price) * item.quantity)}</b></div>)}</div>
-        </section>
-        <div className="checkout-payment-logos"><Image src="/images/payments/visa.png" alt="Visa" width={44} height={24} /><Image src="/images/payments/Mastercard.png" alt="Mastercard" width={44} height={24} /><Image src="/images/payments/American%20Express.png" alt="Uzcard" width={44} height={24} /><Image src="/images/payments/PayPal.png" alt="Humo" width={44} height={24} /></div>
-        <p className="checkout-fast-title">Быстрое оформление заказа</p>
-        <div className="checkout-fast"><button type="button" aria-label="Click" onClick={() => setPayment("CLICK")}><Image src="/images/payments/image%204-1.png" alt="Click" width={152} height={50} /></button><button type="button" aria-label="Payme" onClick={() => setPayment("PAYME")}><Image src="/images/payments/image%204.png" alt="Payme" width={152} height={50} /></button><button type="button" aria-label="Paynet" onClick={() => setPayment("PAYNET")}><Image src="/images/payments/paynet.png" alt="Paynet" width={152} height={50} /></button></div>
-        <p className="checkout-or">ИЛИ</p>
-
-        {isTestCustomer && <p className="checkout-test-banner"><b>TEST BUYURTMA</b><span>Karta kiritilmaydi, lekin buyurtma admin panelda to‘langan va haqiqiy summa bilan qayd etiladi.</span></p>}
-        <h2>Контакт <small>Регистрация</small></h2>
-        <input className="checkout-email" placeholder="Электронная почта" type="email" value={form.email} readOnly={isTestCustomer} onChange={(event) => set("email", event.target.value)} />
-        <label className="checkout-consent"><input type="checkbox" /><span className="checkout-check-control" aria-hidden="true" />Подпишитесь на рассылку обновлений о продукте на вашу электронную почту.</label>
-
-        <h2>Доставка</h2><p className="checkout-delivery-intro">Не нашли свою страну? Смените магазин.</p>
-        <div className="checkout-country"><button type="button" aria-expanded={countryOpen} onClick={() => setCountryOpen((open) => !open)}><span><small>Страна/Регион</small><b>{country}</b></span><Image className="checkout-country-arrow" src="/icons/arrow-down.svg" alt="" width={17} height={9} /></button>{countryOpen && <div className="checkout-country-options">{countries.map((item) => <button type="button" className={item === country ? "is-selected" : ""} key={item} onClick={() => { setCountry(item); setCountryOpen(false); }}>{item}</button>)}</div>}</div>
-        <div className="checkout-two"><input placeholder="Имя" value={form.firstName} onChange={(event) => set("firstName", event.target.value)} /><input placeholder="Фамилия" value={form.lastName} onChange={(event) => set("lastName", event.target.value)} /></div>
-        <input placeholder="Адрес" value={form.address} onChange={(event) => set("address", event.target.value)} /><input placeholder="Квартира, люкс и т.д. (по желанию)" />
-        <div className="checkout-two"><input placeholder="Город" value={form.city} onChange={(event) => set("city", event.target.value)} /><input placeholder="Почтовый индекс (необязательно)" /></div>
-        <input placeholder="Телефон" value={form.phone} onChange={(event) => set("phone", event.target.value)} />
-        <label className="checkout-consent"><input type="checkbox" /><span className="checkout-check-control" aria-hidden="true" />Узнавайте первыми. Получайте сообщения о запуске новых продуктов.</label>
-
-        <h3>Способ доставки</h3><p className="checkout-delivery-note">В связи с увеличением трафика и объема заказов, все заказы, размещенные во время акции «Хранилище», не могут быть изменены или отменены. Пожалуйста, учтите, что доставка вашего заказа может занять до 5 дополнительных рабочих дней.</p><label className="checkout-shipping"><span>UzPost</span><b>{money(shipping)}</b></label>
-        {isTestCustomer ? <section className="checkout-test-payment"><b>TEST MODE · TO‘LOVSIZ</b><span>Karta yoki onlayn to‘lov kiritish shart emas.</span></section> : <><h2>Оплата</h2><p className="checkout-muted">Все транзакции защищены и зашифрованы.</p>
-        <div className="checkout-methods">
-          <label className={payment === "КАРТА" ? "is-selected" : ""}><input type="radio" checked={payment === "КАРТА"} onChange={() => setPayment("КАРТА")} /><span className="checkout-radio-control" aria-hidden="true" /><b>Credit card</b><span className="checkout-method-logo"><Image src="/images/payments/visa.png" alt="Visa" width={42} height={22} /><Image src="/images/payments/Mastercard.png" alt="Mastercard" width={42} height={22} /><i>+5</i></span></label>
-          {payment === "КАРТА" && <div className="checkout-card-fields"><input placeholder="Номер карты" inputMode="numeric" value={form.card} onChange={(event) => set("card", event.target.value)} /><div className="checkout-two"><input placeholder="Срок действия (ММ/ГГ)" value={form.expiry} onChange={(event) => set("expiry", event.target.value)} /><input placeholder="Код безопасности" value={form.cvc} onChange={(event) => set("cvc", event.target.value)} /></div><input placeholder="Имя на карте" /><label className="checkout-consent"><input type="checkbox" checked readOnly /><span className="checkout-check-control" aria-hidden="true" />Использовать адрес доставки в качестве платежного адреса</label></div>}
-          {payments.slice(1).map((item) => <label key={item} className={payment === item ? "is-selected" : ""}><input type="radio" checked={payment === item} onChange={() => setPayment(item)} /><span className="checkout-radio-control" aria-hidden="true" /><b>{item === "PAYME" ? "PayMe" : item === "CLICK" ? "Click" : "Paynet"}</b><span className="checkout-method-logo"><Image src={paymentImage(item)} alt={item} width={76} height={28} /></span></label>)}
-        </div></>}
-        <div className="checkout-save-data"><b>Сохраните мои данные для более быстрой оплаты.</b><button type="button">Не сейчас</button><p>Оплачивая покупку, вы соглашаетесь создать учетную запись в Магазине в соответствии с <u>Terms</u> and <u>Privacy Policy</u></p></div>
-        {promoAllowed ? <div className="checkout-promo"><input value={promo} readOnly={Boolean(promoApplied)} onChange={(event) => { setPromo(event.target.value.toUpperCase()); setError(""); }} placeholder="PROMOKOD" /><button type="button" onClick={() => void (async () => { try { const result = await customerApi("/checkout/promo/validate", { promoCode: promo, variantIds: cart.map((item) => item.id) }); setPromoApplied(result); setPromo(result.code); setError(`Promokod qabul qilindi: −${result.percent}%`); } catch (reason) { setPromoApplied(null); setError(reason instanceof Error ? reason.message : "Promokod topilmadi."); } })()}>{promoApplied ? `−${promoApplied.percent}%` : "QO‘LLASH"}</button></div> : <p className="checkout-promo-blocked">{welcomeActive ? "Welcome bonus faol: promokod qo‘llanmaydi." : "Chegirmali mahsulot bor: promokod qo‘llanmaydi."}</p>}
-        {error && <p className="checkout-error">{error}</p>}
-        <button className="checkout-add-discount" type="button">◇ Add discount</button>
-        <div className="checkout-mobile-total"><Image src={cart[0].image} alt="" width={42} height={42} /><span><b>Total</b><small>{cart.reduce((sum, item) => sum + item.quantity, 0)} item</small></span><strong>{money(total)}</strong></div>
-        <button className="checkout-submit" type="submit">{isTestCustomer ? "TEST BUYURTMANI YARATISH" : "Pay now"}</button>
+  return <main className="commerce-checkout">
+    <header className="commerce-checkout__header"><button type="button" className="commerce-checkout__back" aria-label="Orqaga qaytish" onClick={() => router.back()}><ArrowLeft size={19} /></button><Image src="/icons/logo.svg" alt="SIREN" width={124} height={30} /><span><LockKeyhole size={13} /> Secure checkout</span></header>
+    <form className="commerce-checkout__layout" onSubmit={pay}>
+      <section className="commerce-checkout__content">
+        <header className="commerce-checkout__intro"><p>CHECKOUT</p><h1>Оформление заказа</h1><span>Заполните данные для доставки и выберите оплату.</span></header>
+        {isTestCustomer && <p className="commerce-checkout__test"><b>TEST BUYURTMA</b><span>Buyurtma to‘langan holatda yaratiladi.</span></p>}
+        <section className="commerce-checkout__section"><header><span>01</span><div><h2>Контакты</h2><p>Получим данные для связи по заказу.</p></div></header><div className="commerce-checkout__fields"><label className="commerce-checkout__wide">E-mail<input placeholder="Электронная почта" type="email" value={form.email} readOnly={isTestCustomer} onChange={(event) => set("email", event.target.value)} /></label><label>Имя<input placeholder="Имя" value={form.firstName} onChange={(event) => set("firstName", event.target.value)} /></label><label>Фамилия<input placeholder="Фамилия" value={form.lastName} onChange={(event) => set("lastName", event.target.value)} /></label><label className="commerce-checkout__wide">Телефон<input placeholder="+998 00 000 00 00" value={form.phone} onChange={(event) => set("phone", event.target.value)} /></label></div></section>
+        <section className="commerce-checkout__section"><header><span>02</span><div><h2>Доставка</h2><p>Укажите адрес, куда отправить заказ.</p></div></header><div className="commerce-checkout__fields"><label className="commerce-checkout__wide">Страна / регион<div className="commerce-checkout__country"><button type="button" aria-expanded={countryOpen} onClick={() => setCountryOpen((open) => !open)}>{country}<ChevronDown size={16} /></button>{countryOpen && <div>{countries.map((item) => <button type="button" key={item} className={item === country ? "is-selected" : ""} onClick={() => { setCountry(item); setCountryOpen(false); }}>{item}</button>)}</div>}</div></label><label className="commerce-checkout__wide">Адрес<input placeholder="Улица, дом, квартира" value={form.address} onChange={(event) => set("address", event.target.value)} /></label><label>Город<input placeholder="Город" value={form.city} onChange={(event) => set("city", event.target.value)} /></label><label>Индекс<input placeholder="Почтовый индекс" /></label></div><section className="commerce-checkout__location"><div><MapPin size={17} /><span><b>Точка доставки</b><small>Уточните адрес на карте, если нужно.</small></span></div><button type="button" onClick={selectDeliveryLocation}><LocateFixed size={16} /> Выбрать мою геолокацию</button>{locationMessage && <p className={deliveryLocation ? "is-success" : ""}>{locationMessage}</p>}{(deliveryLocation || (form.address.trim() && form.city.trim())) && <iframe title="Карта адреса доставки" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${encodeURIComponent(deliveryLocation ? `${deliveryLocation.latitude},${deliveryLocation.longitude}` : `${form.address}, ${form.city}, ${country}`)}&output=embed`} />}</section><div className="commerce-checkout__shipping"><Truck size={18} /><span><b>UzPost</b><small>Стандартная доставка</small></span><strong>{money(shipping)}</strong></div></section>
+        <section className="commerce-checkout__section"><header><span>03</span><div><h2>Оплата</h2><p>Все платежи защищены.</p></div></header>{isTestCustomer ? <div className="commerce-checkout__test"><b>TEST MODE</b><span>Оплата не требуется.</span></div> : <div className="commerce-checkout__payments"><label className={payment === "КАРТА" ? "is-selected" : ""}><input type="radio" checked={payment === "КАРТА"} onChange={() => setPayment("КАРТА")} /><CreditCard size={19} /><span><b>Банковская карта</b><small>Visa, Mastercard, Uzcard, Humo</small></span><i><Check size={14} /></i></label>{payment === "КАРТА" && <div className="commerce-checkout__card"><input placeholder="Номер карты" inputMode="numeric" value={form.card} onChange={(event) => set("card", event.target.value)} /><div><input placeholder="ММ / ГГ" value={form.expiry} onChange={(event) => set("expiry", event.target.value)} /><input placeholder="CVV" value={form.cvc} onChange={(event) => set("cvc", event.target.value)} /></div><input placeholder="Имя владельца карты" /></div>}{payments.slice(1).map((item) => <label key={item} className={payment === item ? "is-selected" : ""}><input type="radio" checked={payment === item} onChange={() => setPayment(item)} /><span className="commerce-checkout__payment-mark">{item.slice(0, 1)}</span><span><b>{item === "PAYME" ? "Payme" : item === "CLICK" ? "Click" : "Paynet"}</b><small>Онлайн-оплата</small></span><i><Check size={14} /></i></label>)}</div>}</section>
+        {promoAllowed ? <section className="commerce-checkout__promo"><label>Промокод<input value={promo} readOnly={Boolean(promoApplied)} onChange={(event) => { setPromo(event.target.value.toUpperCase()); setError(""); }} placeholder="Введите промокод" /></label><button type="button" onClick={() => void (async () => { try { const result = await customerApi("/checkout/promo/validate", { promoCode: promo, variantIds: cart.map((item) => item.id) }); setPromoApplied(result); setPromo(result.code); setError(`Promokod qabul qilindi: −${result.percent}%`); } catch (reason) { setPromoApplied(null); setError(reason instanceof Error ? reason.message : "Promokod topilmadi."); } })()}>{promoApplied ? `−${promoApplied.percent}%` : "Применить"}</button></section> : <p className="commerce-checkout__notice">{welcomeActive ? "Welcome bonus faol: promokod qo‘llanmaydi." : "Chegirmali mahsulot bor: promokod qo‘llanmaydi."}</p>}
+        {error && <p className="commerce-checkout__error">{error}</p>}<button className="commerce-checkout__submit" type="submit">{isTestCustomer ? "Создать тестовый заказ" : `Оплатить ${money(total)}`}</button><p className="commerce-checkout__security"><LockKeyhole size={14} /> Нажимая «Оплатить», вы соглашаетесь с условиями сервиса.</p>
       </section>
-      <aside className="checkout-summary"><h2 className="checkout-summary-title">Ваш заказ</h2><div className="checkout-summary-list">{cart.map((item) => <article className="checkout-item" key={`${item.id}-${item.size}`}><div className="checkout-item-image"><img src={checkoutImageUrl(item.image)} alt={item.title} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/icons/logo.svg"; }} /><span>{item.quantity}</span></div><span><b>{item.title}</b><small>{item.size} / {item.color}</small></span><strong>{money(cartItemPrice(item.price) * item.quantity)}</strong></article>)}</div><dl className="checkout-totals"><div><dt>Промежуточный итог</dt><dd>{money(subtotal)}</dd></div><div><dt>Доставка</dt><dd>{money(shipping)}</dd></div>{discount > 0 && <div className="checkout-discount"><dt>Chegirma</dt><dd>−{money(discount)}</dd></div>}<div className="checkout-total"><dt>К оплате</dt><dd>{money(total)}</dd></div></dl></aside>
+      <aside className={`commerce-checkout__summary${mobileSummaryOpen ? " is-open" : ""}`}><button type="button" className="commerce-checkout__summary-toggle" onClick={() => setMobileSummaryOpen((open) => !open)} aria-expanded={mobileSummaryOpen}><span><small>ВАШ ЗАКАЗ</small><b>{cart.reduce((sum, item) => sum + item.quantity, 0)} товара</b></span><span><b>{money(total)}</b><ChevronDown size={17} /></span></button><div className="commerce-checkout__summary-body"><div className="commerce-checkout__items">{cart.map((item) => <article key={`${item.id}-${item.size}`}><div><img src={checkoutImageUrl(item.image)} alt={item.title} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/icons/logo.svg"; }} /><i>{item.quantity}</i></div><span><b>{item.title}</b><small>{item.size} / {item.color}</small></span><strong>{money(cartItemPrice(item.price) * item.quantity)}</strong></article>)}</div>{customer && checkoutPartners.length > 0 && <div className="commerce-checkout__partners"><span>Партнёры</span><div>{checkoutPartners.map((partner) => <img key={partner.id} src={checkoutImageUrl(partner.logoUrl)} alt={partner.name} title={partner.name} />)}</div></div>}<dl><div><dt>{t("subtotal")}</dt><dd>{money(subtotal)}</dd></div><div><dt>Доставка</dt><dd>{money(shipping)}</dd></div>{discount > 0 && <div className="is-discount"><dt>Chegirma</dt><dd>−{money(discount)}</dd></div>}<div className="is-total"><dt>{t("total")}</dt><dd>{money(total)}</dd></div></dl></div></aside>
     </form>
-    <footer className="checkout-footer">Политика возврата средств　 Перевозки　 Политика конфиденциальности　 Условия предоставления услуг　 Контакт</footer>
   </main>;
 }

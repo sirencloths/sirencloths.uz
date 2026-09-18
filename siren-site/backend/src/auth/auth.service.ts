@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { IsNull, Repository } from 'typeorm';
-import { AuditLog, AuthOtp, AuthSession, Customer, CustomerAddress, User, UserRole } from '../database/entities';
+import { AuditLog, AuthOtp, AuthSession, Customer, CustomerAddress, Order, User, UserRole } from '../database/entities';
 import { EmailService } from './email.service';
 
 type OtpPurpose = 'registration' | 'password_reset' | 'password_change';
@@ -22,6 +22,7 @@ export class AuthService implements OnApplicationBootstrap {
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Customer) private readonly customers: Repository<Customer>,
     @InjectRepository(CustomerAddress) private readonly addresses: Repository<CustomerAddress>,
+    @InjectRepository(Order) private readonly orders: Repository<Order>,
     @InjectRepository(AuthOtp) private readonly otps: Repository<AuthOtp>,
     @InjectRepository(AuthSession) private readonly sessions: Repository<AuthSession>,
     @InjectRepository(AuditLog) private readonly auditLogs: Repository<AuditLog>,
@@ -152,7 +153,8 @@ export class AuthService implements OnApplicationBootstrap {
 
   async customerMe(id: string) {
     const customer = await this.customers.findOneByOrFail({ id });
-    if (customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt && this.welcomeDiscountExpiresAt(customer) <= new Date()) {
+    const priorOrderCount = customer.welcomeDiscountEligible ? await this.orders.count({ where: { customerId: id } }) : 0;
+    if (customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt && (this.welcomeDiscountExpiresAt(customer) <= new Date() || priorOrderCount > 0)) {
       customer.welcomeDiscountEligible = false;
       await this.customers.save(customer);
     }

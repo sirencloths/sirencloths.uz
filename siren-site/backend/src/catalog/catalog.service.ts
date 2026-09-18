@@ -379,7 +379,7 @@ export class CatalogService {
       const discount = matching.sort((left, right) => ((Number(Boolean(right.color)) + Number(Boolean(right.size))) - (Number(Boolean(left.color)) + Number(Boolean(left.size)))) || right.percent - left.percent)[0];
       if (!discount) return variant;
       const original = Number(variant.price ?? product.price);
-      return { ...variant, price: String(Math.round(original * (100 - discount.percent) / 100)), originalPrice: String(original), discountPercent: discount.percent, discountEndsAt: discount.endsAt?.toISOString() };
+      return { ...variant, price: String(Math.round(original * (100 - discount.percent) / 100)), originalPrice: String(original), discountPercent: discount.percent, discountEndsAt: discount.endsAt?.toISOString(), discountScope: discount.size ? 'size' : discount.color ? 'color' : 'product' };
     }) })) as Product[];
   }
   private normalizedVariantAttributes(attributes: Record<string, unknown> | undefined) {

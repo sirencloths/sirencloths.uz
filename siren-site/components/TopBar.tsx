@@ -96,14 +96,20 @@ export default function TopBar() {
   }, []);
   useEffect(() => { localStorage.setItem("siren-read-notifications", JSON.stringify(readAt)); }, [readAt]);
   const copy = (value?: Record<string, string>) => value?.[locale] || value?.ru || value?.en || value?.uz || "";
-  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+  // A store alert remains available in the inbox. After a customer has read
+  // it, bring it back to the badge after 30 minutes as a gentle reminder.
+  const reminderInterval = 30 * 60 * 1000;
   const allowedItems = items.filter((item) => {
     if (!customer || !item.kind || item.kind === "general") return true;
     const preferences = customer.metadata?.notificationPreferences;
     return item.kind === "blog" ? preferences?.blog === true : item.kind === "discounts" ? preferences?.discounts === true : preferences?.products === true;
   });
-  const visibleItems = allowedItems.filter((item) => !readAt[item.id] || Date.now() - new Date(readAt[item.id]).getTime() < oneWeek);
-  const unreadItems = visibleItems.filter((item) => !readAt[item.id]);
+  const visibleItems = allowedItems;
+  const isUnread = (id: string) => {
+    const readTime = readAt[id] ? new Date(readAt[id]).getTime() : 0;
+    return !readTime || Date.now() - readTime >= reminderInterval;
+  };
+  const unreadItems = visibleItems.filter((item) => isUnread(item.id));
   const trackClick = (id: string) => { if (visitorId) void fetch(`${API}/content/notifications/${encodeURIComponent(id)}/click`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ visitorId }), keepalive: true }); };
 
   return (
@@ -119,7 +125,7 @@ export default function TopBar() {
           : headerMessage.quotes.length > 0 && <span className="topbar-quote-text" key={headerMessage.quotes[quoteIndex]}>{headerMessage.quotes[quoteIndex]}</span>}
       </div>
 
-      <div className="topbar-news-wrap"><button className="topbar-control topbar-control--right" type="button" onClick={() => setOpen(true)} aria-expanded={open} aria-label="Новости">{unreadItems.length > 0 && <span className="cart-badge" aria-label={`${unreadItems.length} новых уведомлений`}>{unreadItems.length > 9 ? "9+" : unreadItems.length}</span>}<span>Новости</span></button>{open && <div className="news-modal-backdrop" role="presentation" onMouseDown={() => setOpen(false)}><section className="news-modal" role="dialog" aria-modal="true" aria-label="Новости" onMouseDown={(event) => event.stopPropagation()}><header><h2>Новости</h2><button type="button" onClick={() => setOpen(false)} aria-label="Закрыть">×</button></header>{visibleItems.length ? <><div className="news-modal-list">{visibleItems.map((item) => <Link key={item.id} className={!readAt[item.id] ? "is-unread" : ""} href={item.href || "/"} onClick={() => { markRead([item.id]); trackClick(item.id); setOpen(false); }}>{asset(item.imageUrl) && <img src={asset(item.imageUrl)} alt="" />}<span><b>{copy(item.title)}</b><small>{copy(item.text)}</small><time>{item.createdAt ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(item.createdAt)) : ""}</time></span></Link>)}</div>{unreadItems.length > 0 && <footer><button type="button" onClick={() => markRead(unreadItems.map((item) => item.id))}>ПРОЧИТАТЬ ВСЕ</button></footer>}</> : <p>Новых уведомлений пока нет.</p>}</section></div>}</div>
+      <div className="topbar-news-wrap"><button className="topbar-control topbar-control--right" type="button" onClick={() => setOpen(true)} aria-expanded={open} aria-label="Новости">{unreadItems.length > 0 && <span className="cart-badge" aria-label={`${unreadItems.length} новых уведомлений`}>{unreadItems.length > 9 ? "9+" : unreadItems.length}</span>}<span>Новости</span></button>{open && <div className="news-modal-backdrop" role="presentation" onMouseDown={() => setOpen(false)}><section className="news-modal" role="dialog" aria-modal="true" aria-label="Новости" onMouseDown={(event) => event.stopPropagation()}><header><h2>Новости</h2><button type="button" onClick={() => setOpen(false)} aria-label="Закрыть">×</button></header>{visibleItems.length ? <><div className="news-modal-list">{visibleItems.map((item) => <Link key={item.id} className={isUnread(item.id) ? "is-unread" : ""} href={item.href || "/"} onClick={() => { markRead([item.id]); trackClick(item.id); setOpen(false); }}>{asset(item.imageUrl) && <img src={asset(item.imageUrl)} alt="" />}<span><b>{copy(item.title)}</b><small>{copy(item.text)}</small><time>{item.createdAt ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(item.createdAt)) : ""}</time></span></Link>)}</div>{unreadItems.length > 0 && <footer><button type="button" onClick={() => markRead(unreadItems.map((item) => item.id))}>ПРОЧИТАТЬ ВСЕ</button></footer>}</> : <p>Новых уведомлений пока нет.</p>}</section></div>}</div>
     </div>
   );
 }

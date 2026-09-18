@@ -19,6 +19,7 @@ import {
   GripVertical,
   LayoutDashboard,
   LockKeyhole,
+  MapPin,
   MoreVertical,
   Music2,
   Monitor,
@@ -55,6 +56,7 @@ import {
 } from "./ui/card";
 import { Tabs, TabsContent } from "./ui/tabs";
 import PartnerManager from "./PartnerManager";
+import SocialLinksManager from "./SocialLinksManager";
 import AdminShell from "./tailadmin/AdminShell";
 import EcommerceMetrics from "./tailadmin/EcommerceMetrics";
 import StatisticsChart from "./tailadmin/StatisticsChart";
@@ -66,6 +68,7 @@ import { OfflineCashier, OfflineInventory, OfflineReports, OfflineSales } from "
 const API = process.env.NEXT_PUBLIC_API_URL ?? (typeof window === "undefined" ? "http://localhost:4000/api" : `${window.location.protocol}//${window.location.hostname}:4000/api`);
 const ADMIN_TOKEN_KEY = "siren-admin-token";
 const ADMIN_REFRESH_TOKEN_KEY = "siren-admin-refresh-token";
+const ADMIN_READ_ACTIVITY_IDS_KEY = "siren-admin-read-activity-ids";
 type SessionTokens = { accessToken: string; refreshToken: string; accessTokenExpiresIn: number; refreshTokenExpiresIn: number };
 let adminRefreshInFlight: Promise<string | null> | null = null;
 
@@ -135,7 +138,22 @@ type Tab =
   | "offline_inventory"
   | "offline_sales"
   | "offline_reports";
-type ContentSubsection = "main-banner" | "header-quotes" | "custom-pages" | "lookbook" | "blog" | "records" | "collections";
+type ContentSubsection = "main-banner" | "header-quotes" | "custom-pages" | "lookbook" | "blog" | "records" | "collections" | "social";
+const adminTabs: Tab[] = ["dashboard", "products", "catalog", "orders", "delivery", "customers", "discounts", "partners", "finance", "currencies", "analytics", "content", "notifications", "pages", "team", "audit", "settings", "offline_cashier", "offline_inventory", "offline_sales", "offline_reports"];
+const contentSubsections: ContentSubsection[] = ["main-banner", "header-quotes", "custom-pages", "lookbook", "blog", "records", "collections", "social"];
+function adminLocation() {
+  if (typeof window === "undefined") return { tab: "dashboard" as Tab, content: "main-banner" as ContentSubsection };
+  const query = new URLSearchParams(window.location.search);
+  const candidate = query.get("section") as Tab | null;
+  const content = query.get("content") as ContentSubsection | null;
+  return { tab: candidate && adminTabs.includes(candidate) ? candidate : "dashboard", content: content && contentSubsections.includes(content) ? content : "main-banner" };
+}
+function replaceAdminLocation(tab: Tab, content: ContentSubsection, mode: "push" | "replace" = "push") {
+  const url = new URL(window.location.href);
+  url.searchParams.set("section", tab);
+  if (tab === "content") url.searchParams.set("content", content); else url.searchParams.delete("content");
+  window.history[`${mode}State`]({}, "", `${url.pathname}${url.search}`);
+}
 type StoreNotification = { id: string; kind?: "general" | "blog" | "discounts" | "products"; title: Record<string, string>; text: Record<string, string>; imageUrl?: string; href?: string; createdAt: string; isActive?: boolean; clicks?: number; clickVisitorIds?: string[] };
 type HeaderQuote = { id: string; text: string; isActive: boolean };
 type Variant = {
@@ -211,6 +229,46 @@ type Product = {
   };
 };
 type Taxonomy = { id: string; name: string; slug: string; isVisible: boolean; productCount?: number };
+const exportXml = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character] ?? character);
+function downloadAdminFile(name: string, content: BlobPart, type: string) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; document.body.appendChild(anchor); anchor.click(); anchor.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+async function exportInventory(products: Product[], categories: Taxonomy[], format: "excel" | "pdf") {
+  const rows = products.flatMap((product) => product.variants.map((variant) => [product.title, product.metadata?.article || variant.sku, variant.sku, variant.barcode || "", categories.find((category) => category.id === product.categoryId)?.name || "", variant.color || "", variant.size || "", variant.price || product.price, variant.inventoryQuantity, offlineOf(variant), product.soldQuantity ?? 0, variant.isActive ? "Faol" : "Faol emas"]));
+  const headers = ["Mahsulot", "Artikul", "SKU", "EAN-13", "Kategoriya", "Rang", "Razmer", "Narx", "Online qoldiq", "Offline qoldiq", "Sotilgan", "Holat"];
+  const stamp = new Date().toISOString().slice(0, 10);
+  if (format === "excel") {
+    const ExcelJS = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "SIREN Admin";
+    workbook.created = new Date();
+    const sheet = workbook.addWorksheet("Inventar", { views: [{ state: "frozen", ySplit: 1, xSplit: 2, showGridLines: false }] });
+    sheet.columns = [
+      { header: headers[0], key: "product", width: 28 }, { header: headers[1], key: "article", width: 18 }, { header: headers[2], key: "sku", width: 26 }, { header: headers[3], key: "ean", width: 18 }, { header: headers[4], key: "category", width: 20 }, { header: headers[5], key: "color", width: 16 }, { header: headers[6], key: "size", width: 12 }, { header: headers[7], key: "price", width: 16 }, { header: headers[8], key: "online", width: 16 }, { header: headers[9], key: "offline", width: 16 }, { header: headers[10], key: "sold", width: 14 }, { header: headers[11], key: "status", width: 14 },
+    ];
+    rows.forEach((row) => sheet.addRow({ product: row[0], article: row[1], sku: row[2], ean: String(row[3]), category: row[4], color: row[5], size: row[6], price: Number(row[7]) || 0, online: Number(row[8]) || 0, offline: Number(row[9]) || 0, sold: Number(row[10]) || 0, status: row[11] }));
+    sheet.autoFilter = { from: "A1", to: "L1" };
+    sheet.getRow(1).height = 28;
+    sheet.getRow(1).eachCell((cell) => { cell.font = { name: "Arial", size: 11, bold: true, color: { argb: "FFFFFFFF" } }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF465FFF" } }; cell.alignment = { vertical: "middle", horizontal: "center" }; cell.border = { bottom: { style: "medium", color: { argb: "FF3447C5" } } }; });
+    sheet.eachRow((row, index) => { if (index === 1) return; row.height = 22; row.eachCell((cell) => { cell.font = { name: "Arial", size: 10, color: { argb: "FF344054" } }; cell.alignment = { vertical: "middle" }; cell.border = { bottom: { style: "thin", color: { argb: "FFE4E7EC" } } }; if (index % 2 === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } }; }); });
+    sheet.getColumn("ean").numFmt = "@";
+    sheet.getColumn("price").numFmt = '#,##0 "UZS"';
+    sheet.getColumn("online").numFmt = "#,##0";
+    sheet.getColumn("offline").numFmt = "#,##0";
+    sheet.getColumn("sold").numFmt = "#,##0";
+    sheet.getColumn("status").eachCell((cell, row) => { if (row > 1 && cell.value === "Faol") { cell.font = { name: "Arial", size: 10, bold: true, color: { argb: "FF027A48" } }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFECFDF3" } }; cell.alignment = { vertical: "middle", horizontal: "center" }; } });
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadAdminFile(`siren-inventory-${stamp}.xlsx`, buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    return;
+  }
+  const clean = (value: unknown) => String(value ?? "").replace(/[\\()]/g, "\\$&").replace(/[^\x20-\x7E]/g, "?");
+  const lines = ["SIREN — INVENTORY EXPORT", `Generated: ${new Date().toLocaleString("en-GB")}`, "", headers.join(" | "), ...rows.map((row) => row.map(clean).join(" | "))].slice(0, 54);
+  const stream = lines.map((line, index) => `BT /F1 ${index === 0 ? 15 : 8} Tf 42 ${790 - index * 14} Td (${clean(line)}) Tj ET`).join("\n");
+  const objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>", `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
+  let pdf = "%PDF-1.4\n"; const offsets = [0]; objects.forEach((object, index) => { offsets.push(pdf.length); pdf += `${index + 1} 0 obj\n${object}\nendobj\n`; }); const xref = pdf.length; pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  downloadAdminFile(`siren-inventory-${stamp}.pdf`, pdf, "application/pdf");
+}
 type Order = {
   id: string;
   orderNumber: string;
@@ -890,18 +948,18 @@ function ProductInventoryWorkspace({ products, categories, transfers, token, onE
         <select value={sizeFilter} onChange={(event) => setSizeFilter(event.target.value)}><option value="">Barcha razmer</option>{allSizes.map((size) => <option key={size} value={size}>{size}</option>)}</select>
       </div></details>
     </div>
-    <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th><SelectionCheckbox label="Ko‘rinib turgan barcha variantlarni tanlash" checked={visibleValid.length > 0 && visibleValid.every((variant) => selected[variant.id] !== undefined)} indeterminate={visibleValid.some((variant) => selected[variant.id] !== undefined) && !visibleValid.every((variant) => selected[variant.id] !== undefined)} disabled={!visibleValid.length} onChange={(checked) => setVariants(visibleValid, checked)} /></th><th>Mahsulot / variant</th><th>SKU</th><th>EAN-13 shtrix kodi</th><th>Kategoriya</th><th>Narx</th><th>Jami qoldiq</th><th>Online</th><th>Offline</th><th>Holat</th><th>Yaratilgan</th><th>Amallar</th></tr></thead><tbody>
+    <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th><SelectionCheckbox label="Ko‘rinib turgan barcha variantlarni tanlash" checked={visibleValid.length > 0 && visibleValid.every((variant) => selected[variant.id] !== undefined)} indeterminate={visibleValid.some((variant) => selected[variant.id] !== undefined) && !visibleValid.every((variant) => selected[variant.id] !== undefined)} disabled={!visibleValid.length} onChange={(checked) => setVariants(visibleValid, checked)} /></th><th>Mahsulot / variant</th><th>SKU</th><th>EAN-13 shtrix kodi</th><th>Kategoriya</th><th>Narx</th><th>Jami yaratilgan</th><th>Online</th><th>Offline</th><th>Sotilgan</th><th>Holat</th><th>Amallar</th></tr></thead><tbody>
       {filtered.map((product) => {
         const groups = productVariantGroups(product);
         const variants = product.variants;
         const productState = selectionLine(variants);
-        const physical = variants.reduce((sum, variant) => sum + physicalOf(variant), 0);
         const online = variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0);
         const offline = variants.reduce((sum, variant) => sum + offlineOf(variant), 0);
+        const totalCreated = Math.max(Number(product.metadata?.baseInventoryQuantity ?? 0), variants.reduce((sum, variant) => sum + (variant.totalInventoryAdded ?? physicalOf(variant)), 0));
         const price = variants.map((variant) => amountOf(variant.price)).filter(Boolean);
-        return <Fragment key={product.id}><tr className="inventory-row inventory-row--product"><td><SelectionCheckbox label={`${product.title} barcha variantlarini tanlash`} {...productState} onChange={(checked) => setVariants(variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenProducts, product.id)} aria-expanded={openProducts.has(product.id)}>{openProducts.has(product.id) ? "▼" : "▶"}</button><div className="inventory-product-cell"><div className="inventory-thumb"><AdminProductImageRotator product={product} /></div><span><b>{product.title}</b><small>{product.metadata?.article || variants[0]?.sku || "SKU yo‘q"}</small></span></div></td><td>{product.metadata?.article || "—"}</td><td>—</td><td>{categories.find((category) => category.id === product.categoryId)?.name ?? "—"}</td><td>{money(price.length ? Math.min(...price) : amountOf(product.price), product.currencyCode)}</td><td>{physical}</td><td>{online}</td><td>{offline}</td><td><Badge variant={flavor(product.status)}>{product.status}</Badge></td><td>{readableDate(product.createdAt)}</td><td><div className="inventory-actions"><Button size="sm" variant="outline" onClick={() => onEdit(product)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => onInspect(product)}>Ma’lumot</Button></div></td></tr>
-          {openProducts.has(product.id) && groups.map((group) => { const colorKey = `${product.id}:${group.key}`; const colorState = selectionLine(group.variants); const colorPhysical = group.variants.reduce((sum, variant) => sum + physicalOf(variant), 0); const colorOnline = group.variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0); const colorOffline = group.variants.reduce((sum, variant) => sum + offlineOf(variant), 0); return <Fragment key={colorKey}><tr className="inventory-row inventory-row--color"><td><SelectionCheckbox label={`${group.color} barcha razmerlarini tanlash`} {...colorState} onChange={(checked) => setVariants(group.variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenColors, colorKey)} aria-expanded={openColors.has(colorKey)}>{openColors.has(colorKey) ? "▼" : "▶"}</button><span className="inventory-color-name"><i style={{ backgroundColor: colorHex(group.color) }} />{group.color}</span></td><td>—</td><td>—</td><td>Rang</td><td>—</td><td>{colorPhysical}</td><td>{colorOnline}</td><td>{colorOffline}</td><td>—</td><td>—</td><td /></tr>
-            {openColors.has(colorKey) && group.variants.map((variant) => { const active = isValid(variant); const value = selected[variant.id]; return <tr className={`inventory-row inventory-row--size ${active ? "" : "is-disabled"}`} key={variant.id}><td><SelectionCheckbox label={`${group.color} ${variant.size || "ONE SIZE"} ni tanlash`} checked={value !== undefined} disabled={!active} onChange={(checked) => setVariants([variant], checked)} /></td><td><span className="inventory-size-name">{variant.size || "ONE SIZE"}</span></td><td>{variant.sku || "—"}</td><td>{variant.barcode || "Yaratilmoqda…"}</td><td>Razmer</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{physicalOf(variant)}</td><td>{variant.inventoryQuantity}</td><td>{offlineOf(variant)}</td><td>{variant.isActive ? "Active" : "Faol emas"}</td><td>—</td><td>{value !== undefined ? <label className="inventory-qty"><span>Transfer</span><input type="number" min="1" max={variant.inventoryQuantity} value={value} onChange={(event) => setSelected((current) => ({ ...current, [variant.id]: Math.min(variant.inventoryQuantity, Math.max(1, Number(event.target.value) || 1)) }))} /></label> : <span className="inventory-unavailable">{active ? "Tanlang" : "Mavjud emas"}</span>}</td></tr>; })}</Fragment>; })}</Fragment>;
+        return <Fragment key={product.id}><tr className="inventory-row inventory-row--product"><td><SelectionCheckbox label={`${product.title} barcha variantlarini tanlash`} {...productState} onChange={(checked) => setVariants(variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenProducts, product.id)} aria-expanded={openProducts.has(product.id)}>{openProducts.has(product.id) ? "▼" : "▶"}</button><div className="inventory-product-cell"><div className="inventory-thumb"><AdminProductImageRotator product={product} /></div><span><b>{product.title}</b><small>{product.metadata?.article || variants[0]?.sku || "SKU yo‘q"}</small></span></div></td><td>{product.metadata?.article || "—"}</td><td>—</td><td>{categories.find((category) => category.id === product.categoryId)?.name ?? "—"}</td><td>{money(price.length ? Math.min(...price) : amountOf(product.price), product.currencyCode)}</td><td><span className="inventory-number inventory-number--created"><b>{totalCreated}</b></span></td><td>{online}</td><td>{offline}</td><td><span className="inventory-number inventory-number--sold"><b>{product.soldQuantity ?? 0}</b></span></td><td><Badge variant={flavor(product.status)}>{product.status}</Badge></td><td><div className="inventory-actions"><Button size="sm" variant="outline" onClick={() => onEdit(product)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => onInspect(product)}>Ma’lumot</Button></div></td></tr>
+          {openProducts.has(product.id) && groups.map((group) => { const colorKey = `${product.id}:${group.key}`; const colorState = selectionLine(group.variants); const colorCreated = group.variants.reduce((sum, variant) => sum + (variant.totalInventoryAdded ?? physicalOf(variant)), 0); const colorOnline = group.variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0); const colorOffline = group.variants.reduce((sum, variant) => sum + offlineOf(variant), 0); return <Fragment key={colorKey}><tr className="inventory-row inventory-row--color"><td><SelectionCheckbox label={`${group.color} barcha razmerlarini tanlash`} {...colorState} onChange={(checked) => setVariants(group.variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenColors, colorKey)} aria-expanded={openColors.has(colorKey)}>{openColors.has(colorKey) ? "▼" : "▶"}</button><span className="inventory-color-name"><i style={{ backgroundColor: colorHex(group.color) }} />{group.color}</span></td><td>—</td><td>—</td><td>Rang</td><td>—</td><td>{colorCreated}</td><td>{colorOnline}</td><td>{colorOffline}</td><td>—</td><td>—</td><td /></tr>
+            {openColors.has(colorKey) && group.variants.map((variant) => { const active = isValid(variant); const value = selected[variant.id]; return <tr className={`inventory-row inventory-row--size ${active ? "" : "is-disabled"}`} key={variant.id}><td><SelectionCheckbox label={`${group.color} ${variant.size || "ONE SIZE"} ni tanlash`} checked={value !== undefined} disabled={!active} onChange={(checked) => setVariants([variant], checked)} /></td><td><span className="inventory-size-name">{variant.size || "ONE SIZE"}</span></td><td>{variant.sku || "—"}</td><td>{variant.barcode || "Yaratilmoqda…"}</td><td>Razmer</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.totalInventoryAdded ?? physicalOf(variant)}</td><td>{variant.inventoryQuantity}</td><td>{offlineOf(variant)}</td><td>—</td><td>{variant.isActive ? "Active" : "Faol emas"}</td><td>{value !== undefined ? <label className="inventory-qty"><span>Transfer</span><input type="number" min="1" max={variant.inventoryQuantity} value={value} onChange={(event) => setSelected((current) => ({ ...current, [variant.id]: Math.min(variant.inventoryQuantity, Math.max(1, Number(event.target.value) || 1)) }))} /></label> : <span className="inventory-unavailable">{active ? "Tanlang" : "Mavjud emas"}</span>}</td></tr>; })}</Fragment>; })}</Fragment>;
       })}
       {!filtered.length && <tr><td colSpan={12}><Empty>Qidiruv yoki filter bo‘yicha mahsulot topilmadi.</Empty></td></tr>}
     </tbody></table></div>
@@ -941,7 +999,7 @@ function ProductInspector({ product, onClose }: { product: Product; onClose: () 
   const salePrices = product.variants.map((variant) => amountOf(variant.price)).filter(Boolean);
   const article = product.metadata?.article || "—";
   const totalAdded = Math.max(Number(product.metadata?.baseInventoryQuantity ?? 0), product.variants.reduce((sum, variant) => sum + (variant.totalInventoryAdded ?? variant.inventoryQuantity), 0));
-  return <div className="product-inspector-backdrop" role="presentation" onMouseDown={onClose}><section className="product-inspector" role="dialog" aria-modal="true" aria-label={`${product.title} ma’lumotlari`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">PRODUCT INSPECTOR</p><h3>{product.title}</h3><span>{article} · {product.status}</span></div><button type="button" onClick={onClose} aria-label="Yopish">×</button></header><div className="product-inspector-metrics"><div><span>Sotilgan</span><b>{product.soldQuantity ?? 0}</b></div><div><span>Ko‘rishlar</span><b>{Number(product.metadata?.views ?? 0)}</b></div><div><span>Ombordagi qoldiq</span><b>{stock}</b></div><div><span>Jami kiritilgan</span><b>{totalAdded}</b></div><div><span>Tannarx</span><b>{money(cost, product.currencyCode)}</b></div><div><span>Xarajat</span><b>{money(expense, product.currencyCode)}</b></div><div><span>Sotuv narxi</span><b>{salePrices.length ? `${money(Math.min(...salePrices), product.currencyCode)} — ${money(Math.max(...salePrices), product.currencyCode)}` : money(amountOf(product.price), product.currencyCode)}</b></div></div><div className="product-inspector-table-wrap"><table><thead><tr><th>SKU</th><th>Rang</th><th>Razmer</th><th>Qoldiq</th><th>Tannarx</th><th>Xarajat</th><th>Sotuv narxi</th><th>Holat</th></tr></thead><tbody>{product.variants.length ? product.variants.map((variant) => <tr key={variant.id}><td>{variant.sku}</td><td>{variant.color || "—"}</td><td>{variant.size || "ONE SIZE"}</td><td>{variant.inventoryQuantity}</td><td>{money(amountOf(variant.attributes?.costPrice), product.currencyCode)}</td><td>{money(amountOf(variant.attributes?.expensePrice), product.currencyCode)}</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.isActive ? "Active" : "Off"}</td></tr>) : <tr><td colSpan={8}>Variantlar yo‘q.</td></tr>}</tbody></table></div><footer><Button type="button" variant="outline" onClick={onClose}>Yopish</Button><Link className="ui-button ui-button--primary" href={`/products/${product.slug}`}>Saytda ko‘rish <ChevronRight size={15} /></Link></footer></section></div>;
+  return <div className="product-inspector-backdrop" role="presentation" onMouseDown={onClose}><section className="product-inspector" role="dialog" aria-modal="true" aria-label={`${product.title} ma’lumotlari`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">PRODUCT INSPECTOR</p><h3>{product.title}</h3><span>{article} · {product.status}</span></div><button type="button" onClick={onClose} aria-label="Yopish">×</button></header><div className="product-inspector-metrics"><div><span>Sotilgan</span><b>{product.soldQuantity ?? 0}</b></div><div><span>Ko‘rishlar</span><b>{Number(product.metadata?.views ?? 0)}</b></div><div><span>Ombordagi qoldiq</span><b>{stock}</b></div><div><span>Jami kiritilgan</span><b>{totalAdded}</b></div><div><span>Yaratilgan sana</span><b>{readableDate(product.createdAt)}</b></div><div><span>Tannarx</span><b>{money(cost, product.currencyCode)}</b></div><div><span>Xarajat</span><b>{money(expense, product.currencyCode)}</b></div><div><span>Sotuv narxi</span><b>{salePrices.length ? `${money(Math.min(...salePrices), product.currencyCode)} — ${money(Math.max(...salePrices), product.currencyCode)}` : money(amountOf(product.price), product.currencyCode)}</b></div></div><div className="product-inspector-table-wrap"><table><thead><tr><th>SKU</th><th>Rang</th><th>Razmer</th><th>Qoldiq</th><th>Tannarx</th><th>Xarajat</th><th>Sotuv narxi</th><th>Holat</th></tr></thead><tbody>{product.variants.length ? product.variants.map((variant) => <tr key={variant.id}><td>{variant.sku}</td><td>{variant.color || "—"}</td><td>{variant.size || "ONE SIZE"}</td><td>{variant.inventoryQuantity}</td><td>{money(amountOf(variant.attributes?.costPrice), product.currencyCode)}</td><td>{money(amountOf(variant.attributes?.expensePrice), product.currencyCode)}</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.isActive ? "Active" : "Off"}</td></tr>) : <tr><td colSpan={8}>Variantlar yo‘q.</td></tr>}</tbody></table></div><footer><Button type="button" variant="outline" onClick={onClose}>Yopish</Button><Link className="ui-button ui-button--primary" href={`/products/${product.slug}`}>Saytda ko‘rish <ChevronRight size={15} /></Link></footer></section></div>;
 }
 type AdminModuleConfig = { title: string; description: string; tabs: string[]; columns: string[]; fields: string[]; metrics?: string[]; action: string };
 const adminModules: Record<"delivery" | "customers" | "promos" | "partners" | "finance" | "currencies" | "analytics" | "settings", AdminModuleConfig> = {
@@ -980,6 +1038,15 @@ function AdminModulePage({ config, loading, error, onNotify, customers = [] }: {
       <Card className="admin-module-fields"><CardHeader><CardTitle>{subtab} uchun ma’lumotlar</CardTitle><CardDescription>Yaratish yoki tahrirlash formasida quyidagi maydonlar bo‘ladi.</CardDescription></CardHeader><CardContent><div>{config.fields.map((field) => <span key={field}>{field}</span>)}</div></CardContent></Card>
     </div>
   </section>;
+}
+type FinanceOverviewData = { summary: { grossRevenue: number; onlineRevenue: number; offlineRevenue: number; refunds: number; manualIncome: number; expenses: number; offlineExpenses: number; netRevenue: number; netProfit: number; paidOrders: number }; transactions: Array<{ id: string; source: string; type: string; title: string; category: string; amount: number; currencyCode: string; occurredAt: string; note?: string | null; receiptUrl?: string | null }> };
+function FinanceManager({ token, onNotice }: { token: string; onNotice: (message: string) => void }) {
+  const [data, setData] = useState<FinanceOverviewData | null>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [filter, setFilter] = useState<"all" | "income" | "expense" | "refund">("all"); const [showForm, setShowForm] = useState(false); const [draft, setDraft] = useState({ type: "expense", title: "", category: "", amount: "", note: "", occurredAt: new Date().toISOString().slice(0, 10) });
+  const load = useCallback(async () => { if (!token) return; setLoading(true); setError(""); try { setData(await api<FinanceOverviewData>("/admin/finance", token)); } catch (reason) { setError(reason instanceof Error ? reason.message : "Moliyaviy ma’lumotlar yuklanmadi."); } finally { setLoading(false); } }, [token]);
+  useEffect(() => { void load(); }, [load]);
+  const save = async (event: FormEvent) => { event.preventDefault(); setLoading(true); try { await api("/admin/finance/entries", token, { method: "POST", body: JSON.stringify({ ...draft, amount: Number(draft.amount), currencyCode: "UZS", occurredAt: new Date(draft.occurredAt).toISOString() }) }); setShowForm(false); setDraft({ type: "expense", title: "", category: "", amount: "", note: "", occurredAt: new Date().toISOString().slice(0, 10) }); onNotice("Moliyaviy yozuv saqlandi."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Yozuv saqlanmadi."); } finally { setLoading(false); } };
+  const summary = data?.summary; const visible = (data?.transactions ?? []).filter((item) => filter === "all" || item.type === filter);
+  return <section className="finance-manager"><header className="tailadmin-page-heading"><div><p className="ui-overline">MOLIYA</p><h2>Daromad va xarajatlar</h2><span>Onlayn do‘kon, offline kassa, refund va hisobot xarajatlari bitta jurnalga jamlanadi.</span></div><Button type="button" onClick={() => setShowForm(true)}><Plus size={16} /> Operatsiya qo‘shish</Button></header>{error && <p className="team-management-error">{error}</p>}{loading && !data && <p className="team-management-loading">Yuklanmoqda…</p>}<div className="finance-summary-grid">{[["Jami savdo", summary?.grossRevenue ?? 0, "income"], ["Refund", summary?.refunds ?? 0, "refund"], ["Xarajat", summary?.expenses ?? 0, "expense"], ["Sof foyda", summary?.netProfit ?? 0, "profit"]].map(([label, value, kind]) => <article key={String(label)} className={`is-${kind}`}><span>{label}</span><b>{money(Number(value), "UZS")}</b></article>)}</div><div className="finance-journal"><header><div><h3>Operatsiyalar jurnali</h3><span>Onlayn: {money(summary?.onlineRevenue ?? 0, "UZS")} · Offline: {money(summary?.offlineRevenue ?? 0, "UZS")} · Hisobot xarajati: {money(summary?.offlineExpenses ?? 0, "UZS")}</span></div><Button type="button" size="sm" variant="outline" onClick={() => void load()}><RefreshCw size={15} /> Yangilash</Button></header><nav>{[["all", "Barchasi"], ["income", "Daromad"], ["expense", "Xarajat"], ["refund", "Refund"]].map(([key, label]) => <button key={key} type="button" className={filter === key ? "is-active" : ""} onClick={() => setFilter(key as typeof filter)}>{label}</button>)}</nav><div className="inventory-table-wrap"><table className="inventory-table finance-table"><thead><tr><th>Operatsiya</th><th>Kategoriya</th><th>Sana</th><th>Izoh</th><th>Summa</th></tr></thead><tbody>{visible.map((item) => <tr key={item.id}><td><b>{item.title}</b><small>{item.source === "order" ? "Onlayn buyurtmadan avtomatik" : item.source === "offline_sale" ? "Offline kassadan avtomatik" : item.source === "offline_report" ? "Offline hisobotdan avtomatik" : item.source === "refund" ? "Refund" : "Qo‘lda kiritilgan"}</small></td><td>{item.category}</td><td>{readableDate(item.occurredAt)}</td><td>{item.note || "—"}</td><td><strong className={item.amount < 0 ? "is-expense" : "is-income"}>{item.amount < 0 ? "−" : "+"}{money(Math.abs(item.amount), item.currencyCode)}</strong></td></tr>)}{!visible.length && <tr><td colSpan={5}><Empty>Tanlangan turda operatsiya yo‘q.</Empty></td></tr>}</tbody></table></div></div>{showForm && <div className="inventory-confirm-backdrop" onMouseDown={() => setShowForm(false)}><form className="inventory-confirm team-form finance-entry-form" onSubmit={save} onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">YANGI OPERATSIYA</p><h3>Daromad yoki xarajat kiriting</h3><div className="ui-form ui-form-grid"><Field label="Turi"><select value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value })}><option value="expense">Xarajat</option><option value="income">Daromad</option></select></Field><Field label="Sana"><input type="date" value={draft.occurredAt} onChange={(event) => setDraft({ ...draft, occurredAt: event.target.value })} /></Field><Field label="Nomi"><input required value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Masalan: kontent suratga olish" /></Field><Field label="Kategoriya"><input required value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} placeholder="Marketing, logistika…" /></Field><Field label="Summa, UZS"><input required min="1" type="number" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} /></Field></div><Field label="Izoh"><textarea value={draft.note} onChange={(event) => setDraft({ ...draft, note: event.target.value })} /></Field><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setShowForm(false)}>Bekor qilish</Button><Button disabled={loading}>Saqlash</Button></div></form></div>}</section>;
 }
 function CustomerManager({ customers, loading, error, token }: { customers: CustomerRecord[]; loading: boolean; error: string; token: string }) {
   const [query, setQuery] = useState("");
@@ -1055,6 +1122,65 @@ type DashboardData = {
   team?: Array<{ id: string; firstName: string; lastName: string; email: string; role: string; isActive: boolean; lastSeen?: string | null; online: boolean }>;
   activity?: Array<{ id: string; action: string; entityType: string; entityId?: string | null; user: string; createdAt: string }>;
 };
+type RegionalMetric = { id: string; label: string; customers: number; orders: number; revenue: number };
+const UZBEKISTAN_REGIONS: Array<{ id: string; label: string; aliases: string[] }> = [
+  { id: "karakalpakstan", label: "Qoraqalpog‘iston", aliases: ["qoraqalpogiston", "qoraqalpog‘iston", "karakalpakstan", "nukus"] },
+  { id: "khorezm", label: "Xorazm", aliases: ["xorazm", "khorezm", "urganch"] },
+  { id: "navoi", label: "Navoiy", aliases: ["navoiy", "navoi"] },
+  { id: "bukhara", label: "Buxoro", aliases: ["buxoro", "bukhara"] },
+  { id: "samarkand", label: "Samarqand", aliases: ["samarqand", "samarkand"] },
+  { id: "jizzakh", label: "Jizzax", aliases: ["jizzax", "jizzakh"] },
+  { id: "syrdarya", label: "Sirdaryo", aliases: ["sirdaryo", "syrdarya", "guliston", "gulistan"] },
+  { id: "tashkent", label: "Toshkent vil.", aliases: ["toshkent viloyati", "tashkent region"] },
+  { id: "tashkent-city", label: "Toshkent sh.", aliases: ["toshkent shahri", "tashkent city", "toshkent"] },
+  { id: "namangan", label: "Namangan", aliases: ["namangan"] },
+  { id: "fergana", label: "Farg‘ona", aliases: ["fargona", "farg‘ona", "fergana"] },
+  { id: "andijan", label: "Andijon", aliases: ["andijon", "andijan"] },
+  { id: "kashkadarya", label: "Qashqadaryo", aliases: ["qashqadaryo", "qashkadarya", "qarshi"] },
+  { id: "surkhandarya", label: "Surxondaryo", aliases: ["surxondaryo", "surkhandarya", "termiz", "termez"] },
+];
+const normalizedRegion = (value?: string | null) => String(value ?? "").toLocaleLowerCase("uz-UZ").replace(/[ʻ’']/g, "").replace(/\s+/g, " ").trim();
+function regionalMetrics(customers: CustomerRecord[], orders: Order[]): RegionalMetric[] {
+  const resolve = (value?: string | null) => UZBEKISTAN_REGIONS.find((region) => region.aliases.some((alias) => normalizedRegion(value).includes(normalizedRegion(alias))))?.id;
+  const metrics = UZBEKISTAN_REGIONS.map((region) => ({ id: region.id, label: region.label, customers: 0, orders: 0, revenue: 0 }));
+  const byId = new Map(metrics.map((region) => [region.id, region]));
+  customers.forEach((customer) => { const region = byId.get(resolve(customer.region) ?? ""); if (region) region.customers += 1; });
+  orders.forEach((order) => {
+    if (orderStage(order) === "fail" || order.paymentStatus.toLowerCase() !== "paid") return;
+    const region = byId.get(resolve(order.shippingAddress?.city) ?? "");
+    if (!region) return;
+    region.orders += 1;
+    region.revenue += Number(order.totalAmount) || 0;
+  });
+  return metrics;
+}
+const UZ_REGION_CODES: Record<string, string> = { andijan: "UZAN", bukhara: "UZBU", fergana: "UZFA", jizzakh: "UZJI", namangan: "UZNG", navoi: "UZNW", kashkadarya: "UZQA", karakalpakstan: "UZQR", samarkand: "UZSA", syrdarya: "UZSI", surkhandarya: "UZSU", tashkent: "UZTO", "tashkent-city": "UZTK", khorezm: "UZXO" };
+function UzbekistanRegionalMap({ regions, currency }: { regions: RegionalMetric[]; currency: string }) {
+  const [selectedId, setSelectedId] = useState<string>("all");
+  const [svgMarkup, setSvgMarkup] = useState("");
+  const mapRef = useRef<HTMLDivElement>(null);
+  const selected = regions.find((region) => region.id === selectedId);
+  const summary = selected ?? { label: "Barcha viloyatlar", customers: regions.reduce((sum, item) => sum + item.customers, 0), orders: regions.reduce((sum, item) => sum + item.orders, 0), revenue: regions.reduce((sum, item) => sum + item.revenue, 0) };
+  const maxRevenue = Math.max(...regions.map((region) => region.revenue), 1);
+  useEffect(() => { void fetch("/uzbekistan-regions.svg").then((response) => response.ok ? response.text() : "").then(setSvgMarkup).catch(() => setSvgMarkup("")); }, []);
+  useEffect(() => {
+    const host = mapRef.current; if (!host) return;
+    const byCode = new Map(regions.map((region) => [UZ_REGION_CODES[region.id], region]));
+    host.querySelectorAll<SVGPathElement>("#features path[id]").forEach((path) => {
+      const region = byCode.get(path.id); if (!region) return;
+      path.style.setProperty("--region-intensity", String(Math.max(.14, region.revenue / maxRevenue)));
+      path.classList.toggle("is-selected", selectedId === region.id);
+      path.classList.toggle("is-muted", selectedId !== "all" && selectedId !== region.id);
+      path.setAttribute("tabindex", "0"); path.setAttribute("role", "button"); path.setAttribute("aria-label", `${region.label}: ${region.customers} mijoz, ${region.orders} buyurtma`);
+    });
+  }, [maxRevenue, regions, selectedId, svgMarkup]);
+  const selectPath = (target: EventTarget | null) => {
+    const path = target instanceof Element ? target.closest<SVGPathElement>("#features path[id]") : null;
+    const region = path ? regions.find((item) => UZ_REGION_CODES[item.id] === path.id) : undefined;
+    if (region) setSelectedId(region.id);
+  };
+  return <Card className="uz-regional-map-card"><CardHeader><div><p className="ui-overline">HUDUDLAR BO‘YICHA</p><CardTitle>O‘zbekiston xaritasi</CardTitle><CardDescription>Viloyatni tanlang — mijozlar va to‘langan savdo ko‘rsatkichi yangilanadi.</CardDescription></div><label className="uz-map-select"><span>Hudud</span><select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}><option value="all">Barcha viloyatlar</option>{regions.map((region) => <option key={region.id} value={region.id}>{region.label}</option>)}</select></label></CardHeader><CardContent><div className="uz-regional-map-layout"><div className="uz-map-graphic uz-map-real" role="group" aria-label="O‘zbekiston viloyatlari xaritasi"><div ref={mapRef} onClick={(event) => selectPath(event.target)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectPath(event.target); } }} dangerouslySetInnerHTML={{ __html: svgMarkup }} />{!svgMarkup && <span className="uz-map-loading">Xarita yuklanmoqda…</span>}<p><MapPin size={15} /> Xaritadagi viloyatni bosing</p></div><aside className="uz-map-insight"><span className="uz-map-insight-label">TANLANGAN HUDUD</span><h3>{summary.label}</h3><dl><div><dt>Mijozlar</dt><dd>{new Intl.NumberFormat("uz-UZ").format(summary.customers)} ta</dd></div><div><dt>To‘langan buyurtmalar</dt><dd>{new Intl.NumberFormat("uz-UZ").format(summary.orders)} ta</dd></div><div><dt>Sotuvlar</dt><dd>{dashboardMoney(summary.revenue, currency)}</dd></div></dl><button type="button" onClick={() => setSelectedId("all")}>Tanlovni tozalash</button></aside></div><div className="uz-map-region-list">{regions.map((region) => <button type="button" key={region.id} className={selectedId === region.id ? "is-selected" : ""} onClick={() => setSelectedId(region.id)}><span>{region.label}</span><b>{region.customers} mijoz</b><small>{dashboardMoney(region.revenue, currency)}</small></button>)}</div></CardContent></Card>
+}
 const DASHBOARD_METRICS: Array<[string, string]> = [["visitors", "Tashrif buyurganlar"], ["customers", "Mijozlar"], ["orders", "Buyurtmalar"], ["units", "Sotilgan mahsulotlar"], ["revenue", "Savdo / Revenue"], ["profit", "Foyda"]];
 const DASHBOARD_PERIODS: Array<[string, string]> = [["today", "Kun"], ["7d", "Hafta"], ["month", "Oy"], ["year", "Yil"]];
 function dashboardMoney(value: number, currency: string) {
@@ -1095,7 +1221,7 @@ function playOrderAlertSound() {
     tone.connect(gain).connect(orderAlertAudio!.destination); tone.start(now + offset); tone.stop(now + offset + .14);
   });
 }
-function DashboardOverview({ dashboard, currency, period, metric, granularity, customFrom, customTo, onCurrency, onPeriod, onMetric, onGranularity, onCustomFrom, onCustomTo }: { dashboard: DashboardData | null; currency: string; period: string; metric: string; granularity: string; customFrom: string; customTo: string; onCurrency: (value: string) => void; onPeriod: (value: string) => void; onMetric: (value: string) => void; onGranularity: (value: string) => void; onCustomFrom: (value: string) => void; onCustomTo: (value: string) => void }) {
+function DashboardOverview({ dashboard, currency, period, metric, granularity, customFrom, customTo, customers, orders, onCurrency, onPeriod, onMetric, onGranularity, onCustomFrom, onCustomTo }: { dashboard: DashboardData | null; currency: string; period: string; metric: string; granularity: string; customFrom: string; customTo: string; customers: CustomerRecord[]; orders: Order[]; onCurrency: (value: string) => void; onPeriod: (value: string) => void; onMetric: (value: string) => void; onGranularity: (value: string) => void; onCustomFrom: (value: string) => void; onCustomTo: (value: string) => void }) {
   const kpis = dashboard?.kpis?.current ?? {}; const changes = dashboard?.kpis?.changes ?? {}; const chart = dashboard?.chart; const chartCurrency = dashboard?.currency?.code ?? currency;
   const cards: Array<[string, string, typeof Package, boolean]> = [["Jami mijozlar", "customers", Users, false], ["Jami savdo", "revenue", BarChart3, true], ["Ombordagi mahsulotlar", "inventory", Package, false], ["Jami sotilgan birliklar", "units", ShoppingBag, false], ["Asosiy mahsulot modellari", "baseProducts", Box, false], ["Buyurtmalar", "orders", ClipboardList, false], ["O‘rtacha chek", "averageOrderValue", BarChart3, true], ["Foyda", "profit", ArrowUp, true]];
   const current = chart?.current ?? []; const previous = chart?.previous ?? []; const labels = Array.from(new Set([...current.map((item) => item.label), ...previous.map((item) => item.label)]));
@@ -1107,7 +1233,37 @@ function DashboardOverview({ dashboard, currency, period, metric, granularity, c
     <EcommerceMetrics metrics={metricCards} />
     <Card className="dashboard-chart-card tailadmin-statistics-card"><CardHeader className="tailadmin-statistics-head"><div><CardTitle>Statistika</CardTitle><CardDescription>Tanlangan davr bo‘yicha haqiqiy ko‘rsatkichlar.</CardDescription></div><div className="tailadmin-statistics-controls"><div className="tailadmin-statistics-metrics">{DASHBOARD_METRICS.map(([value, label]) => <button type="button" className={metric === value ? "is-active" : ""} onClick={() => onMetric(value)} key={value}>{label}</button>)}</div><label className="tailadmin-statistics-period"><CalendarDays size={18} /><select value={period} onChange={(event) => { const value = event.target.value; onPeriod(value); onGranularity(value === "year" ? "monthly" : "daily"); }}>{DASHBOARD_PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div></CardHeader><CardContent><div className="dashboard-chart-summary"><span>Joriy davr<b>{chartFinancial ? dashboardMoney(chart?.currentTotal ?? 0, chartCurrency) : new Intl.NumberFormat("uz-UZ").format(chart?.currentTotal ?? 0)}</b></span><span>Oldingi davr<b>{chartFinancial ? dashboardMoney(chart?.previousTotal ?? 0, chartCurrency) : new Intl.NumberFormat("uz-UZ").format(chart?.previousTotal ?? 0)}</b></span><strong className={(chart?.change ?? 0) >= 0 ? "is-positive" : "is-negative"}>{chart?.change === null || chart?.change === undefined ? "—" : `${chart.change >= 0 ? "+" : ""}${chart.change.toFixed(1)}%`}</strong></div>{labels.length ? <StatisticsChart current={current} previous={previous} /> : <div className="dashboard-chart-wrap"><p>Tanlangan davrda haqiqiy ma’lumot yo‘q.</p></div>}<div className="dashboard-legend"><span><i /> Joriy davr</span><span><i /> Oldingi davr</span></div></CardContent></Card>
     <Card className="tailadmin-monthly-sales-card"><CardHeader><div><CardTitle>Oylik savdo</CardTitle><CardDescription>Joriy yildagi faqat to‘langan buyurtmalar.</CardDescription></div><button type="button" className="tailadmin-chart-more" aria-label="Oylik savdo menyusi"><MoreVertical size={20} /></button></CardHeader><CardContent>{dashboard?.monthlySales?.length ? <MonthlySalesChart points={dashboard.monthlySales} /> : <div className="dashboard-chart-wrap"><p>Oylik savdo ma’lumoti yo‘q.</p></div>}</CardContent></Card>
+    <UzbekistanRegionalMap regions={regionalMetrics(customers, orders)} currency={chartCurrency} />
     <div className="dashboard-lower-grid"><Card><CardHeader><div><p className="ui-overline">JAMOA</p><CardTitle>Jamoa faolligi</CardTitle></div></CardHeader><CardContent><div className="dashboard-team">{(dashboard?.team ?? []).map((member) => <article key={member.id}><span className="dashboard-avatar">{`${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}` || member.email[0]?.toUpperCase()}</span><div><b>{`${member.firstName} ${member.lastName}`.trim() || member.email}</b><small>{member.role}</small></div><span className={member.online && member.isActive ? "is-online" : "is-offline"}>{member.online && member.isActive ? "● Online" : `○ ${dashboardTime(member.lastSeen)}`}</span></article>)}{!dashboard?.team?.length && <p className="dashboard-empty">Jamoa ma’lumoti yo‘q.</p>}</div></CardContent></Card><Card><CardHeader><div><p className="ui-overline">AUDIT</p><CardTitle>So‘nggi faollik</CardTitle></div></CardHeader><CardContent><div className="dashboard-activity">{(dashboard?.activity ?? []).map((item) => <article key={item.id}><b>{item.action} · {item.entityType}</b><span>{item.user} · {dashboardTime(item.createdAt)}</span></article>)}{!dashboard?.activity?.length && <p className="dashboard-empty">Audit yozuvlari yo‘q.</p>}</div></CardContent></Card></div>
+  </section>;
+}
+
+type TeamSection = "overview" | "employees" | "teams" | "roles" | "permissions" | "invitations" | "activity" | "security";
+type TeamEmployee = { id: string; employeeId: string; firstName: string; lastName: string; displayName?: string | null; avatarUrl?: string | null; email?: string | null; phone?: string; jobTitle?: string | null; status: string; employmentType: string; roleIds: string[]; teams: Array<{ id: string; name: string; primary: boolean }> };
+function TeamManagement({ token, audit, onNotice }: { token: string; audit: Record<string, unknown>[]; onNotice: (message: string) => void }) {
+  const [section, setSection] = useState<TeamSection>("overview"); const [loading, setLoading] = useState(false); const [error, setError] = useState("");
+  const [overview, setOverview] = useState<{ employees: number; teams: number; roles: number; invited: number; suspended: number } | null>(null);
+  const [employees, setEmployees] = useState<TeamEmployee[]>([]); const [teams, setTeams] = useState<Array<{ id: string; teamId: string; name: string; description?: string | null; color: string; isActive: boolean; members: Array<{ name: string }> }>>([]);
+  const [roles, setRoles] = useState<Array<{ id: string; roleId: string; name: string; description?: string | null; color: string; isSystem: boolean; isProtected: boolean; assignedEmployees: number; permissions: string[] }>>([]); const [permissions, setPermissions] = useState<Array<{ id: string; key: string; module: string; label: string; isSensitive: boolean }>>([]); const [invitations, setInvitations] = useState<Array<{ id: string; email: string; status: string; expiresAt: string }>>([]); const [sessions, setSessions] = useState<Array<{ id: string; email: string; role: string; lastActivity: string; expiresAt: string; revokedAt?: string | null }>>([]);
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false); const [showTeamForm, setShowTeamForm] = useState(false); const [editingEmployee, setEditingEmployee] = useState<TeamEmployee | null>(null); const [employeeDraft, setEmployeeDraft] = useState({ firstName: "", lastName: "", email: "", jobTitle: "" }); const [employeeEditDraft, setEmployeeEditDraft] = useState({ firstName: "", lastName: "", displayName: "", email: "", jobTitle: "", avatarUrl: "" }); const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]); const [teamDraft, setTeamDraft] = useState({ name: "", description: "", color: "#465fff" });
+  const load = useCallback(async () => { if (!token) return; setLoading(true); setError(""); try { if (section === "overview") setOverview(await api("/admin/team/overview", token)); if (section === "employees") setEmployees(await api("/admin/team/employees", token)); if (section === "teams") setTeams(await api("/admin/team/teams", token)); if (section === "roles") setRoles(await api("/admin/team/roles", token)); if (section === "permissions") setPermissions(await api("/admin/team/permissions", token)); if (section === "invitations") setInvitations(await api("/admin/team/invitations", token)); if (section === "security") setSessions(await api("/admin/team/security/sessions", token)); } catch (reason) { const message = reason instanceof Error ? reason.message : "Ma’lumotni yuklashga ruxsat yo‘q."; setError(message === "Failed to fetch" ? "Admin serveri bilan aloqa uzildi. Sahifani qayta yuklang yoki server holatini tekshiring." : message); } finally { setLoading(false); } }, [section, token]);
+  useEffect(() => { void load(); }, [load]);
+  const createEmployee = async (event: FormEvent) => { event.preventDefault(); setLoading(true); try { await api("/admin/team/employees", token, { method: "POST", body: JSON.stringify(employeeDraft) }); setShowEmployeeForm(false); setEmployeeDraft({ firstName: "", lastName: "", email: "", jobTitle: "" }); onNotice("Xodim yaratildi. Endi unga rol va jamoa biriktirishingiz mumkin."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Xodim yaratilmadi."); } finally { setLoading(false); } };
+  const beginEmployeeEdit = async (employee: TeamEmployee) => { setEditingEmployee(employee); setEmployeeEditDraft({ firstName: employee.firstName, lastName: employee.lastName, displayName: employee.displayName ?? "", email: employee.email ?? "", jobTitle: employee.jobTitle ?? "", avatarUrl: employee.avatarUrl ?? "" }); setSelectedTeamIds(employee.teams.map((team) => team.id)); try { if (!teams.length) setTeams(await api("/admin/team/teams", token)); } catch (reason) { setError(reason instanceof Error ? reason.message : "Jamoalar yuklanmadi."); } };
+  const saveEmployeeEdit = async (event: FormEvent) => { event.preventDefault(); if (!editingEmployee) return; setLoading(true); try { await api(`/admin/team/employees/${editingEmployee.id}`, token, { method: "PATCH", body: JSON.stringify(employeeEditDraft) }); await api(`/admin/team/employees/${editingEmployee.id}/teams`, token, { method: "POST", body: JSON.stringify({ teamIds: selectedTeamIds }) }); setEditingEmployee(null); onNotice("Xodim ma’lumotlari va jamoasi saqlandi."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Xodim ma’lumotlari saqlanmadi."); } finally { setLoading(false); } };
+  const createTeam = async (event: FormEvent) => { event.preventDefault(); setLoading(true); try { await api("/admin/team/teams", token, { method: "POST", body: JSON.stringify(teamDraft) }); setShowTeamForm(false); setTeamDraft({ name: "", description: "", color: "#465fff" }); onNotice("Jamoa yaratildi."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Jamoa yaratilmagan."); } finally { setLoading(false); } };
+  const revoke = async (id: string) => { if (!window.confirm("Bu sessiya darhol yakunlansinmi?")) return; try { await api(`/admin/team/security/sessions/${id}/revoke`, token, { method: "POST" }); onNotice("Sessiya bekor qilindi."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Sessiyani bekor qilib bo‘lmadi."); } };
+  const tabs: Array<[TeamSection, string]> = [["overview", "Overview"], ["employees", "Xodimlar"], ["teams", "Jamoalar"], ["roles", "Rollar"], ["permissions", "Permissions"], ["invitations", "Takliflar"], ["activity", "Activity log"], ["security", "Xavfsizlik"]];
+  const initials = (person: TeamEmployee) => `${person.firstName?.[0] ?? ""}${person.lastName?.[0] ?? ""}`.toUpperCase() || "?";
+  return <section className="team-management"><header className="team-management-head"><div><p className="ui-overline">COMPANY ACCESS</p><h2>Jamoa va ruxsatlar</h2><span>Xodimlar, bo‘limlar va xavfsiz kirishlarni bitta joyda boshqaring.</span></div></header><nav className="team-management-tabs" aria-label="Jamoa bo‘limlari">{tabs.map(([id, label]) => <button key={id} type="button" className={section === id ? "is-active" : ""} onClick={() => setSection(id)}>{label}</button>)}</nav>{error && <p className="team-management-error">{error}</p>}{loading && <p className="team-management-loading">Yuklanmoqda…</p>}
+    {section === "overview" && <><div className="team-overview-grid">{[["Xodimlar", overview?.employees ?? 0], ["Faol jamoalar", overview?.teams ?? 0], ["Rollar", overview?.roles ?? 0], ["Taklif kutilmoqda", overview?.invited ?? 0], ["To‘xtatilgan", overview?.suspended ?? 0]].map(([label, value]) => <Card key={String(label)}><CardContent><span>{label}</span><b>{value}</b></CardContent></Card>)}</div><Card><CardHeader><div><CardTitle>Xavfsiz o‘sish uchun tayyor</CardTitle><CardDescription>Har bir muhim amal server tomonda tekshiriladi. Super Admin himoyalangan, tarix esa saqlanadi.</CardDescription></div></CardHeader><CardContent><div className="team-overview-notes"><span>✓ Default deny</span><span>✓ Privilege escalation bloklangan</span><span>✓ Xodim ID o‘zgarmaydi</span><span>✓ Audit yo‘qolmaydi</span></div></CardContent></Card></>}
+    {section === "employees" && <><div className="team-section-action"><div><h3>Xodimlar</h3><span>Shaxsiy ma’lumotlar faqat kerakli huquqi bor foydalanuvchilarga ko‘rinadi.</span></div><Button type="button" onClick={() => setShowEmployeeForm(true)}><Plus size={16} /> Xodim qo‘shish</Button></div><div className="inventory-table-wrap"><table className="inventory-table team-table"><thead><tr><th>Xodim</th><th>ID</th><th>Lavozim</th><th>Jamoa</th><th>Status</th><th>E-mail</th><th /></tr></thead><tbody>{employees.map((employee) => <tr key={employee.id}><td><span className="team-person">{employee.avatarUrl ? <img src={employee.avatarUrl} alt="" /> : <i>{initials(employee)}</i>}<b>{employee.displayName || `${employee.firstName} ${employee.lastName}`.trim() || employee.email?.split("@")[0] || "Profilni to‘ldiring"}</b></span></td><td><code>{employee.employeeId}</code></td><td>{employee.jobTitle || "—"}</td><td>{employee.teams.map((team) => team.name).join(", ") || "Biriktirilmagan"}</td><td><span className={`team-status is-${employee.status}`}>{employee.status}</span></td><td>{employee.email || "—"}</td><td><Button size="sm" variant="outline" onClick={() => void beginEmployeeEdit(employee)}>Tahrirlash</Button></td></tr>)}{!employees.length && <tr><td colSpan={7}><Empty>Xodimlar hali yo‘q.</Empty></td></tr>}</tbody></table></div>{showEmployeeForm && <div className="inventory-confirm-backdrop" onMouseDown={() => setShowEmployeeForm(false)}><form className="inventory-confirm team-form" onSubmit={createEmployee} onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">NEW EMPLOYEE</p><h3>Xodimni taklif qilish</h3><p>Parol berilmaydi — taklif qabul qilingach, xodim uni mustaqil yaratadi.</p><div className="ui-form ui-form-grid"><Field label="Ism"><input required value={employeeDraft.firstName} onChange={(event) => setEmployeeDraft({ ...employeeDraft, firstName: event.target.value })} /></Field><Field label="Familiya"><input required value={employeeDraft.lastName} onChange={(event) => setEmployeeDraft({ ...employeeDraft, lastName: event.target.value })} /></Field><Field label="E-mail"><input required type="email" value={employeeDraft.email} onChange={(event) => setEmployeeDraft({ ...employeeDraft, email: event.target.value })} /></Field><Field label="Lavozim"><input value={employeeDraft.jobTitle} onChange={(event) => setEmployeeDraft({ ...employeeDraft, jobTitle: event.target.value })} /></Field></div><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setShowEmployeeForm(false)}>Bekor qilish</Button><Button disabled={loading}>Yaratish</Button></div></form></div>}{editingEmployee && <div className="inventory-confirm-backdrop" onMouseDown={() => setEditingEmployee(null)}><form className="inventory-confirm team-form team-edit-form" onSubmit={saveEmployeeEdit} onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">XODIM PROFILI</p><h3>{editingEmployee.employeeId} · xodim ma’lumotlari</h3><p>Avatar havolasi, ism va jamoa shu yerda saqlanadi.</p><div className="team-edit-avatar">{employeeEditDraft.avatarUrl ? <img src={employeeEditDraft.avatarUrl} alt="Avatar ko‘rinishi" /> : <i>{`${employeeEditDraft.firstName[0] ?? ""}${employeeEditDraft.lastName[0] ?? ""}`.toUpperCase() || "?"}</i>}<Field label="Avatar URL"><input value={employeeEditDraft.avatarUrl} onChange={(event) => setEmployeeEditDraft({ ...employeeEditDraft, avatarUrl: event.target.value })} placeholder="https://.../avatar.jpg" /></Field></div><div className="ui-form ui-form-grid"><Field label="Ism"><input required value={employeeEditDraft.firstName} onChange={(event) => setEmployeeEditDraft({ ...employeeEditDraft, firstName: event.target.value })} /></Field><Field label="Familiya"><input required value={employeeEditDraft.lastName} onChange={(event) => setEmployeeEditDraft({ ...employeeEditDraft, lastName: event.target.value })} /></Field><Field label="Ko‘rinadigan ism"><input value={employeeEditDraft.displayName} onChange={(event) => setEmployeeEditDraft({ ...employeeEditDraft, displayName: event.target.value })} /></Field><Field label="Lavozim"><input value={employeeEditDraft.jobTitle} onChange={(event) => setEmployeeEditDraft({ ...employeeEditDraft, jobTitle: event.target.value })} /></Field><Field label="E-mail"><input required type="email" value={employeeEditDraft.email} onChange={(event) => setEmployeeEditDraft({ ...employeeEditDraft, email: event.target.value })} /></Field></div><div className="team-assignment"><b>Jamoalar</b><span>Bir yoki bir nechta jamoani tanlang.</span><div>{teams.map((team) => <label key={team.id}><input type="checkbox" checked={selectedTeamIds.includes(team.id)} onChange={(event) => setSelectedTeamIds((current) => event.target.checked ? [...current, team.id] : current.filter((id) => id !== team.id))} /><i style={{ backgroundColor: team.color }} />{team.name}</label>)}{!teams.length && <small>Avval “Jamoalar” bo‘limidan jamoa yarating.</small>}</div></div><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setEditingEmployee(null)}>Bekor qilish</Button><Button disabled={loading}>Saqlash</Button></div></form></div>}</>}
+    {section === "teams" && <><div className="team-section-action"><div><h3>Jamoalar va bo‘limlar</h3><span>Xodim bir nechta jamoaga biriktirilishi mumkin.</span></div><Button type="button" onClick={() => setShowTeamForm(true)}><Plus size={16} /> Jamoa yaratish</Button></div><div className="team-cards">{teams.map((team) => <article key={team.id}><i style={{ backgroundColor: team.color }} /><div><b>{team.name}</b><span>{team.description || "Tavsif kiritilmagan"}</span><small>{team.teamId} · {team.members.length} a’zo</small></div><em>{team.isActive ? "Faol" : "Off"}</em></article>)}{!teams.length && <Empty>Jamoalar hali yo‘q. Birinchi bo‘limni yarating.</Empty>}</div>{showTeamForm && <div className="inventory-confirm-backdrop" onMouseDown={() => setShowTeamForm(false)}><form className="inventory-confirm team-form" onSubmit={createTeam} onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">NEW TEAM</p><h3>Jamoa yaratish</h3><div className="ui-form"><Field label="Jamoa nomi"><input required value={teamDraft.name} onChange={(event) => setTeamDraft({ ...teamDraft, name: event.target.value })} /></Field><Field label="Qisqa tavsif"><textarea value={teamDraft.description} onChange={(event) => setTeamDraft({ ...teamDraft, description: event.target.value })} /></Field><Field label="Rang"><input type="color" value={teamDraft.color} onChange={(event) => setTeamDraft({ ...teamDraft, color: event.target.value })} /></Field></div><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setShowTeamForm(false)}>Bekor qilish</Button><Button disabled={loading}>Yaratish</Button></div></form></div>}</>}
+    {section === "roles" && <><div className="team-section-action"><div><h3>Rollar</h3><span>System rollar himoyalangan; custom rollar faqat sizdagi ruxsatlar doirasida yaratiladi.</span></div></div><div className="team-cards team-role-cards">{roles.map((role) => <article key={role.id}><i style={{ backgroundColor: role.color }} /><div><b>{role.name}{role.isProtected ? " · HIMoyalangan" : ""}</b><span>{role.description || "Custom rol"}</span><small>{role.permissions.length} permission · {role.assignedEmployees} xodim</small></div><em>{role.isSystem ? "System" : "Custom"}</em></article>)}{!roles.length && <Empty>Rollarni ko‘rish uchun ruxsat kerak.</Empty>}</div></>}
+    {section === "permissions" && <div className="team-permission-grid">{Object.entries(permissions.reduce<Record<string, typeof permissions>>((groups, item) => ({ ...groups, [item.module]: [...(groups[item.module] ?? []), item] }), {})).map(([module, items]) => <Card key={module}><CardHeader><CardTitle>{module}</CardTitle></CardHeader><CardContent>{items.map((item) => <p key={item.id}><span>{item.label}<small>{item.key}</small></span>{item.isSensitive && <b>Sensitive</b>}</p>)}</CardContent></Card>)}</div>}
+    {section === "invitations" && <div className="inventory-table-wrap"><table className="inventory-table team-table"><thead><tr><th>E-mail</th><th>Holat</th><th>Tugash sanasi</th></tr></thead><tbody>{invitations.map((item) => <tr key={item.id}><td>{item.email}</td><td><span className={`team-status is-${item.status}`}>{item.status}</span></td><td>{readableDate(item.expiresAt)}</td></tr>)}{!invitations.length && <tr><td colSpan={3}><Empty>Faol taklif yo‘q.</Empty></td></tr>}</tbody></table></div>}
+    {section === "activity" && <Card><CardHeader><div><CardTitle>Activity log</CardTitle><CardDescription>Audit yozuvlari o‘chirib bo‘lmaydi.</CardDescription></div></CardHeader><CardContent><div className="team-audit-list">{audit.slice(0, 30).map((item, index) => <p key={String(item.id ?? index)}><b>{String(item.action ?? "action")}</b><span>{String(item.entityType ?? "entity")} · {readableDate(String(item.createdAt ?? ""))}</span></p>)}{!audit.length && <Empty>Audit yozuvlari yo‘q.</Empty>}</div></CardContent></Card>}
+    {section === "security" && <><div className="team-section-action"><div><h3>Faol sessiyalar</h3><span>Sessiyani qaytarib bo‘lmaydigan tarzda bekor qilish mumkin.</span></div></div><div className="inventory-table-wrap"><table className="inventory-table team-table"><thead><tr><th>Hisob</th><th>Rol</th><th>Oxirgi faollik</th><th>Holat</th><th /></tr></thead><tbody>{sessions.map((session) => <tr key={session.id}><td>{session.email}</td><td>{session.role}</td><td>{readableDate(session.lastActivity)}</td><td><span className={`team-status ${session.revokedAt ? "is-revoked" : "is-active"}`}>{session.revokedAt ? "Bekor qilingan" : "Faol"}</span></td><td>{!session.revokedAt && <Button size="sm" variant="outline" onClick={() => void revoke(session.id)}>Bekor qilish</Button>}</td></tr>)}{!sessions.length && <tr><td colSpan={5}><Empty>Sessiyalarni ko‘rish uchun xavfsizlik ruxsati kerak.</Empty></td></tr>}</tbody></table></div></>}
   </section>;
 }
 
@@ -1150,8 +1306,8 @@ export default function AdminConsole() {
   const [token, setToken] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [tab, setTab] = useState<Tab>("dashboard");
-  const [contentSubsection, setContentSubsection] = useState<ContentSubsection>("main-banner");
+  const [tab, setTab] = useState<Tab>(() => adminLocation().tab);
+  const [contentSubsection, setContentSubsection] = useState<ContentSubsection>(() => adminLocation().content);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1166,11 +1322,20 @@ export default function AdminConsole() {
   const [dashboardTo, setDashboardTo] = useState("");
   const [adminProfile, setAdminProfile] = useState<{ firstName?: string; lastName?: string; email?: string; role?: string } | null>(null);
   const [adminTheme, setAdminTheme] = useState<"light" | "midnight" | "violet" | "graphite" | "forest">("light");
-  const [sidebarCompact, setSidebarCompact] = useState(true);
+  const [sidebarCompact, setSidebarCompact] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("siren-admin-sidebar-compact") !== "false";
+  });
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [readActivityIds, setReadActivityIds] = useState<string[]>([]);
-  const [notificationSection, setNotificationSection] = useState<"system" | "orders">("system");
+  const [readActivityIds, setReadActivityIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = JSON.parse(localStorage.getItem(ADMIN_READ_ACTIVITY_IDS_KEY) ?? "[]");
+      return Array.isArray(saved) ? saved.filter((value): value is string => typeof value === "string").slice(-500) : [];
+    } catch { return []; }
+  });
+  const [notificationSection, setNotificationSection] = useState<"system" | "orders">("orders");
   const [browserNotificationPermission, setBrowserNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
   const orderNotificationIds = useRef(new Set<string>());
   const orderNotificationsReady = useRef(false);
@@ -1208,6 +1373,37 @@ export default function AdminConsole() {
   const [productView, setProductView] = useState<"list" | "create" | "edit">(
     "list",
   );
+  const hasUnsavedProductChanges = productView !== "list";
+  useEffect(() => {
+    if (!hasUnsavedProductChanges) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [hasUnsavedProductChanges]);
+  useEffect(() => {
+    (window as Window & { sirenAdminDirty?: boolean }).sirenAdminDirty = hasUnsavedProductChanges;
+    return () => { (window as Window & { sirenAdminDirty?: boolean }).sirenAdminDirty = false; };
+  }, [hasUnsavedProductChanges]);
+  const navigateAdmin = (id: string, historyMode: "push" | "replace" = "push") => {
+    if (hasUnsavedProductChanges && !window.confirm("Saqlanmagan mahsulot ma’lumotlari bor. Chiqsangiz ular yo‘qoladi. Davom etasizmi?")) return;
+    if (hasUnsavedProductChanges) setProductView("list");
+    if (id.startsWith("content-")) {
+      const nextContent = id.slice("content-".length) as ContentSubsection;
+      setContentSubsection(nextContent); setTab("content"); replaceAdminLocation("content", nextContent, historyMode); void run(() => refresh("content")); return;
+    }
+    const nextTab = id as Tab;
+    setTab(nextTab); replaceAdminLocation(nextTab, contentSubsection, historyMode); void run(() => refresh(nextTab));
+  };
+  useEffect(() => {
+    const onPopState = () => {
+      const location = adminLocation();
+      if (hasUnsavedProductChanges && !window.confirm("Saqlanmagan mahsulot ma’lumotlari bor. Chiqsangiz ular yo‘qoladi. Davom etasizmi?")) { replaceAdminLocation(tab, contentSubsection, "replace"); return; }
+      if (hasUnsavedProductChanges) setProductView("list");
+      setTab(location.tab); setContentSubsection(location.content); void run(() => refresh(location.tab));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [hasUnsavedProductChanges, tab, contentSubsection]);
   const [form, setForm] = useState(blankProduct());
   const [imageUrl, setImageUrl] = useState("");
   const [sizeGuideFile, setSizeGuideFile] = useState<File | null>(null);
@@ -1371,9 +1567,14 @@ export default function AdminConsole() {
         const query = new URLSearchParams({ currency: dashboardCurrency, period: dashboardPeriod, metric: dashboardMetric, granularity: dashboardGranularity });
         if (dashboardFrom) query.set("from", dashboardFrom);
         if (dashboardTo) query.set("to", dashboardTo);
-        setDashboard(
-          await api<Record<string, unknown>>(`/admin/dashboard?${query.toString()}`, token),
-        );
+        const [nextDashboard, nextCustomers, nextOrders] = await Promise.all([
+          api<Record<string, unknown>>(`/admin/dashboard?${query.toString()}`, token),
+          api<CustomerRecord[]>("/admin/customers", token),
+          api<Order[]>("/admin/orders", token),
+        ]);
+        setDashboard(nextDashboard);
+        setCustomers(nextCustomers);
+        setOrders(nextOrders);
       }
       if (t === "products" || t === "catalog" || t === "discounts" || t === "partners") await catalog();
       if (t === "orders") setOrders(await api<Order[]>("/admin/orders", token));
@@ -1405,7 +1606,6 @@ export default function AdminConsole() {
         const storedItems = settings.find((setting) => setting.key === "site-notifications")?.value?.items;
         setStoreNotifications(Array.isArray(storedItems) ? storedItems as StoreNotification[] : []);
       }
-      if (t === "team") setUsers(await api("/admin/users", token));
       if (t === "audit") setAudit(await api("/admin/audit-logs", token));
     },
     [catalog, dashboardCurrency, dashboardFrom, dashboardGranularity, dashboardMetric, dashboardPeriod, dashboardTo, tab, token],
@@ -1418,9 +1618,8 @@ export default function AdminConsole() {
     })();
     const savedTheme = localStorage.getItem("siren-admin-theme");
     if (savedTheme === "midnight" || savedTheme === "violet" || savedTheme === "graphite" || savedTheme === "forest" || savedTheme === "light") setAdminTheme(savedTheme);
-    // The TailAdmin product layout starts with the navigation drawer closed.
-    setSidebarCompact(true);
-    localStorage.removeItem("siren-admin-sidebar-compact");
+    const savedSidebar = localStorage.getItem("siren-admin-sidebar-compact");
+    if (savedSidebar === "true" || savedSidebar === "false") setSidebarCompact(savedSidebar === "true");
   }, []);
   useEffect(() => {
     if (!token) { setAdminProfile(null); return; }
@@ -1823,11 +2022,15 @@ export default function AdminConsole() {
     });
   };
   const dashboardActivities = (dashboard as DashboardData | null)?.activity ?? [];
-  const unreadActivities = dashboardActivities.filter((item) => !readActivityIds.includes(item.id));
-  const systemActivities = dashboardActivities.filter((item) => item.entityType !== "order");
-  const orderActivities = dashboardActivities.filter((item) => item.entityType === "order");
-  const visibleActivities = notificationSection === "orders" ? orderActivities : systemActivities;
-  const markActivitiesRead = (ids: string[]) => setReadActivityIds((current) => [...new Set([...current, ...ids])]);
+  const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const orderActivities = dashboardActivities.filter((item) => item.entityType === "order" && new Date(item.createdAt).getTime() >= oneDayAgo);
+  const unreadActivities = orderActivities.filter((item) => !readActivityIds.includes(item.id));
+  const systemActivities: typeof dashboardActivities = [];
+  const visibleActivities = orderActivities;
+  const markActivitiesRead = (ids: string[]) => setReadActivityIds((current) => [...new Set([...current, ...ids])].slice(-500));
+  useEffect(() => {
+    localStorage.setItem(ADMIN_READ_ACTIVITY_IDS_KEY, JSON.stringify(readActivityIds));
+  }, [readActivityIds]);
   useEffect(() => {
     if (!token) return;
     const poll = window.setInterval(() => { void refresh("dashboard").catch(() => undefined); }, 20_000);
@@ -1899,13 +2102,11 @@ export default function AdminConsole() {
     ["products", "Mahsulotlar", Package],
     ["catalog", "Kategoriyalar", Tags],
     ["orders", "Buyurtmalar", ShoppingBag],
-    ["delivery", "Yetkazib berish", ClipboardList],
     ["customers", "Mijozlar", Users],
     ["discounts", "Chegirmalar", Tags],
     ["partners", "Hamkorlar", Crown],
     ["finance", "Moliya", BarChart3],
     ["currencies", "Valyutalar", RefreshCw],
-    ["analytics", "Analitika", Monitor],
     ["offline_cashier", "Kassa", ClipboardList],
     ["offline_inventory", "Offline mahsulotlar", Package],
     ["offline_sales", "Sotilgan tovarlar", ShoppingBag],
@@ -1914,7 +2115,6 @@ export default function AdminConsole() {
     ["notifications", "Xabarlar", Bell],
     ["team", "Jamoa", Users],
     ["audit", "Audit", ShieldCheck],
-    ["settings", "Sozlamalar", Settings2],
   ];
   const contentNavigation: Array<[
     ContentSubsection,
@@ -1928,6 +2128,7 @@ export default function AdminConsole() {
     ["blog", "Blog", "Maqolalar va yangiliklar"],
     ["records", "Records", "Musiqa va audio treklar"],
     ["collections", "Kolleksiyalar", "Mahsulot kolleksiyalari"],
+    ["social", "Ijtimoiy tarmoqlar", "Footer va link-in-bio sahifasi"],
   ];
   const contentSidebarNav: Array<[string, string, ElementType]> = [
     ["content-main-banner", "Main banner", Monitor],
@@ -1937,15 +2138,16 @@ export default function AdminConsole() {
     ["content-blog", "Blog", FileText],
     ["content-records", "Records", Music2],
     ["content-collections", "Kolleksiyalar", Tags],
+    ["content-social", "Ijtimoiy tarmoqlar", Smartphone],
   ];
   const standardNavGroups: Array<[string, Array<[string, string, ElementType]>]> = [
     ["Asosiy", nav.slice(0, 4)],
-    ["Savdo", nav.slice(4, 11)],
-    ["Offline do‘kon", nav.slice(11, 15)],
-    ["Kontent", [...contentSidebarNav, ...nav.slice(15, 17)]],
-    ["Tizim", nav.slice(17)],
+    ["Savdo", nav.slice(4, 9)],
+    ["Offline do‘kon", nav.slice(9, 13)],
+    ["Kontent", [...contentSidebarNav, ...nav.slice(13, 15)]],
+    ["Tizim", nav.slice(15)],
   ];
-  const offlineNav = nav.slice(11, 15);
+  const offlineNav = nav.slice(9, 13);
   const navGroups: Array<[string, Array<[string, string, ElementType]>]> = adminProfile?.role === "cashier" ? [["Offline do‘kon", offlineNav]] : standardNavGroups;
   const activeSidebarId = tab === "content" ? `content-${contentSubsection}` : tab;
   const activeContentLabel = contentNavigation.find(([id]) => id === contentSubsection)?.[1] ?? "Kontent";
@@ -1953,8 +2155,7 @@ export default function AdminConsole() {
     <Tabs
       value={tab}
       onValueChange={(v) => {
-        setTab(v as Tab);
-        void run(() => refresh(v as Tab));
+        navigateAdmin(v);
       }}
       className={`admin-theme--${adminTheme}`}
     >
@@ -1962,7 +2163,7 @@ export default function AdminConsole() {
         <AdminToast message={notice} />
         <AdminToast message={error} tone="error" />
         <TabsContent value="dashboard">
-          <DashboardOverview dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} period={dashboardPeriod} metric={dashboardMetric} granularity={dashboardGranularity} customFrom={dashboardFrom} customTo={dashboardTo} onCurrency={setDashboardCurrency} onPeriod={setDashboardPeriod} onMetric={setDashboardMetric} onGranularity={setDashboardGranularity} onCustomFrom={setDashboardFrom} onCustomTo={setDashboardTo} />
+          <DashboardOverview dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} period={dashboardPeriod} metric={dashboardMetric} granularity={dashboardGranularity} customFrom={dashboardFrom} customTo={dashboardTo} customers={customers} orders={orders} onCurrency={setDashboardCurrency} onPeriod={setDashboardPeriod} onMetric={setDashboardMetric} onGranularity={setDashboardGranularity} onCustomFrom={setDashboardFrom} onCustomTo={setDashboardTo} />
         </TabsContent>
         <TabsContent value="offline_cashier"><OfflineCashier token={token} onChanged={() => { void refresh("products"); }} /></TabsContent>
         <TabsContent value="offline_inventory"><OfflineInventory token={token} role={adminProfile?.role ?? ""} onChanged={() => { void refresh("products"); }} /></TabsContent>
@@ -1980,7 +2181,7 @@ export default function AdminConsole() {
               <div className="reference-products-card">
                 <header className="reference-products-card-head">
                   <div><h3>Mahsulotlar ro‘yxati</h3><p>Do‘kon mahsulotlari va ombor holatini boshqaring.</p></div>
-                  <div className="reference-card-actions"><Button type="button" variant="outline" onClick={() => setNotice("Eksport funksiyasi tayyorlanmoqda.")}><Download size={18} /> Eksport</Button><Button onClick={startCreate}><Plus size={18} /> Mahsulot qo‘shish</Button></div>
+                  <div className="reference-card-actions"><details className="inventory-export-menu"><summary><Download size={18} /> Eksport</summary><div><button type="button" onClick={() => exportInventory(products, categories, "excel")}>Excel (.xlsx)</button><button type="button" onClick={() => exportInventory(products, categories, "pdf")}>PDF (.pdf)</button></div></details><Button onClick={startCreate}><Plus size={18} /> Mahsulot qo‘shish</Button></div>
                 </header>
                 <div className="reference-products-tabs" role="tablist" aria-label="Mahsulotlar bo‘limlari">
                   <button type="button" className={productSubsection === "all" ? "is-active" : ""} onClick={() => setProductSubsection("all")}>Barcha mahsulotlar</button>
@@ -2443,7 +2644,7 @@ export default function AdminConsole() {
         <TabsContent value="customers"><CustomerManager customers={customers} loading={loading} error={error} token={token} /></TabsContent>
         <TabsContent value="discounts"><DiscountManager token={token} products={products} onNotice={setNotice} /></TabsContent>
         <TabsContent value="partners"><PartnerManager token={token} products={products} onNotice={setNotice} /></TabsContent>
-        <TabsContent value="finance"><AdminModulePage config={adminModules.finance} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
+        <TabsContent value="finance"><FinanceManager token={token} onNotice={setNotice} /></TabsContent>
         <TabsContent value="currencies"><CurrencyManager token={token} onNotice={setNotice} /></TabsContent>
         <TabsContent value="analytics"><AdminModulePage config={adminModules.analytics} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
         <TabsContent value="settings"><AdminModulePage config={adminModules.settings} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
@@ -2485,6 +2686,7 @@ export default function AdminConsole() {
                   rows={collections.map((item) => `${item.name} · ${item.slug}`)}
                 />
               )}
+              {contentSubsection === "social" && <SocialLinksManager token={token} onNotice={setNotice} />}
           </section>
         </TabsContent>
         <TabsContent value="pages">
@@ -2495,7 +2697,7 @@ export default function AdminConsole() {
           />
         </TabsContent>
         <TabsContent value="notifications"><NotificationManager items={storeNotifications} token={token} onChanged={(items) => setStoreNotifications(items)} /></TabsContent>
-        <TabsContent value="team"><section className="tailadmin-products-page"><header className="tailadmin-page-heading"><div><p className="ui-overline">Tizim</p><h2>Jamoa</h2><span>Admin foydalanuvchilari va ularning rollari.</span></div></header><List title="Jamoa" rows={users.map((u) => `${u.email} · ${u.role}`)} /></section></TabsContent>
+        <TabsContent value="team"><TeamManagement token={token} audit={audit} onNotice={setNotice} /></TabsContent>
         <TabsContent value="audit"><section className="tailadmin-products-page"><header className="tailadmin-page-heading"><div><p className="ui-overline">Tizim</p><h2>Audit log</h2><span>Tizimdagi oxirgi hodisalar va amallar.</span></div></header><Card><CardContent><pre className="admin-json">{JSON.stringify(audit, null, 2)}</pre></CardContent></Card></section></TabsContent>
       </AdminShell>
       {orderCustomerLoading && <div className="inventory-confirm-backdrop customer-detail-backdrop"><p className="customer-detail-loading customer-detail-loading--overlay">Mijoz profili yuklanmoqda…</p></div>}

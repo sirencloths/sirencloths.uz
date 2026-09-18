@@ -5,7 +5,7 @@ import { OfflineDailyReport, OfflineSale, OfflineSaleItem, OfflineSaleNote, Prod
 
 type Actor = { id: string; role: UserRole };
 type SaleInput = { items: Array<{ variantId: string; quantity: number }>; paymentMethod: string; discountAmount?: number; note?: string; noteImageUrl?: string };
-const paymentKeys = ['cash', 'card', 'click', 'payme'] as const;
+const paymentKeys = ['cash', 'card', 'transfer'] as const;
 const dayKey = (value: Date) => value.toISOString().slice(0, 10);
 const n = (value: unknown) => Number(value ?? 0) || 0;
 const receiptEan13 = (receiptNumber: number) => {
@@ -86,18 +86,19 @@ export class OfflineService {
       sale.isVoided = true; sale.voidReason = reason.trim(); return manager.save(sale);
     });
   }
-  async saveReport(date: string, input: { cashAmount: number; cardAmount: number; clickAmount: number; paymeAmount: number; note?: string }, actor: Actor) {
+  async saveReport(date: string, input: { cashAmount: number; cardAmount: number; transferAmount: number; expenseAmount: number; note?: string }, actor: Actor) {
     this.assertDate(date); const existing = await this.reportRepo.findOneBy({ cashierId: actor.id, reportDate: date });
-    return this.reportRepo.save(existing ? Object.assign(existing, { cashAmount: String(n(input.cashAmount)), cardAmount: String(n(input.cardAmount)), clickAmount: String(n(input.clickAmount)), paymeAmount: String(n(input.paymeAmount)), note: input.note?.trim() || null }) : this.reportRepo.create({ cashierId: actor.id, reportDate: date, cashAmount: String(n(input.cashAmount)), cardAmount: String(n(input.cardAmount)), clickAmount: String(n(input.clickAmount)), paymeAmount: String(n(input.paymeAmount)), note: input.note?.trim() || null }));
+    const values = { cashAmount: String(n(input.cashAmount)), cardAmount: String(n(input.cardAmount)), transferAmount: String(n(input.transferAmount)), expenseAmount: String(n(input.expenseAmount)), note: input.note?.trim() || null };
+    return this.reportRepo.save(existing ? Object.assign(existing, values) : this.reportRepo.create({ ...values, clickAmount: '0', paymeAmount: '0' }));
   }
   async report(date: string, actor: Actor) {
     this.assertDate(date); const allSales = await this.saleRepo.find({ relations: { cashier: true, items: true }, order: { createdAt: 'DESC' } });
     const sales = allSales.filter((sale) => !sale.isVoided && dayKey(sale.createdAt) === date && (actor.role === UserRole.SUPER_ADMIN || sale.cashierId === actor.id));
     const reports = await this.reportRepo.find({ where: actor.role === UserRole.SUPER_ADMIN ? { reportDate: date } : { cashierId: actor.id, reportDate: date }, relations: { cashier: true } });
-    const computerFor = (cashierId: string) => { const values = { cash: 0, card: 0, click: 0, payme: 0 }; sales.filter((sale) => sale.cashierId === cashierId).forEach((sale) => { const key = paymentKeys.includes(sale.paymentMethod as typeof paymentKeys[number]) ? sale.paymentMethod as keyof typeof values : 'cash'; values[key] += n(sale.totalAmount); }); return values; };
+    const computerFor = (cashierId: string) => { const values = { cash: 0, card: 0, transfer: 0 }; sales.filter((sale) => sale.cashierId === cashierId).forEach((sale) => { const key = sale.paymentMethod === 'card' ? 'card' : sale.paymentMethod === 'cash' ? 'cash' : 'transfer'; values[key] += n(sale.totalAmount); }); return values; };
     if (actor.role !== UserRole.SUPER_ADMIN) return { canSeeComputerTotals: false, report: reports[0] ?? null, soldCount: sales.reduce((sum, sale) => sum + sale.items.reduce((count, item) => count + item.quantity, 0), 0) };
     const cashierIds = [...new Set([...sales.map((sale) => sale.cashierId), ...reports.map((report) => report.cashierId)])];
-    const comparisons = cashierIds.map((cashierId) => { const report = reports.find((row) => row.cashierId === cashierId); const computer = computerFor(cashierId); const declared = { cash: n(report?.cashAmount), card: n(report?.cardAmount), click: n(report?.clickAmount), payme: n(report?.paymeAmount) }; const difference = Object.fromEntries(paymentKeys.map((key) => [key, declared[key] - computer[key]])); const totalDifference = Object.values(difference).reduce((sum, value) => sum + value, 0); const person = sales.find((sale) => sale.cashierId === cashierId)?.cashier ?? report?.cashier; return { cashierId, cashier: person ? { firstName: person.firstName, lastName: person.lastName, email: person.email } : null, report, computer, declared, difference, totalDifference, isMismatch: !report || totalDifference !== 0 }; });
+    const comparisons = cashierIds.map((cashierId) => { const report = reports.find((row) => row.cashierId === cashierId); const computer = computerFor(cashierId); const declared = { cash: n(report?.cashAmount), card: n(report?.cardAmount), transfer: n(report?.transferAmount) || n(report?.clickAmount) + n(report?.paymeAmount) }; const difference = Object.fromEntries(paymentKeys.map((key) => [key, declared[key] - computer[key]])); const totalDifference = Object.values(difference).reduce((sum, value) => sum + value, 0); const expense = n(report?.expenseAmount); const person = sales.find((sale) => sale.cashierId === cashierId)?.cashier ?? report?.cashier; return { cashierId, cashier: person ? { firstName: person.firstName, lastName: person.lastName, email: person.email } : null, report, computer, declared, difference, expense, totalDifference, isMismatch: !report || totalDifference !== 0 }; });
     return { canSeeComputerTotals: true, comparisons };
   }
   private inventoryRow(variant: ProductVariant) { const media = variant.product.media ?? []; return { id: variant.id, barcode: variant.barcode, sku: variant.sku, color: variant.color, size: variant.size, price: variant.price ?? variant.product.price, offlineInventoryQuantity: variant.offlineInventoryQuantity, product: { id: variant.product.id, title: variant.product.title, imageUrl: [...media].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? null } }; }

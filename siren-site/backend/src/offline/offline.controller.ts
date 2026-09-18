@@ -22,8 +22,8 @@ class ReportDto {
   @IsString() reportDate!: string;
   @IsInt() @Min(0) cashAmount!: number;
   @IsInt() @Min(0) cardAmount!: number;
-  @IsInt() @Min(0) clickAmount!: number;
-  @IsInt() @Min(0) paymeAmount!: number;
+  @IsInt() @Min(0) transferAmount!: number;
+  @IsInt() @Min(0) expenseAmount!: number;
   @IsOptional() @IsString() note?: string;
 }
 class VoidDto { @IsString() reason!: string; }

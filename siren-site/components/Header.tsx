@@ -111,7 +111,7 @@ export default function Header() {
         {/* ICONS */}
         <div
           className="nav-icons"
-          aria-label="Быстрые действия"
+          aria-label={t("quickActions")}
         >
           {navIcons.map((item) => {
             const isCartIcon = item.href === "/cart";

@@ -52,6 +52,12 @@ export class CmsService {
       })
       .filter((item) => item.id && item.label && item.href);
   }
+  async socialLinksForStorefront() {
+    const setting = await this.settings.findOneBy({ key: 'social-links' });
+    const value = setting?.value ?? {};
+    const items = Array.isArray(value.items) ? value.items.filter((item) => item && typeof item === 'object' && (item as { isActive?: boolean }).isActive !== false) : [];
+    return { profile: value.profile && typeof value.profile === 'object' ? value.profile : {}, items };
+  }
   async headerMessageForStorefront() {
     // Resolve overdue launches first.  The endpoint is polled by the header,
     // so an open storefront turns the product active at its scheduled time

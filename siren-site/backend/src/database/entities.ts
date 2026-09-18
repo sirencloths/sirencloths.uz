@@ -5,6 +5,7 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -36,6 +37,10 @@ export enum OrderStatus {
   REFUNDED = 'refunded',
 }
 export enum PartnerType { SPONSOR = 'sponsor', INFLUENCER = 'influencer', REFERRAL = 'referral', AFFILIATE = 'affiliate' }
+export enum EmploymentStatus { ACTIVE = 'active', INVITED = 'invited', ON_LEAVE = 'on_leave', SUSPENDED = 'suspended', TERMINATED = 'terminated' }
+export enum EmploymentType { FULL_TIME = 'full_time', PART_TIME = 'part_time', CONTRACTOR = 'contractor', INTERN = 'intern', FREELANCER = 'freelancer' }
+export enum PermissionScope { OWN = 'own', TEAM = 'team', ASSIGNED = 'assigned', ALL = 'all' }
+export enum FinanceEntryType { INCOME = 'income', EXPENSE = 'expense' }
 
 @Entity('users')
 export class User {
@@ -48,6 +53,118 @@ export class User {
   @Column({ name: 'is_active', default: true }) isActive!: boolean;
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
+/** Business identity is deliberately separate from a login account. */
+@Entity('employees')
+export class Employee {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index({ unique: true }) @Column({ name: 'employee_id', length: 24 }) employeeId!: string;
+  @Index({ unique: true }) @Column({ name: 'user_id', type: 'uuid', nullable: true }) userId!: string | null;
+  @OneToOne(() => User, { nullable: true, onDelete: 'SET NULL' }) @JoinColumn({ name: 'user_id' }) user!: User | null;
+  @Column({ name: 'first_name', length: 100, default: '' }) firstName!: string;
+  @Column({ name: 'last_name', length: 100, default: '' }) lastName!: string;
+  @Column({ name: 'middle_name', type: 'varchar', length: 100, nullable: true }) middleName!: string | null;
+  @Column({ name: 'display_name', type: 'varchar', length: 160, nullable: true }) displayName!: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) email!: string | null;
+  @Column({ type: 'varchar', length: 40, nullable: true }) phone!: string | null;
+  @Column({ name: 'avatar_url', type: 'varchar', nullable: true }) avatarUrl!: string | null;
+  @Column({ name: 'job_title', type: 'varchar', length: 160, nullable: true }) jobTitle!: string | null;
+  @Column({ type: 'varchar', length: 24, default: EmploymentStatus.INVITED }) status!: EmploymentStatus;
+  @Column({ name: 'employment_type', type: 'varchar', length: 24, default: EmploymentType.FULL_TIME }) employmentType!: EmploymentType;
+  @Column({ name: 'birth_date', type: 'date', nullable: true }) birthDate!: string | null;
+  @Column({ name: 'residential_address', type: 'varchar', nullable: true }) residentialAddress!: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) country!: string | null;
+  @Column({ type: 'varchar', length: 120, nullable: true }) region!: string | null;
+  @Column({ type: 'varchar', length: 120, nullable: true }) city!: string | null;
+  @Column({ name: 'emergency_contact_name', type: 'varchar', nullable: true }) emergencyContactName!: string | null;
+  @Column({ name: 'emergency_contact_phone', type: 'varchar', nullable: true }) emergencyContactPhone!: string | null;
+  @Column({ name: 'manager_employee_id', type: 'uuid', nullable: true }) managerEmployeeId!: string | null;
+  @Column({ name: 'start_date', type: 'date', nullable: true }) startDate!: string | null;
+  @Column({ name: 'end_date', type: 'date', nullable: true }) endDate!: string | null;
+  @Column({ type: 'text', nullable: true }) notes!: string | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
+@Entity('teams')
+export class Team {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index({ unique: true }) @Column({ name: 'team_id', length: 24 }) teamId!: string;
+  @Column({ length: 140 }) name!: string;
+  @Column({ type: 'text', nullable: true }) description!: string | null;
+  @Column({ name: 'icon_url', type: 'varchar', nullable: true }) iconUrl!: string | null;
+  @Column({ length: 20, default: '#465fff' }) color!: string;
+  @Column({ name: 'parent_id', type: 'uuid', nullable: true }) parentId!: string | null;
+  @Column({ name: 'leader_employee_id', type: 'uuid', nullable: true }) leaderEmployeeId!: string | null;
+  @Column({ name: 'created_by', type: 'uuid', nullable: true }) createdBy!: string | null;
+  @Column({ name: 'is_active', default: true }) isActive!: boolean;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
+@Entity('employee_teams') @Index(['employeeId', 'teamId'], { unique: true })
+export class EmployeeTeam {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'employee_id', type: 'uuid' }) employeeId!: string;
+  @Column({ name: 'team_id', type: 'uuid' }) teamId!: string;
+  @Column({ name: 'is_primary', default: false }) isPrimary!: boolean;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+}
+
+@Entity('admin_roles')
+export class AdminRole {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index({ unique: true }) @Column({ name: 'role_id', length: 24 }) roleId!: string;
+  @Index({ unique: true }) @Column({ length: 120 }) name!: string;
+  @Column({ type: 'text', nullable: true }) description!: string | null;
+  @Column({ length: 20, default: '#465fff' }) color!: string;
+  @Column({ name: 'is_system', default: false }) isSystem!: boolean;
+  @Column({ name: 'is_protected', default: false }) isProtected!: boolean;
+  @Column({ name: 'is_active', default: true }) isActive!: boolean;
+  @Column({ name: 'created_by', type: 'uuid', nullable: true }) createdBy!: string | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
+@Entity('permissions')
+export class Permission {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index({ unique: true }) @Column({ length: 120 }) key!: string;
+  @Column({ length: 80 }) module!: string;
+  @Column({ length: 160 }) label!: string;
+  @Column({ name: 'is_sensitive', default: false }) isSensitive!: boolean;
+  @Column({ name: 'default_scope', type: 'varchar', length: 16, default: PermissionScope.ALL }) defaultScope!: PermissionScope;
+}
+
+@Entity('role_permissions') @Index(['roleId', 'permissionId'], { unique: true })
+export class RolePermission {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'role_id', type: 'uuid' }) roleId!: string;
+  @Column({ name: 'permission_id', type: 'uuid' }) permissionId!: string;
+  @Column({ type: 'varchar', length: 16, default: PermissionScope.ALL }) scope!: PermissionScope;
+}
+
+@Entity('employee_roles') @Index(['employeeId', 'roleId'], { unique: true })
+export class EmployeeRole {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'employee_id', type: 'uuid' }) employeeId!: string;
+  @Column({ name: 'role_id', type: 'uuid' }) roleId!: string;
+  @Column({ name: 'assigned_by', type: 'uuid', nullable: true }) assignedBy!: string | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+}
+
+@Entity('employee_invitations')
+export class EmployeeInvitation {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index({ unique: true }) @Column({ name: 'token_hash', length: 255 }) tokenHash!: string;
+  @Column({ name: 'employee_id', type: 'uuid' }) employeeId!: string;
+  @Column({ type: 'varchar', length: 255 }) email!: string;
+  @Column({ name: 'expires_at', type: 'timestamptz' }) expiresAt!: Date;
+  @Column({ name: 'accepted_at', type: 'timestamptz', nullable: true }) acceptedAt!: Date | null;
+  @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true }) cancelledAt!: Date | null;
+  @Column({ name: 'created_by', type: 'uuid', nullable: true }) createdBy!: string | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
 }
 
 @Entity('categories')
@@ -410,6 +527,8 @@ export class OfflineDailyReport {
   @Column({ name: 'card_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) cardAmount!: string;
   @Column({ name: 'click_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) clickAmount!: string;
   @Column({ name: 'payme_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) paymeAmount!: string;
+  @Column({ name: 'transfer_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) transferAmount!: string;
+  @Column({ name: 'expense_amount', type: 'numeric', precision: 12, scale: 2, default: 0 }) expenseAmount!: string;
   @Column({ type: 'text', nullable: true }) note!: string | null;
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
@@ -436,6 +555,8 @@ export class ProductDiscount {
 export class Partner {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column({ length: 180 }) name!: string;
+  @Column({ name: 'logo_url', type: 'varchar', nullable: true }) logoUrl!: string | null;
+  @Column({ name: 'show_in_checkout_summary', type: 'boolean', default: false }) showInCheckoutSummary!: boolean;
   @Column({ type: 'enum', enum: PartnerType }) type!: PartnerType;
   @Column({ type: 'varchar', nullable: true, length: 255 }) email!: string | null;
   @Column({ type: 'varchar', nullable: true, length: 50 }) phone!: string | null;
@@ -470,8 +591,26 @@ export class PartnerComment {
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
 }
 
+/** Manual income and expenses. Order revenue and refunds remain immutable order-derived entries. */
+@Entity('finance_entries')
+export class FinanceEntry {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ type: 'varchar', length: 16 }) type!: FinanceEntryType;
+  @Column({ length: 180 }) title!: string;
+  @Column({ length: 80, default: 'Boshqa' }) category!: string;
+  @Column({ type: 'numeric', precision: 12, scale: 2 }) amount!: string;
+  @Column({ name: 'currency_code', length: 3, default: 'UZS' }) currencyCode!: string;
+  @Column({ name: 'occurred_at', type: 'timestamptz' }) occurredAt!: Date;
+  @Column({ type: 'text', nullable: true }) note!: string | null;
+  @Column({ name: 'receipt_url', type: 'varchar', nullable: true }) receiptUrl!: string | null;
+  @Column({ name: 'created_by', type: 'uuid', nullable: true }) createdBy!: string | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
 export const entities = [
   User, Category, CollectionEntity, Product, ProductVariant, Customer, AuthOtp, AuthSession,
   CustomerAddress, Order, OrderItem, Banner, Page, PageSection, BlogPost,
   LookbookEntry, MusicRecord, SiteSetting, AuditLog, InventoryTransfer, OfflineSale, OfflineSaleItem, OfflineSaleNote, OfflineDailyReport, ProductDiscount, Partner, PartnerPromoUsage, PartnerComment,
+  Employee, Team, EmployeeTeam, AdminRole, Permission, RolePermission, EmployeeRole, EmployeeInvitation, FinanceEntry,
 ];

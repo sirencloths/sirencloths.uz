@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { Product } from "@/lib/data";
 import { useFavorites } from "./FavoriteContext";
 import { useLanguage } from "./LanguageProvider";
-import { useEffect, useState } from "react";
 
 const apiOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
 
@@ -12,20 +11,6 @@ type Props = {
   product: Product;
   small?: boolean;
 };
-
-function DiscountTimer({ endsAt }: { endsAt: string }) {
-  const [remaining, setRemaining] = useState("");
-  useEffect(() => {
-    const update = () => {
-      const ms = new Date(endsAt).valueOf() - Date.now();
-      if (ms <= 0) { setRemaining(""); return; }
-      const total = Math.floor(ms / 1000); const days = Math.floor(total / 86400); const hours = Math.floor(total % 86400 / 3600); const minutes = Math.floor(total % 3600 / 60);
-      setRemaining(`${days}K ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`);
-    };
-    update(); const timer = window.setInterval(update, 30_000); return () => window.clearInterval(timer);
-  }, [endsAt]);
-  return remaining ? <small className="product-card-status product-card-timer">CHEGIRMA · {remaining}</small> : null;
-}
 
 export default function ProductCard({ product, small = false }: Props) {
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -83,10 +68,12 @@ export default function ProductCard({ product, small = false }: Props) {
       <Link href={detailHref} className="product-card-link">
         <h2>{product.title}</h2>
         <p>{product.color === "GRAY" ? t("gray") : product.color}</p>
-        <strong className={product.discountPercent ? "product-card-price--sale" : ""}>{product.price}</strong>
-        {product.oldPrice && <del className="product-card-old-price">{product.oldPrice}</del>}
-        {product.discountPercent && product.discountEndsAt && <DiscountTimer endsAt={product.discountEndsAt} />}
-        {product.available === false && <small className="product-card-status product-card-stock">НЕТ В НАЛИЧИИ</small>}
+        <div className={`product-card-pricing${product.discountPercent ? " is-sale" : ""}`}>
+          <strong className={product.discountPercent ? "product-card-price--sale" : ""}>{product.price}</strong>
+          {product.oldPrice && <del className="product-card-old-price">{product.oldPrice}</del>}
+          {product.discountPercent && <span className="product-card-discount">−{product.discountPercent}%</span>}
+        </div>
+        {product.available === false && <small className="product-card-status product-card-stock">SOLD OUT</small>}
       </Link>
     </article>
   );

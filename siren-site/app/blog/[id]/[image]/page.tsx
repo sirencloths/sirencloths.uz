@@ -24,6 +24,7 @@ export default function BlogImageViewerPage() {
   const { id, image } = useParams<{ id: string; image: string }>();
   const router = useRouter();
   const [post, setPost] = useState<ViewerPost | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const startX = useRef<number | null>(null);
 
   useEffect(() => {
@@ -40,28 +41,10 @@ export default function BlogImageViewerPage() {
 
   const activePost = post;
   const count = activePost.images.length;
-  const routeIndex = Math.min(Math.max(Number(image) || 0, 0), Math.max(count - 1, 0));
+  const initialIndex = Math.min(Math.max(Number(image) || 0, 0), Math.max(count - 1, 0));
+  const activeIndex = selectedIndex === null ? initialIndex : Math.min(selectedIndex, Math.max(count - 1, 0));
+  const change = (nextIndex: number) => { if (!count) return; setSelectedIndex((nextIndex + count) % count); };
+  const finishSwipe = (clientX: number) => { if (startX.current === null) return; const distance = clientX - startX.current; startX.current = null; if (Math.abs(distance) > 36) change(activeIndex + (distance < 0 ? 1 : -1)); };
 
-  const change = (nextIndex: number) => {
-    if (!count) return;
-    const resolved = (nextIndex + count) % count;
-    router.push(`/blog/${activePost.id}/${resolved}`, { scroll: false });
-  };
-  const finishSwipe = (clientX: number) => {
-    if (startX.current === null) return;
-    const distance = clientX - startX.current;
-    startX.current = null;
-    if (Math.abs(distance) > 36) change(routeIndex + (distance < 0 ? 1 : -1));
-  };
-
-  return <><main className="blog-viewer-page">
-    <header className="blog-viewer-toolbar"><button type="button" onClick={() => router.back()}>← BLOGGA QAYTISH</button><div><span>GALEREYA</span><b>{routeIndex + 1} / {count}</b></div></header>
-    <article className="blog-viewer-layout">
-      <div className="blog-viewer-frame" onPointerDown={(event) => { startX.current = event.clientX; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={(event) => finishSwipe(event.clientX)} onPointerCancel={() => { startX.current = null; }}>
-        <img key={activePost.images[routeIndex]} src={activePost.images[routeIndex]} alt={`${activePost.title} ${routeIndex + 1}`} />
-      </div>
-      <aside className="blog-viewer-copy"><time>{activePost.date}</time><h1>{activePost.title}</h1><p>{activePost.body}</p><div className="blog-viewer-thumbnails">{activePost.images.map((item, index) => <button type="button" key={`${item}-${index}`} className={routeIndex === index ? "is-active" : ""} onClick={() => change(index)}><img src={item} alt={`${index + 1}-rasm`} /></button>)}</div></aside>
-    </article>
-    {count > 1 && <nav className="blog-viewer-pagination" aria-label="Galereya navigatsiyasi"><button type="button" onClick={() => change(routeIndex - 1)}><ChevronLeft size={18} /> OLDINGI</button><span>{routeIndex + 1} / {count}</span><button type="button" onClick={() => change(routeIndex + 1)}>KEYINGI <ChevronRight size={18} /></button></nav>}
-  </main><Footer /></>;
+  return <><main className="blog-viewer-page"><header className="blog-viewer-toolbar"><button type="button" onClick={() => router.push("/blog")}>← BLOGGA QAYTISH</button><div><span>GALEREYA</span><b>{activeIndex + 1} / {count}</b></div></header><article className="blog-viewer-layout"><div className="blog-viewer-frame" onPointerDown={(event) => { startX.current = event.clientX; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={(event) => finishSwipe(event.clientX)} onPointerCancel={() => { startX.current = null; }}><img key={activePost.images[activeIndex]} src={activePost.images[activeIndex]} alt={`${activePost.title} ${activeIndex + 1}`} /></div><aside className="blog-viewer-copy"><time>{activePost.date}</time><h1>{activePost.title}</h1><p>{activePost.body}</p><div className="blog-viewer-thumbnails">{activePost.images.map((item, index) => <button type="button" key={`${item}-${index}`} className={activeIndex === index ? "is-active" : ""} onClick={() => change(index)}><img src={item} alt={`${index + 1}-rasm`} /></button>)}</div></aside></article>{count > 1 && <nav className="blog-viewer-pagination" aria-label="Galereya navigatsiyasi"><button type="button" onClick={() => change(activeIndex - 1)}><ChevronLeft size={18} /> OLDINGI</button><span>{activeIndex + 1} / {count}</span><button type="button" onClick={() => change(activeIndex + 1)}>KEYINGI <ChevronRight size={18} /></button></nav>}</main><Footer /></>;
 }

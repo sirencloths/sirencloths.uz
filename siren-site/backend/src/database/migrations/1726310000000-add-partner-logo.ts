@@ -1,0 +1,2 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+export class AddPartnerLogo1726310000000 implements MigrationInterface { async up(queryRunner: QueryRunner): Promise<void> { await queryRunner.query('ALTER TABLE partners ADD COLUMN IF NOT EXISTS logo_url varchar'); } async down(queryRunner: QueryRunner): Promise<void> { await queryRunner.query('ALTER TABLE partners DROP COLUMN IF EXISTS logo_url'); } }

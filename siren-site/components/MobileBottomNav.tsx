@@ -7,12 +7,12 @@ import { useLanguage } from "./LanguageProvider";
 import { useCart } from "./CartContext";
 
 const items = [
-  { href: "/", label: "Главная", icon: "/icons/home.svg" },
-  { href: "/shop", label: "Магазин", icon: "/icons/shop.svg" },
-  { href: "/cart", label: "Корзина", icon: "/icons/cart.svg" },
-  { href: "/favorites", label: "Избранное", icon: "/icons/heart.svg" },
-  { href: "/profile", label: "Профиль", icon: "/icons/user.svg" },
-];
+  { href: "/", label: "home", icon: "/icons/home.svg" },
+  { href: "/shop", label: "shop", icon: "/icons/shop.svg" },
+  { href: "/cart", label: "cart", icon: "/icons/cart.svg" },
+  { href: "/favorites", label: "favorites", icon: "/icons/heart.svg" },
+  { href: "/profile", label: "profile", icon: "/icons/user.svg" },
+] as const;
 
 function NavIcon({ icon, home }: { icon: string; home?: boolean }) {
   if (home) return <img className="mobile-home-icon" src="/icons/home.svg" alt="" />;
@@ -24,10 +24,10 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const { cartCount } = useCart();
 
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/social")) return null;
 
   return (
-    <nav className="mobile-bottom-nav" aria-label="Мобильная навигация">
+    <nav className="mobile-bottom-nav" aria-label={t("mobileNavigation")}>
       {items.map((item) => {
         const hasItems = item.href === "/cart" && cartCount > 0;
         const isActive = item.href === "/"
@@ -36,7 +36,7 @@ export default function MobileBottomNav() {
             ? pathname === "/cart" || pathname === "/checkout"
             : pathname === item.href;
         const className = `${isActive ? "is-active" : ""}${hasItems ? " has-items" : ""}`.trim();
-        const ariaLabel = t(item.label === "Главная" ? "home" : item.label === "Магазин" ? "shop" : item.label === "Корзина" ? "cart" : item.label === "Избранное" ? "favorites" : "profile");
+        const ariaLabel = t(item.label);
 
         if (item.href === "/cart") {
           return <Link key={item.label} href="/cart" aria-label={ariaLabel} aria-current={isActive ? "page" : undefined} className={`${className} mobile-bottom-nav-button`.trim()}>

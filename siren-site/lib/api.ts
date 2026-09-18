@@ -8,7 +8,7 @@ export type ApiProduct = {
   price: string;
   currencyCode: string;
   media: Array<{ url: string; alt?: string; position?: number }>;
-  variants: Array<{ id: string; sku: string; color?: string | null; size?: string | null; price?: string | null; originalPrice?: string; discountPercent?: number; discountEndsAt?: string; inventoryQuantity: number; isActive?: boolean; attributes?: Record<string, unknown> }>;
+  variants: Array<{ id: string; sku: string; color?: string | null; size?: string | null; price?: string | null; originalPrice?: string; discountPercent?: number; discountEndsAt?: string; discountScope?: "product" | "color" | "size"; inventoryQuantity: number; isActive?: boolean; attributes?: Record<string, unknown> }>;
   category?: { name: string } | null;
   metadata?: { article?: string; sizeGuideImageUrl?: string };
   gender?: "male" | "female" | "unisex";
@@ -72,6 +72,8 @@ export type StorefrontNavigationItem = {
   translationKey?: string;
   isActive?: boolean;
 };
+export type SocialLinkItem = { id: string; label: string; text?: string; url: string; iconUrl?: string; iconSize?: number; isActive?: boolean };
+export type StorefrontSocialLinks = { profile: { title?: string; subtitle?: string; handle?: string }; items: SocialLinkItem[] };
 export type ApiCustomSection = {
   id: string;
   name: string;
@@ -168,6 +170,11 @@ export async function getStorefrontNavigation(): Promise<StorefrontNavigationIte
   const response = await fetch(`${apiBaseUrl}/content/navigation`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Unable to load navigation');
   return response.json() as Promise<StorefrontNavigationItem[]>;
+}
+export async function getStorefrontSocialLinks(): Promise<StorefrontSocialLinks> {
+  const response = await fetch(`${apiBaseUrl}/content/social-links`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Unable to load social links');
+  return response.json() as Promise<StorefrontSocialLinks>;
 }
 
 export async function getStorefrontLookbook(): Promise<ApiLookbookEntry[]> {

@@ -24,7 +24,7 @@ export default function ProductInfoAccordion({ description, article }: { descrip
 
         {descriptionOpen && (
           <div className="product-info-content">
-            <p>{description || t("classicTee")}</p>{article && <p className="product-detail-article">ARTIKUL: {article}</p>}
+            <p>{description || t("classicTee")}</p>{article && <p className="product-detail-article">SKU: {article}</p>}
           </div>
         )}
       </section>

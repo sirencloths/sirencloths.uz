@@ -1140,3 +1140,33 @@ pre[class*="language-"].line-numbers {
     min-width: 580px;
   }
 }
+
+/* The admin notification drawer intentionally contains order activity only. */
+.admin-notification-tabs button:first-child {
+  display: none;
+}
+.admin-notification-tabs {
+  grid-template-columns: 1fr;
+}
+
+/* Category index: breathing room below the heading and a clearer scan rhythm. */
+.siren-tailadmin-root .category-manager--list .ui-card-content{padding:18px 20px 20px;background:linear-gradient(180deg,#fafbff 0%,#fff 100%)}
+.siren-tailadmin-root .category-manager--list .category-row-list{gap:11px}
+.siren-tailadmin-root .category-manager--list .category-row-list article{min-height:72px;padding:15px 16px 15px 18px;border-color:#e7eaf1;box-shadow:0 1px 1px rgba(16,24,40,.02)}
+.siren-tailadmin-root .category-manager--list .category-row-list article>div:first-child{position:relative;padding-left:12px}
+.siren-tailadmin-root .category-manager--list .category-row-list article>div:first-child:before{position:absolute;top:3px;bottom:3px;left:0;width:3px;border-radius:999px;background:#d0d5dd;content:"";transition:background .16s,transform .16s}
+.siren-tailadmin-root .category-manager--list .category-row-list article:hover>div:first-child:before{background:#465fff;transform:scaleY(1.1)}
+.siren-tailadmin-root .category-manager--list .category-row-list article b{letter-spacing:-.01em}
+.siren-tailadmin-root .category-manager--list .category-row-list article span{display:inline-flex;align-items:center;gap:5px}
+.siren-tailadmin-root .category-manager--list .category-row-list article span:before{width:5px;height:5px;border-radius:50%;background:#12b76a;content:""}
+.siren-tailadmin-root .category-manager--list .category-row-actions .ui-button{min-height:34px;border-radius:8px;padding-inline:12px;font-size:12px}
+@media(max-width:700px){.siren-tailadmin-root .category-manager--list .ui-card-content{padding:14px}.siren-tailadmin-root .category-manager--list .category-row-list article{min-height:0}}
+
+.siren-tailadmin-root .inventory-bulk-bar .inventory-actions{display:flex;align-items:center;gap:8px}
+.siren-tailadmin-root .inventory-bulk-bar .inventory-actions .ui-button{min-width:142px;justify-content:center}
+.siren-tailadmin-root .inventory-export-menu{position:relative}
+.siren-tailadmin-root .inventory-export-menu summary{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid #d0d5dd;border-radius:8px;padding:0 16px;color:#344054;font-size:14px;font-weight:500;cursor:pointer;list-style:none}
+.siren-tailadmin-root .inventory-export-menu summary::-webkit-details-marker{display:none}
+.siren-tailadmin-root .inventory-export-menu>div{position:absolute;top:calc(100% + 8px);right:0;z-index:40;display:grid;gap:5px;min-width:148px;padding:7px;border:1px solid #e4e7ec;border-radius:10px;background:#fff;box-shadow:0 14px 28px rgba(16,24,40,.14)}
+.siren-tailadmin-root .inventory-export-menu button{border:0;border-radius:7px;background:transparent;padding:9px 10px;color:#344054;text-align:left;font:600 13px Arial,sans-serif;cursor:pointer}.siren-tailadmin-root .inventory-export-menu button:hover{background:#f2f4f7;color:#465fff}
+@media(max-width:640px){.siren-tailadmin-root .inventory-bulk-bar{align-items:stretch;flex-direction:column}.siren-tailadmin-root .inventory-bulk-bar .inventory-actions{width:100%}.siren-tailadmin-root .inventory-bulk-bar .inventory-actions .ui-button{flex:1;min-width:0}.siren-tailadmin-root .inventory-export-menu{flex:1}.siren-tailadmin-root .inventory-export-menu summary{justify-content:center}}

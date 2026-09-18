@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
-import { heroProducts, type Product } from "@/lib/data";
+import Recommendation from "@/components/Recommendation";
+import type { Product } from "@/lib/data";
 import { useFavorites } from "@/components/FavoriteContext";
 import { useLanguage } from "@/components/LanguageProvider";
 
@@ -42,22 +43,20 @@ function FavoriteCard({ product }: { product: Product }) {
 
 export default function FavoritesPage() {
   const { favorites } = useFavorites();
-  const { t, locale } = useLanguage();
-  const title = locale === "ru" ? "ИЗБРАННЫЕ" : t("favorites");
+  const { t } = useLanguage();
 
   return (
     <>
       <main className="favorites-page">
         <section className="favorites-list">
-          <h1>{title} <span>({favorites.length})</span></h1>
+          <h1>{t("favoritesTitle")} <span>({favorites.length})</span></h1>
           {favorites.length ? (
             <div className="favorites-grid">{favorites.map((product) => <FavoriteCard key={`${product.id}:${product.colorSlug || product.color}`} product={product} />)}</div>
-          ) : <p className="favorites-empty">{locale === "ru" ? "В избранном пока нет товаров" : t("notFound")}</p>}
+          ) : <p className="favorites-empty">{t("favoritesEmpty")}</p>}
         </section>
 
         <section className="favorites-recommendations">
-          <h2>{locale === "ru" ? "РЕКОМЕНДУЕМ" : t("collections")}</h2>
-          <div className="favorites-grid">{heroProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div>
+          <Recommendation />
         </section>
       </main>
       <Footer />

@@ -3,6 +3,10 @@ import BlogGallery from "@/components/BlogGallery";
 import { blogArticles } from "@/lib/data";
 import { getStorefrontPosts, type ApiBlogPost } from "@/lib/api";
 import Link from "next/link";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({ title: "Journal", description: "Stories, culture and new streetwear drops from SIREN in Tashkent.", path: "/blog" });
 
 const asset = (url?: string | null) => !url ? "/images/banner.jpg" : url.startsWith("http") ? url : `${(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "")}${url}`;
 const date = (value?: string | null) => value ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value)) : "";

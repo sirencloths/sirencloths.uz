@@ -62,7 +62,8 @@ export class CommerceService {
         prepared.push({ variant, product, quantity: cartItem.quantity, unitPrice });
       }
       const welcomeExpiresAt = customer.welcomeDiscountExpiresAt ?? new Date(customer.createdAt.getTime() + 24 * 60 * 60 * 1000);
-      const welcomeActive = customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt && welcomeExpiresAt > new Date();
+      const priorOrderCount = await orderRepo.count({ where: { customerId: customer.id } });
+      const welcomeActive = customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt && priorOrderCount === 0 && welcomeExpiresAt > new Date();
       if (!welcomeActive && customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt) customer.welcomeDiscountEligible = false;
       const productDiscountActive = await this.hasActiveProductDiscount(manager.getRepository(ProductDiscount), prepared.map((row) => row.variant));
       let discount = welcomeActive ? Math.round(subtotal * (customer.welcomeDiscountPercent || 15) / 100) : 0;
@@ -137,7 +138,13 @@ export class CommerceService {
     const customers = await this.customers.find({ order: { createdAt: 'DESC' } });
     return Promise.all(customers.map(async (customer) => {
       const totals = await this.orders.createQueryBuilder('order').select('COUNT(*)', 'orders').addSelect('COALESCE(SUM(order.total_amount), 0)', 'spent').where('order.customer_id = :id', { id: customer.id }).getRawOne<{ orders: string; spent: string }>();
-      return { ...customer, totalOrders: Number(totals?.orders ?? 0), totalSpent: Number(totals?.spent ?? 0) };
+      const totalOrders = Number(totals?.orders ?? 0);
+      const welcomeDiscountEligible = customer.welcomeDiscountEligible && totalOrders === 0;
+      if (customer.welcomeDiscountEligible !== welcomeDiscountEligible) {
+        customer.welcomeDiscountEligible = false;
+        await this.customers.save(customer);
+      }
+      return { ...customer, welcomeDiscountEligible, totalOrders, totalSpent: Number(totals?.spent ?? 0) };
     }));
   }
   async customerDetails(id: string) {

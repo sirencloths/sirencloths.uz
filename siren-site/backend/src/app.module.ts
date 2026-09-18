@@ -12,6 +12,8 @@ import { CmsModule } from './cms/cms.module';
 import { AdminModule } from './admin/admin.module';
 import { PartnersModule } from './partners/partners.module';
 import { OfflineModule } from './offline/offline.module';
+import { TeamRbacModule } from './team/team-rbac.module';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { OfflineModule } from './offline/offline.module';
     AdminModule,
     PartnersModule,
     OfflineModule,
+    TeamRbacModule,
+    FinanceModule,
   ],
 })
 export class AppModule {}

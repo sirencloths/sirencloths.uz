@@ -24,6 +24,7 @@ export class CmsController {
   @Get('header-message') headerMessage() { return this.cms.headerMessageForStorefront(); }
   @Get('records') records() { return this.cms.recordsForStorefront(); }
   @Get('notifications') notifications() { return this.cms.notificationsForStorefront(); }
+  @Get('social-links') socialLinks() { return this.cms.socialLinksForStorefront(); }
   @Post('notifications/:id/click') notificationClick(@Param('id') id: string, @Body() body: NotificationClickDto) { return this.cms.recordNotificationClick(id, body.visitorId); }
   @Get('pages/:slug') page(@Param('slug') slug: string) { return this.cms.pageForStorefront(slug); }
 }
@@ -83,6 +84,16 @@ export class AdminCmsController {
     const filename = `${randomUUID()}${extension}`;
     await writeFile(join(directory, filename), file.buffer);
     return { url: `/uploads/records/${filename}` };
+  }
+  @Post('social/upload-icon')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 1024 * 1024 }, fileFilter: (_request, file, callback) => callback(null, file.mimetype === 'image/svg+xml') }))
+  async uploadSocialIcon(@UploadedFile() file?: { originalname: string; mimetype: string; buffer: Buffer }) {
+    if (!file || extname(file.originalname).toLowerCase() !== '.svg') throw new BadRequestException('Faqat SVG ikonka yuklang');
+    const source = file.buffer.toString('utf8');
+    if (!source.includes('<svg') || /<script|onload\s*=|onerror\s*=/i.test(source)) throw new BadRequestException('SVG xavfsizlik talablari bo‘yicha qabul qilinmadi');
+    const directory = join(process.cwd(), 'uploads', 'social-icons'); await mkdir(directory, { recursive: true });
+    const filename = `${randomUUID()}.svg`; await writeFile(join(directory, filename), file.buffer);
+    return { url: `/uploads/social-icons/${filename}` };
   }
   @Get('pages') pages() { return this.cms.adminPages(); }
   @Post('pages') createPage(@Body() body: CmsDto) { return this.cms.createPage(body); }

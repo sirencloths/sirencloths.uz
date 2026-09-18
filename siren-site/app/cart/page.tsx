@@ -97,6 +97,9 @@ export default function CartPage() {
   const total = subtotal - discount + delivery;
   const deliveryProgress = Math.min(100, Math.round((subtotal / FREE_DELIVERY_THRESHOLD) * 100));
   const deliveryRemaining = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
+  const freeDeliveryLabel = deliveryRemaining
+    ? `${t("freeDeliveryRemaining")} ${uzs(deliveryRemaining, locale)}`
+    : t("freeDeliveryReached");
 
   const applyPromo = () => {
     if (promo.trim().toUpperCase() === "ALEX10") {
@@ -127,8 +130,8 @@ export default function CartPage() {
 
         <div className="cart-mobile-heading">
           <h1>{t("cart")}</h1>
-          <div className="mobile-cart-shipping" aria-label="Bepul yetkazib berish indikatori">
-            <b>{deliveryRemaining ? `ДО БЕСПЛАТНОЙ ${uzs(deliveryRemaining, locale)}` : "БЕСПЛАТНАЯ ДОСТАВКА"}</b>
+          <div className="mobile-cart-shipping" aria-label={t("freeDelivery")}>
+            <b>{freeDeliveryLabel}</b>
             <span><i style={{ width: `${deliveryProgress}%` }} /></span>
           </div>
         </div>
@@ -140,6 +143,10 @@ export default function CartPage() {
           <span className="cart-count">
             ({cart.length})
           </span>
+          <div className="cart-desktop-shipping" aria-label={t("freeDelivery")}>
+            <b>{freeDeliveryLabel}</b>
+            <i><em style={{ width: `${deliveryProgress}%` }} /></i>
+          </div>
         </div>
 
         {/* PRODUCTS */}
@@ -228,7 +235,7 @@ export default function CartPage() {
                     {isSelected && (
                       <Image
                         src="/icons/check.svg"
-                        alt="Выбрано"
+                        alt={t("selected")}
                         width={24}
                         height={24}
                       />
@@ -239,7 +246,7 @@ export default function CartPage() {
                     type="button"
                     className="cart-product-remove"
                     onClick={() => removeFromCart(item.id, item.color, item.size)}
-                    aria-label={`${item.title}ni korzinadan olib tashlash`}
+                    aria-label={`${t("remove")}: ${item.title}`}
                   >
                     ⌫
                   </button>
@@ -279,7 +286,7 @@ export default function CartPage() {
             );
           })}
 
-          {!cart.length && <p className="mobile-cart-empty">КОРЗИНА ПУСТА</p>}
+          {!cart.length && <p className="mobile-cart-empty">{t("cartEmpty")}</p>}
 
         </div>
 
@@ -303,14 +310,14 @@ export default function CartPage() {
                   readOnly={discountApplied}
                   onChange={(event) => updatePromo(event.target.value)}
                 />
-                {discountApplied && <span aria-label="Promokod qabul qilindi">✓</span>}
+                {discountApplied && <span aria-label={t("promoAccepted")}>✓</span>}
               </div>
 
               <button
                 type="button"
                 onClick={discountApplied ? removePromo : applyPromo}
               >
-                {discountApplied ? "OLIB TASHLASH" : t("apply")}
+                {discountApplied ? t("removePromo") : t("apply")}
               </button>
 
             </div>
@@ -338,7 +345,7 @@ export default function CartPage() {
 
             {discountApplied && (
               <div className="cart-summary-row cart-summary-row--promo">
-                <span>КОД ALEX10 · 10%</span>
+                <span>{t("promoCode")} ALEX10 · 10%</span>
                 <span className="cart-discount">−{discount.toLocaleString(locale)} СУМ</span>
               </div>
             )}
@@ -391,13 +398,13 @@ export default function CartPage() {
         <div className="mobile-cart-summary-promo">
           <div className={`cart-promo-input${discountApplied ? " is-applied" : ""}`}>
             <input type="text" placeholder={t("enterCode")} value={promo} readOnly={discountApplied} onChange={(event) => updatePromo(event.target.value)} />
-            {discountApplied && <span aria-label="Promokod qabul qilindi">✓</span>}
+            {discountApplied && <span aria-label={t("promoAccepted")}>✓</span>}
           </div>
-          <button type="button" onClick={discountApplied ? removePromo : applyPromo}>{discountApplied ? "OLIB TASHLASH" : t("apply")}</button>
+          <button type="button" onClick={discountApplied ? removePromo : applyPromo}>{discountApplied ? t("removePromo") : t("apply")}</button>
         </div>
         <div className="mobile-cart-summary-details">
           <div><span>{t("subtotal")} ({selectedItems.length})</span><b>{uzs(subtotal, locale)}</b></div>
-          {discountApplied && <div><span>КОД ALEX10</span><b className="cart-discount">−{uzs(discount, locale)}</b></div>}
+          {discountApplied && <div><span>{t("promoCode")} ALEX10</span><b className="cart-discount">−{uzs(discount, locale)}</b></div>}
         </div>
 
         <div className="mobile-cart-summary-total">
