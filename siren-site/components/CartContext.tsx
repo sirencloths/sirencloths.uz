@@ -8,16 +8,20 @@ import {
   ReactNode,
 } from "react";
 import { cartSubtotal } from "@/lib/commerce";
+import { trackProductEngagement } from "@/lib/product-engagement";
 import { useOverlayHistory } from "./OverlayHistoryProvider";
 
 export type CartItem = {
   id: string;
+  productId?: string;
   title: string;
   price: string;
   image: string;
   color: string;
   size: string;
   isSale?: boolean;
+  /** Online ombordagi shu SKU/rang/razmer uchun oxirgi ma'lum qoldiq. */
+  inventoryQuantity?: number;
   quantity: number;
 };
 
@@ -27,8 +31,8 @@ type CartContextType = {
   cart: CartItem[];
   addToCart: (item: AddToCartItem) => void;
   removeFromCart: (id: string, color?: string, size?: string) => void;
-  increaseQuantity: (id: string) => void;
-  decreaseQuantity: (id: string) => void;
+  increaseQuantity: (id: string, color?: string, size?: string) => void;
+  decreaseQuantity: (id: string, color?: string, size?: string) => void;
   clearCart: () => void;
   cartCount: number;
   subtotal: number;
@@ -78,7 +82,27 @@ export function CartProvider({
     );
   }, [cart, loaded]);
 
+  // A persisted cart may outlive an inventory change. Refresh each variant's
+  // online quantity from the storefront catalogue and clamp stale quantities.
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+    const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+    void fetch(`${api}/catalog/products`).then((response) => response.ok ? response.json() : []).then((products: Array<{ variants?: Array<{ id: string; inventoryQuantity: number; isActive?: boolean }> }>) => {
+      if (cancelled || !Array.isArray(products)) return;
+      const quantities = new Map(products.flatMap((product) => (product.variants ?? []).map((variant) => [variant.id, variant.isActive === false ? 0 : Math.max(0, Number(variant.inventoryQuantity) || 0)] as const)));
+      setCart((current) => current.flatMap((item) => {
+        const inventoryQuantity = quantities.get(item.id);
+        if (inventoryQuantity === undefined) return [item];
+        const quantity = Math.min(item.quantity, inventoryQuantity);
+        return quantity > 0 ? [{ ...item, inventoryQuantity, quantity }] : [];
+      }));
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [loaded]);
+
   const addToCart = (item: AddToCartItem) => {
+    trackProductEngagement(item.productId, "cart");
     setCart((prev) => {
       // Bir xil product + rang + razmer bo'lsa,
       // faqat quantity oshadi.
@@ -90,6 +114,8 @@ export function CartProvider({
       );
 
       if (existing) {
+        const limit = Math.max(0, Number(item.inventoryQuantity ?? existing.inventoryQuantity ?? Infinity));
+        if (existing.quantity >= limit) return prev;
         return prev.map((p) =>
           p.id === item.id &&
           p.color === item.color &&
@@ -105,6 +131,7 @@ export function CartProvider({
 
       // Boshqa rang yoki razmer bo'lsa,
       // Cart'da alohida item bo'ladi.
+      if (Number(item.inventoryQuantity ?? Infinity) < 1) return prev;
       return [
         ...prev,
         {
@@ -121,24 +148,24 @@ export function CartProvider({
     );
   };
 
-  const increaseQuantity = (id: string) => {
+  const increaseQuantity = (id: string, color?: string, size?: string) => {
     setCart((prev) =>
       prev.map((item) =>
-        item.id === id
+        item.id === id && (color === undefined || (item.color === color && item.size === size))
           ? {
               ...item,
-              quantity: item.quantity + 1,
+              quantity: Math.min(item.quantity + 1, Math.max(0, Number(item.inventoryQuantity ?? Infinity))),
             }
           : item
       )
     );
   };
 
-  const decreaseQuantity = (id: string) => {
+  const decreaseQuantity = (id: string, color?: string, size?: string) => {
     setCart((prev) =>
       prev
         .map((item) =>
-          item.id === id
+          item.id === id && (color === undefined || (item.color === color && item.size === size))
             ? {
                 ...item,
                 quantity: item.quantity - 1,

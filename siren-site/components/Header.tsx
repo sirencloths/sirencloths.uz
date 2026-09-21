@@ -21,7 +21,7 @@ const navIcons: Array<{ href: "/shop" | "/search" | "/favorites" | "/cart" | "/p
   { href: "/shop", label: "shop", icon: "/icons/shop.svg", catalog: true },
   { href: "/search", label: "search", icon: "/icons/search.svg", overlay: "search" },
   { href: "/favorites", label: "favorites", icon: "/icons/heart.svg" },
-  { href: "/cart", label: "cart", icon: "/icons/cart.svg", overlay: "cart" },
+  { href: "/cart", label: "cart", icon: "/icons/cart.svg" },
   { href: "/profile", label: "profile", icon: "/icons/user.svg" },
 ];
 
@@ -119,7 +119,7 @@ export default function Header() {
             const isShopIcon = item.href === "/shop";
             const isProfileIcon = item.href === "/profile";
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-            const isOverlayAction = Boolean(item.overlay);
+            const isOverlayAction = Boolean(item.overlay) || (isCartIcon && isDesktop);
             // An open overlay gets the single close affordance.  The current
             // page icon must stay normal while search/cart is open; otherwise
             // two close marks appear in the desktop header.
@@ -144,7 +144,7 @@ export default function Header() {
                   else if (isIconActive && isCartIcon && isCartOpen) closeCart();
                   else if (isIconActive) returnHome();
                   else if (isSearchIcon) toggleSearch();
-                  else if (isCartIcon && !isDesktop) router.push("/cart");
+                  else if (isCartIcon) openCart();
                   else openCart();
                 }}
               >

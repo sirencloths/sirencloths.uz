@@ -8,7 +8,7 @@ import ProductCard from "./ProductCard";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export default function Recommendation({ products: suppliedProducts }: { products?: Product[] }) {
+export default function Recommendation({ products: suppliedProducts, favoriteCards = false }: { products?: Product[]; favoriteCards?: boolean }) {
   const { t, locale } = useLanguage();
   const [catalogueProducts, setCatalogueProducts] = useState<Product[]>([]);
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function Recommendation({ products: suppliedProducts }: { product
 
       <div className="recommendation-grid">
         {products.map((product, index) => (
-          <ProductCard key={`${product.id}-${index}`} product={product} />
+          <ProductCard key={`${product.id}-${index}`} product={product} favoriteCard={favoriteCards} />
         ))}
       </div>
     </section>

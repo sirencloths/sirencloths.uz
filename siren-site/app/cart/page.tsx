@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Footer from "@/components/Footer";
-import { useCart } from "@/components/CartContext";
+import { useCart, type CartItem } from "@/components/CartContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -34,6 +34,7 @@ export default function CartPage() {
 
   const [promo, setPromo] = useState("");
   const [discountApplied, setDiscountApplied] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState<CartItem | null>(null);
 
   // Tanlangan mahsulotlar
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -245,7 +246,7 @@ export default function CartPage() {
                   <button
                     type="button"
                     className="cart-product-remove"
-                    onClick={() => removeFromCart(item.id, item.color, item.size)}
+                    onClick={() => setItemToRemove(item)}
                     aria-label={`${t("remove")}: ${item.title}`}
                   >
                     ⌫
@@ -256,9 +257,10 @@ export default function CartPage() {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        decreaseQuantity(item.id)
-                      }
+                      onClick={() => {
+                        if (item.quantity === 1) setItemToRemove(item);
+                        else decreaseQuantity(item.id, item.color, item.size);
+                      }}
                       aria-label={t("decrease")}
                     >
                       −
@@ -270,10 +272,9 @@ export default function CartPage() {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        increaseQuantity(item.id)
-                      }
+                      onClick={() => router.push(`/products/${item.productId || item.id}?color=${encodeURIComponent(item.color)}&size=${encodeURIComponent(item.size)}`)}
                       aria-label={t("increase")}
+                      title="Variantni tanlab, korzinaga qo‘shish"
                     >
                       +
                     </button>
@@ -395,13 +396,6 @@ export default function CartPage() {
       </main>
 
       <aside className="mobile-cart-summary">
-        <div className="mobile-cart-summary-promo">
-          <div className={`cart-promo-input${discountApplied ? " is-applied" : ""}`}>
-            <input type="text" placeholder={t("enterCode")} value={promo} readOnly={discountApplied} onChange={(event) => updatePromo(event.target.value)} />
-            {discountApplied && <span aria-label={t("promoAccepted")}>✓</span>}
-          </div>
-          <button type="button" onClick={discountApplied ? removePromo : applyPromo}>{discountApplied ? t("removePromo") : t("apply")}</button>
-        </div>
         <div className="mobile-cart-summary-details">
           <div><span>{t("subtotal")} ({selectedItems.length})</span><b>{uzs(subtotal, locale)}</b></div>
           {discountApplied && <div><span>{t("promoCode")} ALEX10</span><b className="cart-discount">−{uzs(discount, locale)}</b></div>}
@@ -416,6 +410,8 @@ export default function CartPage() {
           {t("checkout")}
         </button>}
       </aside>
+
+      {itemToRemove && <div className="cart-remove-backdrop" role="presentation" onMouseDown={() => setItemToRemove(null)}><section className="cart-remove-confirm" role="dialog" aria-modal="true" aria-labelledby="cart-remove-title" onMouseDown={(event) => event.stopPropagation()}><p>SAVATCHA</p><h2 id="cart-remove-title">Mahsulotni olib tashlaysizmi?</h2><span>{itemToRemove.title}{itemToRemove.color ? ` · ${itemToRemove.color}` : ""}</span><div><button type="button" onClick={() => setItemToRemove(null)}>Bekor qilish</button><button type="button" onClick={() => { removeFromCart(itemToRemove.id, itemToRemove.color, itemToRemove.size); setItemToRemove(null); }}>Olib tashlash</button></div></section></div>}
 
       <div className="cart-page-footer"><Footer /></div>
     </>

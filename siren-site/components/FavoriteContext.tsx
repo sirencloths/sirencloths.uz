@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Product } from "@/lib/data";
 import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
+import { trackProductEngagement } from "@/lib/product-engagement";
 
 type FavoriteContextValue = {
   favorites: Product[];
@@ -54,13 +55,14 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
   }, [loaded]);
 
   const toggleFavorite = (product: Product) => {
-    setFavorites((current) => current.some((item) => favoriteKey(item) === favoriteKey(product))
-      ? current.filter((item) => favoriteKey(item) !== favoriteKey(product))
-      : [...current, product]);
+    const active = !favorites.some((item) => favoriteKey(item) === favoriteKey(product));
+    setFavorites((current) => active ? [...current, product] : current.filter((item) => favoriteKey(item) !== favoriteKey(product)));
+    trackProductEngagement(product.productId ?? product.id, "favorite", active);
   };
 
   const removeFavorite = (product: Product) => {
     setFavorites((current) => current.filter((item) => favoriteKey(item) !== favoriteKey(product)));
+    trackProductEngagement(product.productId ?? product.id, "favorite", false);
   };
 
   return (

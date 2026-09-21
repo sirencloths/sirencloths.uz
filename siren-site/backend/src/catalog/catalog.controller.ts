@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID, Matches, Max, Min, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Matches, Max, Min, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { CurrentUser } from '../auth/jwt.strategy';
 import { Roles, RolesGuard } from '../auth/roles.guard';
@@ -31,6 +31,7 @@ class VariantDto {
   @IsOptional() @IsString() size?: string | null;
   @IsOptional() @IsString() price?: string | null;
   @IsOptional() @IsInt() @Min(0) inventoryQuantity?: number;
+  @IsOptional() @IsInt() @Min(0) totalInventoryAdded?: number;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsObject() attributes?: Record<string, unknown>;
 }
@@ -68,6 +69,11 @@ class ListingQueryDto {
   @IsOptional() @IsString() maxPrice?: string;
   @IsOptional() @IsString() sort?: string;
 }
+class EngagementDto {
+  @IsIn(['favorite', 'cart']) kind!: 'favorite' | 'cart';
+  @IsString() @MinLength(8) visitorId!: string;
+  @IsOptional() @IsBoolean() active?: boolean;
+}
 
 @Controller('catalog')
 export class CatalogController {
@@ -75,6 +81,7 @@ export class CatalogController {
   @Get('products') products() { return this.catalog.publicProducts(); }
   @Get('products/listing') listing(@Query() query: ListingQueryDto) { return this.catalog.publicListing(query); }
   @Get('products/random') randomProducts(@Query('limit') limit?: string) { return this.catalog.publicRandomProducts(Number(limit)); }
+  @Post('products/:id/engagement') engagement(@Param('id') id: string, @Body() body: EngagementDto) { return this.catalog.trackEngagement(id, body.kind, body.visitorId, body.active ?? true); }
   @Get('products/:slug') product(@Param('slug') slug: string) { return this.catalog.publicProduct(slug); }
   @Get('categories') categories() { return this.catalog.publicCategories(); }
   @Get('collections') collections() { return this.catalog.publicCollections(); }

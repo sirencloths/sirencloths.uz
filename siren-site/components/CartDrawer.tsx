@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
-import { useCart } from "./CartContext";
+import { CartItem, useCart } from "./CartContext";
 import { useLanguage } from "./LanguageProvider";
 import { cartItemPrice, FREE_DELIVERY_THRESHOLD, shippingCost } from "@/lib/commerce";
 import { useModalLock } from "./useModalLock";
@@ -20,6 +20,9 @@ export default function CartDrawer() {
   const { cart, cartCount, subtotal, isCartOpen, closeCart, removeFromCart, increaseQuantity, decreaseQuantity } = useCart();
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
+  // Desktop drawer keeps the existing layout; confirmation is rendered as a
+  // separate layer so the product rows never shift or change their design.
+  const [itemToRemove, setItemToRemove] = useState<CartItem | null>(null);
   const delivery = shippingCost(subtotal, cartCount);
   const total = Math.max(0, subtotal + delivery);
   const deliveryProgress = Math.min(100, Math.round((subtotal / FREE_DELIVERY_THRESHOLD) * 100));
@@ -80,8 +83,8 @@ export default function CartDrawer() {
       <div className="cart-drawer-items">
         {cart.length ? cart.map((item) => <article className="cart-drawer-item" key={`${item.id}-${item.color}-${item.size}`}>
           <img src={cartImageUrl(item.image)} alt={item.title} />
-          <div><strong>{item.title}</strong><small>{item.color} · {item.size}</small><b>{money(cartItemPrice(item.price) * item.quantity, locale)}</b><div className="cart-drawer-stepper"><button type="button" onClick={() => decreaseQuantity(item.id)} aria-label="Уменьшить">−</button><span>{item.quantity}</span><button type="button" onClick={() => increaseQuantity(item.id)} aria-label="Увеличить">+</button></div></div>
-          <button type="button" className="cart-drawer-remove" onClick={() => removeFromCart(item.id, item.color, item.size)} aria-label={t("remove")}>⌫</button>
+          <div><strong>{item.title}</strong><small>{item.color} · {item.size}</small><b>{money(cartItemPrice(item.price) * item.quantity, locale)}</b><div className="cart-drawer-stepper"><button type="button" onClick={() => item.quantity === 1 ? setItemToRemove(item) : decreaseQuantity(item.id, item.color, item.size)} aria-label="Уменьшить">−</button><span>{item.quantity}</span><button type="button" onClick={() => increaseQuantity(item.id, item.color, item.size)} aria-label="Увеличить" disabled={item.inventoryQuantity !== undefined && item.quantity >= item.inventoryQuantity}>+</button></div></div>
+          <button type="button" className="cart-drawer-remove" onClick={() => setItemToRemove(item)} aria-label={t("remove")}>⌫</button>
         </article>) : <p className="cart-drawer-empty">{t("cartEmpty")}</p>}
       </div>
       <footer className="cart-drawer-foot">
@@ -91,5 +94,6 @@ export default function CartDrawer() {
         <button type="button" className="cart-drawer-checkout" disabled={!cart.length} onClick={checkout}>{t("checkout")} →</button>
       </footer>
     </aside>
+    {itemToRemove && <div className="cart-remove-backdrop" role="presentation" onMouseDown={(event) => { event.stopPropagation(); setItemToRemove(null); }}><section className="cart-remove-confirm" role="dialog" aria-modal="true" aria-labelledby="drawer-remove-title" onMouseDown={(event) => event.stopPropagation()}><p>SAVATCHA</p><h2 id="drawer-remove-title">Mahsulotni olib tashlaysizmi?</h2><span>{itemToRemove.title}{itemToRemove.color ? ` · ${itemToRemove.color}` : ""}{itemToRemove.size ? ` · ${itemToRemove.size}` : ""}</span><div><button type="button" onClick={() => setItemToRemove(null)}>Bekor qilish</button><button type="button" onClick={() => { removeFromCart(itemToRemove.id, itemToRemove.color, itemToRemove.size); setItemToRemove(null); }}>Olib tashlash</button></div></section></div>}
   </div>;
 }

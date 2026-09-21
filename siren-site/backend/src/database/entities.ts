@@ -243,6 +243,20 @@ export class ProductVariant {
   @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
 }
 
+/** One browser/customer's product-intent state, used by the admin inspector. */
+@Entity('product_engagements')
+@Index(['productId', 'kind', 'visitorId'], { unique: true })
+export class ProductEngagement {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column({ name: 'product_id', type: 'uuid' }) productId!: string;
+  @Column({ type: 'varchar', length: 20 }) kind!: 'favorite' | 'cart';
+  @Column({ name: 'visitor_id', type: 'varchar', length: 80 }) visitorId!: string;
+  // Favorite is a live state; cart means that the visitor added it at least once.
+  @Column({ default: true }) active!: boolean;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
 @Entity('customers')
 export class Customer {
   @PrimaryGeneratedColumn('uuid') id!: string;
@@ -608,9 +622,24 @@ export class FinanceEntry {
   @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
 }
 
+@Entity('pickup_locations')
+export class PickupLocation {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ length: 140 }) name!: string;
+  @Column({ type: 'text' }) address!: string;
+  @Column({ length: 100, default: 'Tashkent' }) city!: string;
+  @Column({ type: 'numeric', precision: 10, scale: 7 }) latitude!: string;
+  @Column({ type: 'numeric', precision: 10, scale: 7 }) longitude!: string;
+  @Column({ type: 'text', nullable: true }) instructions!: string | null;
+  @Column({ name: 'working_hours', type: 'text', nullable: true }) workingHours!: string | null;
+  @Column({ name: 'is_active', default: true }) isActive!: boolean;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
 export const entities = [
-  User, Category, CollectionEntity, Product, ProductVariant, Customer, AuthOtp, AuthSession,
+  User, Category, CollectionEntity, Product, ProductVariant, ProductEngagement, Customer, AuthOtp, AuthSession,
   CustomerAddress, Order, OrderItem, Banner, Page, PageSection, BlogPost,
   LookbookEntry, MusicRecord, SiteSetting, AuditLog, InventoryTransfer, OfflineSale, OfflineSaleItem, OfflineSaleNote, OfflineDailyReport, ProductDiscount, Partner, PartnerPromoUsage, PartnerComment,
-  Employee, Team, EmployeeTeam, AdminRole, Permission, RolePermission, EmployeeRole, EmployeeInvitation, FinanceEntry,
+  Employee, Team, EmployeeTeam, AdminRole, Permission, RolePermission, EmployeeRole, EmployeeInvitation, FinanceEntry, PickupLocation,
 ];

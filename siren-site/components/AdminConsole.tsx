@@ -121,7 +121,9 @@ type Tab =
   | "products"
   | "catalog"
   | "orders"
+  | "refunds"
   | "delivery"
+  | "pickup"
   | "customers"
   | "discounts"
   | "partners"
@@ -139,7 +141,7 @@ type Tab =
   | "offline_sales"
   | "offline_reports";
 type ContentSubsection = "main-banner" | "header-quotes" | "custom-pages" | "lookbook" | "blog" | "records" | "collections" | "social";
-const adminTabs: Tab[] = ["dashboard", "products", "catalog", "orders", "delivery", "customers", "discounts", "partners", "finance", "currencies", "analytics", "content", "notifications", "pages", "team", "audit", "settings", "offline_cashier", "offline_inventory", "offline_sales", "offline_reports"];
+const adminTabs: Tab[] = ["dashboard", "products", "catalog", "orders", "refunds", "delivery", "pickup", "customers", "discounts", "partners", "finance", "currencies", "analytics", "content", "notifications", "pages", "team", "audit", "settings", "offline_cashier", "offline_inventory", "offline_sales", "offline_reports"];
 const contentSubsections: ContentSubsection[] = ["main-banner", "header-quotes", "custom-pages", "lookbook", "blog", "records", "collections", "social"];
 function adminLocation() {
   if (typeof window === "undefined") return { tab: "dashboard" as Tab, content: "main-banner" as ContentSubsection };
@@ -167,6 +169,7 @@ type Variant = {
   inventoryQuantity: number;
   offlineInventoryQuantity?: number;
   totalInventoryAdded?: number;
+  soldQuantity?: number;
   isActive: boolean;
   attributes?: Record<string, unknown>;
 };
@@ -212,6 +215,8 @@ type Product = {
   media: Array<{ url: string }>;
   variants: Variant[];
   soldQuantity?: number;
+  favoriteCount?: number;
+  cartAddCount?: number;
   metadata?: {
     baseInventoryQuantity?: number;
     views?: number;
@@ -235,7 +240,7 @@ function downloadAdminFile(name: string, content: BlobPart, type: string) {
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; document.body.appendChild(anchor); anchor.click(); anchor.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 async function exportInventory(products: Product[], categories: Taxonomy[], format: "excel" | "pdf") {
-  const rows = products.flatMap((product) => product.variants.map((variant) => [product.title, product.metadata?.article || variant.sku, variant.sku, variant.barcode || "", categories.find((category) => category.id === product.categoryId)?.name || "", variant.color || "", variant.size || "", variant.price || product.price, variant.inventoryQuantity, offlineOf(variant), product.soldQuantity ?? 0, variant.isActive ? "Faol" : "Faol emas"]));
+  const rows = products.flatMap((product) => product.variants.map((variant) => [product.title, product.metadata?.article || variant.sku, variant.sku, variant.barcode || "", categories.find((category) => category.id === product.categoryId)?.name || "", variant.color || "", variant.size || "", variant.price || product.price, variant.inventoryQuantity, offlineOf(variant), variant.soldQuantity ?? 0, variant.isActive ? "Faol" : "Faol emas"]));
   const headers = ["Mahsulot", "Artikul", "SKU", "EAN-13", "Kategoriya", "Rang", "Razmer", "Narx", "Online qoldiq", "Offline qoldiq", "Sotilgan", "Holat"];
   const stamp = new Date().toISOString().slice(0, 10);
   if (format === "excel") {
@@ -279,11 +284,55 @@ type Order = {
   subtotalAmount?: string;
   discountAmount?: string;
   shippingAmount?: string;
-  paymentMethod?: string | null; shippingAddress?: { country?: string; city?: string; address?: string }; note?: string | null;
+  paymentMethod?: string | null; shippingAddress?: { country?: string; city?: string; address?: string; fulfillmentMethod?: string; pickupLocationName?: string; pickupExpiresAt?: string; location?: { latitude?: number; longitude?: number } }; note?: string | null;
   customer?: { id?: string; email?: string; firstName?: string; lastName?: string; phone?: string } | null;
   items?: Array<{ titleSnapshot: string; skuSnapshot?: string | null; quantity: number; unitPrice: string; imageUrl?: string | null }>;
   createdAt: string;
 };
+function DeliveryAddressMapLink({ shippingAddress }: { shippingAddress?: Order["shippingAddress"] }) {
+  const address = [shippingAddress?.country, shippingAddress?.city, shippingAddress?.address].filter(Boolean).join(", ") || "—";
+  const latitude = shippingAddress?.location?.latitude;
+  const longitude = shippingAddress?.location?.longitude;
+  const hasPoint = Number.isFinite(latitude) && Number.isFinite(longitude);
+  const href = hasPoint
+    ? `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`
+    : `https://www.openstreetmap.org/search?query=${encodeURIComponent(address)}`;
+  return <a className="reference-delivery-address-inline" href={href} target="_blank" rel="noreferrer" title="Manzilni xaritada ochish">{address}<MapPin size={14} /></a>;
+}
+type RefundNote = { cancellation?: { reason?: string; evidenceUrl?: string | null; refundMethod?: string; refundState?: string; requestedAt?: string } };
+function refundNote(order: Order): RefundNote { try { return JSON.parse(order.note || "{}"); } catch { return {}; } }
+function RefundManager({ orders, onRefresh }: { orders: Order[]; onRefresh: () => void }) {
+  const [query, setQuery] = useState(""); const [channel, setChannel] = useState<"all" | "pickup" | "delivery">("all"); const [method, setMethod] = useState<"all" | "cash" | "payme">("all"); const [selected, setSelected] = useState<Order | null>(null);
+  const refunded = orders.filter((order) => order.status === "refunded" || order.paymentStatus === "refunded");
+  const visible = refunded.filter((order) => { const note = refundNote(order).cancellation; const pickup = order.shippingAddress?.fulfillmentMethod === "pickup"; const cash = note?.refundMethod === "cash" || /naqd|nalich|cash|налич/i.test(order.paymentMethod || ""); const haystack = `${order.orderNumber} ${order.customer?.firstName || ""} ${order.customer?.lastName || ""} ${order.customer?.email || ""} ${order.customer?.phone || ""} ${order.shippingAddress?.pickupLocationName || ""}`.toLowerCase(); return haystack.includes(query.toLowerCase()) && (channel === "all" || (channel === "pickup") === pickup) && (method === "all" || (method === "cash") === cash); });
+  const total = refunded.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0); const cashCount = refunded.filter((order) => /naqd|nalich|cash|налич/i.test(order.paymentMethod || "")).length;
+  return <section className="refund-manager"><header className="tailadmin-page-heading"><div><p className="ui-overline">REFUND MARKAZI</p><h2>Qaytarilgan to‘lovlar</h2><span>Refund cheklari, qaytarish sababi va mablag‘ qayerdan qaytarilgani bitta joyda.</span></div><Button type="button" variant="outline" onClick={onRefresh}><RefreshCw size={16} /> Yangilash</Button></header><div className="refund-summary"><article><span>Jami refund</span><b>{money(total, "UZS")}</b><small>{refunded.length} ta buyurtma</small></article><article><span>Naqd qaytarilgan</span><b>{cashCount} ta</b><small>Olib ketish nuqtasida</small></article><article><span>Payme refund</span><b>{refunded.length - cashCount} ta</b><small>Onlayn to‘lovdan</small></article></div><div className="tailadmin-data-card refund-data-card"><div className="refund-toolbar"><label><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Chek, mijoz yoki telefon qidirish..." /></label><select value={channel} onChange={(event) => setChannel(event.target.value as typeof channel)}><option value="all">Barcha manbalar</option><option value="pickup">Olib ketish nuqtasi</option><option value="delivery">Kuryer yetkazib berish</option></select><select value={method} onChange={(event) => setMethod(event.target.value as typeof method)}><option value="all">Barcha to‘lovlar</option><option value="cash">Naqd pul</option><option value="payme">Payme</option></select></div><div className="admin-module-table-wrap"><table className="admin-module-table refund-table"><thead><tr><th>Chek</th><th>Mijoz</th><th>Refund manbasi</th><th>To‘lov</th><th>Summa</th><th>Qaytarilgan sana</th><th></th></tr></thead><tbody>{visible.map((order) => { const info = refundNote(order).cancellation; const pickup = order.shippingAddress?.fulfillmentMethod === "pickup"; const cash = info?.refundMethod === "cash" || /naqd|nalich|cash|налич/i.test(order.paymentMethod || ""); return <tr key={order.id}><td><b>#{order.orderNumber}</b><small>Refund chek</small></td><td><b>{`${order.customer?.firstName || ""} ${order.customer?.lastName || ""}`.trim() || order.customer?.email || "Mijoz"}</b><small>{order.customer?.phone || order.customer?.email || "—"}</small></td><td><span className="refund-source">{pickup ? <MapPin size={15} /> : <Truck size={15} />}{pickup ? order.shippingAddress?.pickupLocationName || "Olib ketish nuqtasi" : "Kuryer orqali"}</span></td><td><span className={`refund-method ${cash ? "is-cash" : "is-payme"}`}>{cash ? "Naqd qaytarildi" : "Payme refund"}</span></td><td><b className="refund-money">−{money(Number(order.totalAmount), "UZS")}</b></td><td>{readableDate(info?.requestedAt || order.createdAt)}<small>Refund yakunlandi</small></td><td><button type="button" className="refund-open" onClick={() => setSelected(order)}><Eye size={16} /> Ko‘rish</button></td></tr>; })}{!visible.length && <tr><td colSpan={7}><Empty>{query ? "Qidiruv bo‘yicha refund topilmadi." : "Hali yakunlangan refund yo‘q."}</Empty></td></tr>}</tbody></table></div></div>{selected && <RefundDetailDialog order={selected} onClose={() => setSelected(null)} />}</section>;
+}
+function RefundDetailDialog({ order, onClose }: { order: Order; onClose: () => void }) { const info = refundNote(order).cancellation; const pickup = order.shippingAddress?.fulfillmentMethod === "pickup"; const cash = info?.refundMethod === "cash" || /naqd|nalich|cash|налич/i.test(order.paymentMethod || ""); return <div className="inventory-confirm-backdrop" onMouseDown={onClose}><section className="inventory-confirm refund-detail-dialog" onMouseDown={(event) => event.stopPropagation()}><button className="reference-modal-close" onClick={onClose}>×</button><p className="ui-overline">REFUND CHEKI · #{order.orderNumber}</p><h3>{money(Number(order.totalAmount), "UZS")} qaytarildi</h3><div className="refund-detail-status"><span>REFUNDED</span><b>{cash ? "Naqd pul qaytarildi" : "Payme orqali qaytarildi"}</b></div><dl><div><dt>Mijoz</dt><dd>{`${order.customer?.firstName || ""} ${order.customer?.lastName || ""}`.trim() || order.customer?.email || "—"}</dd></div><div><dt>Qayerdan</dt><dd>{pickup ? `Olib ketish nuqtasi · ${order.shippingAddress?.pickupLocationName || "—"}` : "Kuryer yetkazib berish"}</dd></div><div><dt>So‘rov yuborilgan</dt><dd>{readableDate(info?.requestedAt || order.createdAt)}</dd></div><div><dt>Sabab</dt><dd>{info?.reason || "Izoh kiritilmagan"}</dd></div></dl>{info?.evidenceUrl && <a className="refund-evidence" href={info.evidenceUrl.startsWith("/") ? `${API.replace(/\/api$/, "")}${info.evidenceUrl}` : info.evidenceUrl} target="_blank" rel="noreferrer">Foto dalilni ochish</a>}<div className="refund-receipt"><span>REFUND CHEKI</span><b>#{order.orderNumber}</b><strong>−{money(Number(order.totalAmount), "UZS")}</strong></div><Button type="button" variant="outline" onClick={() => window.print()}><Printer size={16} /> Chekni chop etish</Button></section></div>; }
+type PickupLocationAdmin = { id: string; name: string; address: string; city: string; latitude: string; longitude: string; instructions?: string | null; workingHours?: string | null; isActive: boolean };
+function CancellationDialog({ order, token, onClose, onDone }: { order: Order; token: string; onClose: () => void; onDone: (message: string) => void }) {
+  const [reason, setReason] = useState(""); const [photo, setPhoto] = useState<File | null>(null); const [saving, setSaving] = useState(false);
+  const cash = /nalich|naqd|cash|налич/i.test(order.paymentMethod ?? "");
+  const submit = async (event: FormEvent) => { event.preventDefault(); if (!reason.trim()) return; setSaving(true); try { let evidenceUrl: string | undefined; if (photo) { const data = new FormData(); data.append("file", photo); evidenceUrl = (await api<{ url: string }>("/admin/content/banners/upload", token, { method: "POST", body: data })).url; } await api(`/admin/orders/${order.id}/cancel`, token, { method: "POST", body: JSON.stringify({ reason: reason.trim(), evidenceUrl }) }); onDone(cash ? "Buyurtma bekor qilindi. Naqd pulni mijozga qaytaring." : "Buyurtma bekor qilindi. Payme refund qayta ishlashga yuborildi."); } catch (error) { onDone(error instanceof Error ? error.message : "Buyurtmani bekor qilib bo‘lmadi."); } finally { setSaving(false); } };
+  return <div className="inventory-confirm-backdrop cancellation-backdrop"><form className="inventory-confirm cancellation-dialog" onSubmit={submit}><button className="reference-modal-close" type="button" onClick={onClose}>×</button><p className="ui-overline">BUYURTMANI BEKOR QILISH</p><h3>Chek #{order.orderNumber}</h3><p>{cash ? "Naqd to‘lov mijozga naqd qaytariladi." : "Payme to‘lovi refund jarayoniga yuboriladi."}</p><Field label="Bekor qilish sababi"><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Sababni yozing" required /></Field><Field label="Foto dalil (ixtiyoriy)"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} /><small>{photo?.name || "Foto yuklanmagan"}</small></Field><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={onClose}>Ortga</Button><Button disabled={saving}>{saving ? "Saqlanmoqda…" : "Bekor qilish va refund"}</Button></div></form></div>;
+}
+function PickupLocationMapPicker({ latitude, longitude, onPick }: { latitude: string; longitude: string; onPick: (latitude: string, longitude: string) => void }) {
+  const mapRef = useRef<HTMLDivElement>(null); const onPickRef = useRef(onPick); useEffect(() => { onPickRef.current = onPick; }, [onPick]);
+  useEffect(() => { if (!mapRef.current) return; let map: any; let active = true; const lat = Number(latitude) || 41.3111; const lng = Number(longitude) || 69.2797; const initialise = () => { const leaflet = (window as Window & { L?: any }).L; if (!active || !mapRef.current || !leaflet) return; map = leaflet.map(mapRef.current).setView([lat, lng], 13); leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map); let marker = leaflet.circleMarker([lat, lng], { radius: 10, color: "#fff", weight: 3, fillColor: "#3157f6", fillOpacity: 1 }).addTo(map); map.on("click", (event: any) => { marker.setLatLng(event.latlng); onPickRef.current(String(event.latlng.lat.toFixed(7)), String(event.latlng.lng.toFixed(7))); }); }; if (!document.querySelector("link[data-leaflet-css]")) { const stylesheet = document.createElement("link"); stylesheet.rel = "stylesheet"; stylesheet.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; stylesheet.dataset.leafletCss = "true"; document.head.appendChild(stylesheet); } const leaflet = (window as Window & { L?: any }).L; if (leaflet) initialise(); else { const script = document.createElement("script"); script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; script.async = true; script.onload = initialise; document.head.appendChild(script); } return () => { active = false; map?.remove?.(); }; }, [latitude, longitude]);
+  return <div className="pickup-admin-map"><p><MapPin size={16} /> Xaritada joyni bosing — koordinatalar avtomatik to‘ladi.</p><div ref={mapRef} /></div>;
+}
+function PickupLocationManager({ token, onNotice }: { token: string; onNotice: (message: string) => void }) {
+  const [points, setPoints] = useState<PickupLocationAdmin[]>([]); const [pickupOrders, setPickupOrders] = useState<Order[]>([]); const [open, setOpen] = useState(false); const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState({ name: "", address: "", city: "Tashkent", latitude: "41.3111", longitude: "69.2797", instructions: "", workingHours: "Har kuni · 10:00–22:00" });
+  const load = useCallback(async () => { try { const [locationItems, orderItems] = await Promise.all([api<PickupLocationAdmin[]>("/admin/pickup-locations", token), api<Order[]>("/admin/pickup-locations/orders", token)]); setPoints(locationItems); setPickupOrders(orderItems); } catch (reason) { onNotice(reason instanceof Error ? reason.message : "Nuqtalarni yuklab bo‘lmadi."); } }, [token, onNotice]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { document.querySelectorAll<HTMLElement>(".pickup-admin-orders article").forEach((article, index) => { const order = pickupOrders[index]; const button = article.querySelector<HTMLButtonElement>("button"); if (!order || !button) return; if (order.paymentStatus === "refunded") { button.remove(); const state = document.createElement("em"); state.className = "pickup-sale-paid is-refunded"; state.textContent = "Pul qaytarildi"; article.lastElementChild?.appendChild(state); return; } if (order.paymentStatus === "cash_refund_pending") { button.textContent = "Pulni qaytarish"; button.classList.add("is-cash-refund"); } }); }, [pickupOrders]);
+  const create = async (event: FormEvent) => { event.preventDefault(); setSaving(true); try { await api("/admin/pickup-locations", token, { method: "POST", body: JSON.stringify(draft) }); setDraft({ name: "", address: "", city: "Tashkent", latitude: "41.3111", longitude: "69.2797", instructions: "", workingHours: "Har kuni · 10:00–22:00" }); setOpen(false); await load(); onNotice("Olib ketish nuqtasi qo‘shildi."); } catch (reason) { onNotice(reason instanceof Error ? reason.message : "Nuqta saqlanmadi."); } finally { setSaving(false); } };
+  const toggle = async (point: PickupLocationAdmin) => { try { await api(`/admin/pickup-locations/${point.id}`, token, { method: "PATCH", body: JSON.stringify({ isActive: !point.isActive }) }); await load(); } catch (reason) { onNotice(reason instanceof Error ? reason.message : "Holat yangilanmadi."); } };
+  const closeCashSale = (order: Order) => { const isRefund = order.paymentStatus === "cash_refund_pending"; const layer = document.createElement("div"); const amount = Number(order.totalAmount).toLocaleString("uz-UZ"); layer.className = "cash-sale-confirm-backdrop"; layer.innerHTML = `<section class="cash-sale-confirm${isRefund ? " cash-refund-confirm" : ""}" role="dialog" aria-modal="true"><button type="button" data-close aria-label="Yopish">×</button><p>${isRefund ? "NAQD PULNI QAYTARISH" : "NAQD SAVDONI YOPISH"}</p><h3>Chek #${order.orderNumber}</h3><span>${isRefund ? "Mijozga qaytariladigan summa" : "Qabul qilingan summa"}</span><strong>${amount} UZS</strong><small>${isRefund ? "Naqd pul mijozga berilganini tasdiqlang. Shundan keyin refund yakunlangan deb belgilanadi." : "Naqd pul qabul qilinganini tasdiqlasangiz, buyurtma to‘langan va olib ketilgan deb belgilanadi."}</small><footer><button type="button" data-close>Bekor qilish</button><button type="button" data-confirm>${isRefund ? "Pul qaytarildi" : "Tasdiqlash"}</button></footer></section>`; const close = () => layer.remove(); layer.addEventListener("click", (event) => { if (event.target === layer || (event.target instanceof Element && event.target.closest("[data-close]"))) close(); }); layer.querySelector<HTMLButtonElement>("[data-confirm]")?.addEventListener("click", async () => { const button = layer.querySelector<HTMLButtonElement>("[data-confirm]"); if (button) { button.disabled = true; button.textContent = "Saqlanmoqda…"; } try { if (isRefund) await api(`/admin/orders/${order.id}/refund-complete`, token, { method: "POST" }); else await api(`/admin/orders/${order.id}`, token, { method: "PATCH", body: JSON.stringify({ status: "paid", paymentStatus: "paid", fulfillmentStatus: "picked_up" }) }); close(); await load(); onNotice(isRefund ? `Chek #${order.orderNumber} bo‘yicha naqd refund yakunlandi.` : `Buyurtma #${order.orderNumber} naqd to‘langan deb yopildi.`); } catch (reason) { if (button) { button.disabled = false; button.textContent = "Qayta urinish"; } onNotice(reason instanceof Error ? reason.message : isRefund ? "Refundni yakunlab bo‘lmadi." : "Savdoni yopib bo‘lmadi."); } }); document.body.appendChild(layer); };
+  const completeCashRefund = async (order: Order) => { if (!window.confirm(`Chek #${order.orderNumber} uchun ${Number(order.totalAmount).toLocaleString("uz-UZ")} UZS naqd pul mijozga qaytarilganini tasdiqlaysizmi?`)) return; try { await api(`/admin/orders/${order.id}/refund-complete`, token, { method: "POST" }); await load(); onNotice(`Chek #${order.orderNumber} bo‘yicha naqd refund yakunlandi.`); } catch (reason) { onNotice(reason instanceof Error ? reason.message : "Refundni yakunlab bo‘lmadi."); } };
+  return <section className="pickup-admin"><header><div><p className="ui-overline">OLIB KETISH NUQTALARI</p><h2>Nuqtadan olib ketish</h2><span>Mijoz checkoutda kartadan nuqtani tanlaydi. Olib ketish bepul, 30 kundan keyin buyurtma bekor qilinadi.</span></div><Button type="button" onClick={() => setOpen((value) => !value)}><Plus size={17} /> Nuqta qo‘shish</Button></header>{open && <form className="pickup-admin-form" onSubmit={create}><input required placeholder="Nuqta nomi" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /><input required placeholder="To‘liq manzil" value={draft.address} onChange={(event) => setDraft({ ...draft, address: event.target.value })} /><input required placeholder="Shahar" value={draft.city} onChange={(event) => setDraft({ ...draft, city: event.target.value })} /><input required inputMode="decimal" placeholder="Latitude" value={draft.latitude} onChange={(event) => setDraft({ ...draft, latitude: event.target.value })} /><input required inputMode="decimal" placeholder="Longitude" value={draft.longitude} onChange={(event) => setDraft({ ...draft, longitude: event.target.value })} /><input placeholder="Yo‘riqnoma (ixtiyoriy)" value={draft.instructions} onChange={(event) => setDraft({ ...draft, instructions: event.target.value })} /><input required placeholder="Ishlash grafigi" value={draft.workingHours} onChange={(event) => setDraft({ ...draft, workingHours: event.target.value })} /><PickupLocationMapPicker latitude={draft.latitude} longitude={draft.longitude} onPick={(latitude, longitude) => setDraft({ ...draft, latitude, longitude })} /><Button type="submit" disabled={saving}>{saving ? "Saqlanmoqda…" : "Saqlash"}</Button></form>}<div className="pickup-admin-list">{points.map((point) => <article key={point.id}><MapPin size={19} /><span><b>{point.name}</b><small>{point.address}, {point.city}</small>{point.instructions && <em>{point.instructions}</em>}{point.workingHours && <em>Ish vaqti: {point.workingHours}</em>}<a href={`https://www.openstreetmap.org/?mlat=${point.latitude}&mlon=${point.longitude}#map=17/${point.latitude}/${point.longitude}`} target="_blank" rel="noreferrer">Kartada ko‘rish</a></span><button type="button" className={point.isActive ? "is-active" : ""} onClick={() => void toggle(point)}>{point.isActive ? "Faol" : "Yopiq"}</button></article>)}{!points.length && <Empty><MapPin />Hali olib ketish nuqtasi yo‘q.</Empty>}</div><div className="pickup-admin-orders"><h3>Nuqta buyurtmalari <span>{pickupOrders.length}</span></h3>{pickupOrders.map((order) => { const cashPickup = order.paymentMethod !== "payme"; const closed = order.paymentStatus === "paid"; const ready = order.fulfillmentStatus === "ready_for_pickup"; return <article key={order.id}><span><b>#{order.orderNumber} · {order.shippingAddress?.pickupLocationName || "Olib ketish nuqtasi"}</b><small>{order.customer?.firstName || "Mijoz"} {order.customer?.lastName || ""} · {order.customer?.phone || order.customer?.email || "—"}</small></span><span><b>{Number(order.totalAmount).toLocaleString("uz-UZ")} UZS</b><small>{cashPickup ? "Naqd · Olib ketishda to‘lov" : "Payme"} · {closed ? "paid" : order.fulfillmentStatus}</small>{cashPickup && !closed && ready ? <button type="button" onClick={() => void closeCashSale(order)}>Savdoni yopish</button> : <em className="pickup-sale-paid">{ready ? "Mijozni kutmoqda" : closed ? "To‘langan" : "Qabul qilingan"}</em>}</span></article>; })}{!pickupOrders.length && <Empty><Package />Hali nuqtadan olib ketish buyurtmalari yo‘q.</Empty>}</div></section>;
+}
 type Banner = {
   id: string;
   title: string;
@@ -552,7 +601,9 @@ const variantDraftFrom = (source: Variant) => {
     price: source.price ?? "",
     costPrice: String(source.attributes?.costPrice ?? ""),
     expensePrice: String(source.attributes?.expensePrice ?? ""),
-    inventoryQuantity: source.inventoryQuantity,
+    // The editor distributes the original product allocation, not the live
+    // online balance (which may already be lower after a sale or transfer).
+    inventoryQuantity: source.totalInventoryAdded ?? source.inventoryQuantity,
     isActive: source.isActive,
     imageUrl: images[0] ?? "",
     extraImageUrls: images.slice(1),
@@ -655,9 +706,9 @@ function FiscalCatalogPicker({ token, categoryName, productTitle, value, onChang
 const colorChoices = ["Black", "White", "Gray", "Blue", "Green", "Red", "Brown", "Pink"];
 const namedColors = ["AliceBlue","AntiqueWhite","Aqua","Aquamarine","Azure","Beige","Bisque","Black","BlanchedAlmond","Blue","BlueViolet","Brown","BurlyWood","CadetBlue","Chartreuse","Chocolate","Coral","CornflowerBlue","Cornsilk","Crimson","Cyan","DarkBlue","DarkCyan","DarkGoldenRod","DarkGray","DarkGreen","DarkKhaki","DarkMagenta","DarkOliveGreen","DarkOrange","DarkOrchid","DarkRed","DarkSalmon","DarkSeaGreen","DarkSlateBlue","DarkSlateGray","DarkTurquoise","DarkViolet","DeepPink","DeepSkyBlue","DimGray","DodgerBlue","FireBrick","FloralWhite","ForestGreen","Fuchsia","Gainsboro","GhostWhite","Gold","GoldenRod","Gray","Green","GreenYellow","HoneyDew","HotPink","IndianRed","Indigo","Ivory","Khaki","Lavender","LavenderBlush","LawnGreen","LemonChiffon","LightBlue","LightCoral","LightCyan","LightGoldenRodYellow","LightGray","LightGreen","LightPink","LightSalmon","LightSeaGreen","LightSkyBlue","LightSlateGray","LightSteelBlue","LightYellow","Lime","LimeGreen","Linen","Magenta","Maroon","MediumAquaMarine","MediumBlue","MediumOrchid","MediumPurple","MediumSeaGreen","MediumSlateBlue","MediumSpringGreen","MediumTurquoise","MediumVioletRed","MidnightBlue","MintCream","MistyRose","Moccasin","NavajoWhite","Navy","OldLace","Olive","OliveDrab","Orange","OrangeRed","Orchid","PaleGoldenRod","PaleGreen","PaleTurquoise","PaleVioletRed","PapayaWhip","PeachPuff","Peru","Pink","Plum","PowderBlue","Purple","RebeccaPurple","Red","RosyBrown","RoyalBlue","SaddleBrown","Salmon","SandyBrown","SeaGreen","SeaShell","Sienna","Silver","SkyBlue","SlateBlue","SlateGray","Snow","SpringGreen","SteelBlue","Tan","Teal","Thistle","Tomato","Turquoise","Violet","Wheat","White","WhiteSmoke","Yellow","YellowGreen"];
 const colorHex = (value: string) => (({ black: "#111111", white: "#ffffff", gray: "#8c8c8c", blue: "#1769aa", green: "#0b7a3a", red: "#b91c1c", brown: "#704214", pink: "#db5b82" }[value.toLowerCase()] ?? value.trim()) || "#d6d6d2");
-function ManualColorPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function ManualColorPicker({ value, onChange, disabled = false }: { value: string; onChange: (value: string) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
-  return <Field label="Inglizcha nomi"><div className="variant-color-field"><input value={value} onChange={(event) => onChange(event.target.value)} placeholder="Blue" /><button type="button" className="variant-color-trigger" aria-label="Rang tanlash" title="100+ rangdan tanlash" style={{ backgroundColor: colorHex(value) }} onClick={() => setOpen((current) => !current)} /></div>{open && <div className="manual-color-picker"><div className="manual-color-picker-head"><b>Rangni tanlang</b><span>{namedColors.length}+ rang</span></div><div className="manual-color-picker-grid">{namedColors.map((color) => <button type="button" key={color} title={color} aria-label={color} className={value.toLowerCase() === color.toLowerCase() ? "is-selected" : ""} style={{ backgroundColor: color }} onClick={() => { onChange(color); setOpen(false); }} />)}</div></div>}</Field>;
+  return <Field label="Inglizcha nomi"><div className={`variant-color-field${disabled ? " is-locked" : ""}`}><input disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} placeholder="Blue" /><button type="button" disabled={disabled} className="variant-color-trigger" aria-label="Rang tanlash" title={disabled ? "Tahrirlashda rang o‘zgarmaydi" : "100+ rangdan tanlash"} style={{ backgroundColor: colorHex(value) }} onClick={() => setOpen((current) => !current)} /></div>{open && !disabled && <div className="manual-color-picker"><div className="manual-color-picker-head"><b>Rangni tanlang</b><span>{namedColors.length}+ rang</span></div><div className="manual-color-picker-grid">{namedColors.map((color) => <button type="button" key={color} title={color} aria-label={color} className={value.toLowerCase() === color.toLowerCase() ? "is-selected" : ""} style={{ backgroundColor: color }} onClick={() => { onChange(color); setOpen(false); }} />)}</div></div>}</Field>;
 }
 function ColorField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -670,8 +721,10 @@ const amountOf = (value: unknown) => {
 const money = (value: number, currency: string) => `${new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 }).format(Math.max(0, value))} ${currency}`;
 type FinanceRow = { sku: string; color?: string | null; price?: string | null; costPrice?: string; expensePrice?: string; attributes?: Record<string, unknown> };
 type VariantDraft = ReturnType<typeof blankVariant>;
-function VariantCharacteristics({ drafts, onUpdate, onAddColor, onAddSize, onRemoveSize }: {
+function VariantCharacteristics({ drafts, totalCreated, quantityLocked = false, onUpdate, onAddColor, onAddSize, onRemoveSize }: {
   drafts: VariantDraft[];
+  totalCreated: number;
+  quantityLocked?: boolean;
   onUpdate: (index: number, updates: Partial<VariantDraft>) => void;
   onAddColor: () => void;
   onAddSize: (index: number) => void;
@@ -683,16 +736,17 @@ function VariantCharacteristics({ drafts, onUpdate, onAddColor, onAddSize, onRem
     if (group) group.indices.push(index); else all.push({ key, indices: [index] });
     return all;
   }, []);
+  const remainingFor = (index: number) => Math.max(0, totalCreated - drafts.reduce((sum, item, itemIndex) => sum + (itemIndex === index ? 0 : item.inventoryQuantity), 0));
   return <section className="variant-characteristics-sheet">
     <div className="variant-characteristics-sheet-head"><h3>Harakteristikalar</h3><Button type="button" size="sm" onClick={onAddColor}><Plus size={16} /> Qo‘shish</Button></div>
     {groups.map((group) => {
       const firstIndex = group.indices[0];
       const first = drafts[firstIndex];
       return <div className="variant-characteristics-row" key={group.key}>
-        <ManualColorPicker value={first.color} onChange={(color) => group.indices.forEach((index) => onUpdate(index, { color }))} />
-        <div className="variant-stack-field"><span>O‘lcham <b>(Majburiy emas)</b></span>{group.indices.map((index) => <input key={index} value={drafts[index].size} onChange={(event) => onUpdate(index, { size: event.target.value })} placeholder="XL" />)}<div className="variant-size-actions"><button type="button" className="variant-size-remove" aria-label="Oxirgi razmerni olib tashlash" title="Oxirgi razmerni olib tashlash" onClick={() => onRemoveSize(group.indices[group.indices.length - 1])}><Trash2 size={16} /></button><Button type="button" size="icon" onClick={() => onAddSize(firstIndex)}><Plus size={16} /></Button></div></div>
-        <div className="variant-stack-field"><span>Soni</span>{group.indices.map((index) => <input key={index} type="number" min="0" value={drafts[index].inventoryQuantity || ""} onChange={(event) => onUpdate(index, { inventoryQuantity: Math.max(0, Number(event.target.value)) })} />)}</div>
-        <div className="variant-stack-field"><span>Sub-Artikul <b>(Avtomatik ravishda)</b></span>{group.indices.map((index) => <div className="generated-sku-cell" key={index}>{drafts[index].sku || "Artikul va rangni kiriting"}<LockKeyhole size={18} /></div>)}</div>
+        <ManualColorPicker disabled={quantityLocked} value={first.color} onChange={(color) => group.indices.forEach((index) => onUpdate(index, { color }))} />
+        <div className="variant-stack-field"><span>O‘lcham <b>(Majburiy emas)</b></span>{group.indices.map((index) => <div className="variant-size-input" key={index}><input disabled={quantityLocked} value={drafts[index].size} onChange={(event) => onUpdate(index, { size: event.target.value })} placeholder="XL" />{!quantityLocked && <button type="button" className="variant-size-remove" aria-label={`${drafts[index].size || "Razmer"}ni olib tashlash`} title="Razmerni olib tashlash" onClick={() => onRemoveSize(index)}><Trash2 size={16} /></button>}</div>)}<div className="variant-size-actions"><Button type="button" size="icon" disabled={quantityLocked} onClick={() => onAddSize(firstIndex)}><Plus size={16} /></Button></div></div>
+        <div className="variant-stack-field"><span title={quantityLocked ? "Tahrirlashda miqdor o‘zgarmaydi" : undefined}>Yaratilgan soni</span>{group.indices.map((index) => <input key={index} type="number" min="0" max={remainingFor(index)} disabled={quantityLocked} value={drafts[index].inventoryQuantity || ""} onChange={(event) => onUpdate(index, { inventoryQuantity: Math.min(remainingFor(index), Math.max(0, Number(event.target.value))) })} />)}</div>
+        <div className="variant-stack-field"><span>Sub-Artikul <b>(Avtomatik ravishda)</b></span>{group.indices.map((index) => <div className={`generated-sku-cell${group.indices.length > 1 && !drafts[index].size.trim() ? " is-incomplete" : ""}`} key={index}>{group.indices.length > 1 && !drafts[index].size.trim() ? "Avval razmerni kiriting" : drafts[index].sku || "Artikul va rangni kiriting"}<LockKeyhole size={18} /></div>)}</div>
       </div>;
     })}
   </section>;
@@ -721,7 +775,7 @@ function VariantImages({ drafts, onAddImage, onRemoveImage }: { drafts: VariantD
     {target !== null && <div className="variant-image-modal-backdrop" role="presentation" onMouseDown={() => setTarget(null)}><form className="variant-image-modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); onAddImage(target, url, file); setTarget(null); }}><div><p className="ui-overline">RASM QO‘SHISH</p><h4>Rasm manbasini tanlang</h4></div><Field label="Rasm URL linki"><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://.../image.jpg" /></Field><Field label="Kompyuterdan yuklash"><input type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></Field><div className="variant-image-modal-actions"><Button type="button" variant="outline" onClick={() => setTarget(null)}>Bekor qilish</Button><Button disabled={!url.trim() && !file}><Plus size={16} /> Rasm qo‘shish</Button></div></form></div>}
   </section>;
 }
-function FinanceTable({ rows, currency, onChange }: { rows: FinanceRow[]; currency: string; onChange?: (indices: number[], field: "costPrice" | "expensePrice" | "price", value: string) => void }) {
+function FinanceTable({ rows, currency, vatPercent = 0, editing = false, approvedFields = [], onRequestEdit, onChange }: { rows: FinanceRow[]; currency: string; vatPercent?: number; editing?: boolean; approvedFields?: string[]; onRequestEdit?: (field: "expensePrice" | "price") => void; onChange?: (indices: number[], field: "costPrice" | "expensePrice" | "price", value: string) => void }) {
   const colorRows = rows.reduce<Array<{ row: FinanceRow; indices: number[] }>>((all, row, index) => {
     const key = row.color?.trim().toLowerCase() || `variant-${index}`;
     const group = all.find((item) => (item.row.color?.trim().toLowerCase() || "") === key);
@@ -731,17 +785,18 @@ function FinanceTable({ rows, currency, onChange }: { rows: FinanceRow[]; curren
   return <section className="product-finance">
     <div className="product-finance-head"><div><p className="ui-overline">FINANCE</p><h3>Narxlar kalkulyatsiyasi</h3></div><span>Valyuta: <b>{currency}</b></span></div>
     <div className="product-finance-table" role="table">
-      <div className="product-finance-row product-finance-row--head" role="row"><span>Model/rang</span><span>Tannarx</span><span>Xarajat</span><span>Sotuv narxi</span><span>Markup</span><span>Marja</span><span>Sof foyda</span></div>
+      <div className="product-finance-row product-finance-row--head" role="row"><span>Model/rang</span><span>Tannarx</span><span>{vatPercent > 0 ? `Xarajat (QQS ${vatPercent}%)` : "Xarajat"}</span><span>Sotuv narxi</span><span>Markup</span><span>Marja</span><span>Sof foyda</span></div>
       {colorRows.map(({ row, indices }, index) => {
         const cost = amountOf(row.costPrice ?? row.attributes?.costPrice);
-        const expense = amountOf(row.expensePrice ?? row.attributes?.expensePrice);
+        const expense = vatPercent > 0 ? Math.round(amountOf(row.price) * vatPercent / 100) : amountOf(row.expensePrice ?? row.attributes?.expensePrice);
         const sale = amountOf(row.price);
         const total = cost + expense;
         const profit = sale - total;
         const markup = total ? (profit / total) * 100 : 0;
         const margin = sale ? (profit / sale) * 100 : 0;
-        const field = (name: "costPrice" | "expensePrice" | "price", value: string | null | undefined, fallback: unknown) => onChange ? <label className="product-finance-input"><input type="number" min="0" step="1" value={value ?? String(fallback ?? "")} onChange={(event) => onChange(indices, name, event.target.value)} inputMode="numeric" /><small>{currency || "UZS"}</small></label> : <span>{money(amountOf(value ?? fallback), currency)}</span>;
-        return <div className="product-finance-row" role="row" key={`${row.sku}-${index}`}><span><i style={{ backgroundColor: colorHex(row.color ?? "") }} />{row.color || row.sku || `Variant ${index + 1}`}</span>{field("costPrice", row.costPrice, row.attributes?.costPrice)}{field("expensePrice", row.expensePrice, row.attributes?.expensePrice)}{field("price", row.price, null)}<span className={profit >= 0 ? "is-positive" : "is-negative"}>{markup.toFixed(1)}%</span><span className={profit >= 0 ? "is-positive" : "is-negative"}>{margin.toFixed(1)}%</span><strong className={profit >= 0 ? "is-profit" : "is-loss"}>{profit >= 0 ? money(profit, currency) : `−${money(Math.abs(profit), currency)}`}</strong></div>;
+        const field = (name: "costPrice" | "expensePrice" | "price", value: string | null | undefined, fallback: unknown) => onChange ? <label className="product-finance-input"><input type="number" min="0" step="1" disabled={editing && name === "costPrice"} value={value ?? String(fallback ?? "")} onFocus={(event) => { if (editing && name !== "costPrice" && !approvedFields.includes(name)) { event.currentTarget.blur(); onRequestEdit?.(name); } }} onChange={(event) => onChange(indices, name, event.target.value)} inputMode="numeric" /><small>{currency || "UZS"}</small></label> : <span>{money(amountOf(value ?? fallback), currency)}</span>;
+        const vatField = vatPercent > 0 ? <span>{money(expense, currency)}<small>QQS {vatPercent}%</small></span> : field("expensePrice", row.expensePrice, row.attributes?.expensePrice);
+        return <div className="product-finance-row" role="row" key={`${row.sku}-${index}`}><span><i style={{ backgroundColor: colorHex(row.color ?? "") }} />{row.color || row.sku || `Variant ${index + 1}`}</span>{field("costPrice", row.costPrice, row.attributes?.costPrice)}{vatField}{field("price", row.price, null)}<span className={profit >= 0 ? "is-positive" : "is-negative"}>{markup.toFixed(1)}%</span><span className={profit >= 0 ? "is-positive" : "is-negative"}>{margin.toFixed(1)}%</span><strong className={profit >= 0 ? "is-profit" : "is-loss"}>{profit >= 0 ? money(profit, currency) : `−${money(Math.abs(profit), currency)}`}</strong></div>;
       })}
     </div>
   </section>;
@@ -773,6 +828,7 @@ function SelectionCheckbox({ checked, indeterminate = false, disabled = false, o
 }
 const offlineOf = (variant: Variant) => Math.max(0, Number(variant.offlineInventoryQuantity ?? 0));
 const physicalOf = (variant: Variant) => Math.max(0, variant.inventoryQuantity) + offlineOf(variant);
+const quantityCell = (value: number) => value > 0 ? value : "—";
 const ean13Parity = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"];
 const ean13Digits = {
   L: ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"],
@@ -956,10 +1012,11 @@ function ProductInventoryWorkspace({ products, categories, transfers, token, onE
         const online = variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0);
         const offline = variants.reduce((sum, variant) => sum + offlineOf(variant), 0);
         const totalCreated = Math.max(Number(product.metadata?.baseInventoryQuantity ?? 0), variants.reduce((sum, variant) => sum + (variant.totalInventoryAdded ?? physicalOf(variant)), 0));
+        const sold = variants.reduce((sum, variant) => sum + (variant.soldQuantity ?? 0), 0);
         const price = variants.map((variant) => amountOf(variant.price)).filter(Boolean);
-        return <Fragment key={product.id}><tr className="inventory-row inventory-row--product"><td><SelectionCheckbox label={`${product.title} barcha variantlarini tanlash`} {...productState} onChange={(checked) => setVariants(variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenProducts, product.id)} aria-expanded={openProducts.has(product.id)}>{openProducts.has(product.id) ? "▼" : "▶"}</button><div className="inventory-product-cell"><div className="inventory-thumb"><AdminProductImageRotator product={product} /></div><span><b>{product.title}</b><small>{product.metadata?.article || variants[0]?.sku || "SKU yo‘q"}</small></span></div></td><td>{product.metadata?.article || "—"}</td><td>—</td><td>{categories.find((category) => category.id === product.categoryId)?.name ?? "—"}</td><td>{money(price.length ? Math.min(...price) : amountOf(product.price), product.currencyCode)}</td><td><span className="inventory-number inventory-number--created"><b>{totalCreated}</b></span></td><td>{online}</td><td>{offline}</td><td><span className="inventory-number inventory-number--sold"><b>{product.soldQuantity ?? 0}</b></span></td><td><Badge variant={flavor(product.status)}>{product.status}</Badge></td><td><div className="inventory-actions"><Button size="sm" variant="outline" onClick={() => onEdit(product)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => onInspect(product)}>Ma’lumot</Button></div></td></tr>
-          {openProducts.has(product.id) && groups.map((group) => { const colorKey = `${product.id}:${group.key}`; const colorState = selectionLine(group.variants); const colorCreated = group.variants.reduce((sum, variant) => sum + (variant.totalInventoryAdded ?? physicalOf(variant)), 0); const colorOnline = group.variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0); const colorOffline = group.variants.reduce((sum, variant) => sum + offlineOf(variant), 0); return <Fragment key={colorKey}><tr className="inventory-row inventory-row--color"><td><SelectionCheckbox label={`${group.color} barcha razmerlarini tanlash`} {...colorState} onChange={(checked) => setVariants(group.variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenColors, colorKey)} aria-expanded={openColors.has(colorKey)}>{openColors.has(colorKey) ? "▼" : "▶"}</button><span className="inventory-color-name"><i style={{ backgroundColor: colorHex(group.color) }} />{group.color}</span></td><td>—</td><td>—</td><td>Rang</td><td>—</td><td>{colorCreated}</td><td>{colorOnline}</td><td>{colorOffline}</td><td>—</td><td>—</td><td /></tr>
-            {openColors.has(colorKey) && group.variants.map((variant) => { const active = isValid(variant); const value = selected[variant.id]; return <tr className={`inventory-row inventory-row--size ${active ? "" : "is-disabled"}`} key={variant.id}><td><SelectionCheckbox label={`${group.color} ${variant.size || "ONE SIZE"} ni tanlash`} checked={value !== undefined} disabled={!active} onChange={(checked) => setVariants([variant], checked)} /></td><td><span className="inventory-size-name">{variant.size || "ONE SIZE"}</span></td><td>{variant.sku || "—"}</td><td>{variant.barcode || "Yaratilmoqda…"}</td><td>Razmer</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.totalInventoryAdded ?? physicalOf(variant)}</td><td>{variant.inventoryQuantity}</td><td>{offlineOf(variant)}</td><td>—</td><td>{variant.isActive ? "Active" : "Faol emas"}</td><td>{value !== undefined ? <label className="inventory-qty"><span>Transfer</span><input type="number" min="1" max={variant.inventoryQuantity} value={value} onChange={(event) => setSelected((current) => ({ ...current, [variant.id]: Math.min(variant.inventoryQuantity, Math.max(1, Number(event.target.value) || 1)) }))} /></label> : <span className="inventory-unavailable">{active ? "Tanlang" : "Mavjud emas"}</span>}</td></tr>; })}</Fragment>; })}</Fragment>;
+        return <Fragment key={product.id}><tr className="inventory-row inventory-row--product"><td><SelectionCheckbox label={`${product.title} barcha variantlarini tanlash`} {...productState} onChange={(checked) => setVariants(variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenProducts, product.id)} aria-expanded={openProducts.has(product.id)}>{openProducts.has(product.id) ? "▼" : "▶"}</button><div className="inventory-product-cell"><div className="inventory-thumb"><AdminProductImageRotator product={product} /></div><span><b>{product.title}</b><small>{product.metadata?.article || variants[0]?.sku || "SKU yo‘q"}</small></span></div></td><td>{product.metadata?.article || "—"}</td><td>—</td><td>{categories.find((category) => category.id === product.categoryId)?.name ?? "—"}</td><td>{money(price.length ? Math.min(...price) : amountOf(product.price), product.currencyCode)}</td><td><span className="inventory-number inventory-number--created"><b>{quantityCell(totalCreated)}</b></span></td><td>{quantityCell(online)}</td><td>{quantityCell(offline)}</td><td><span className="inventory-number inventory-number--sold"><b>{quantityCell(sold)}</b></span></td><td><Badge variant={flavor(product.status)}>{product.status}</Badge></td><td><div className="inventory-actions"><Button size="sm" variant="outline" onClick={() => onEdit(product)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => onInspect(product)}>Ma’lumot</Button></div></td></tr>
+          {openProducts.has(product.id) && groups.map((group) => { const colorKey = `${product.id}:${group.key}`; const colorState = selectionLine(group.variants); const colorCreated = group.variants.reduce((sum, variant) => sum + (variant.totalInventoryAdded ?? physicalOf(variant)), 0); const colorOnline = group.variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0); const colorOffline = group.variants.reduce((sum, variant) => sum + offlineOf(variant), 0); const colorSold = group.variants.reduce((sum, variant) => sum + (variant.soldQuantity ?? 0), 0); const colorSku = `${product.metadata?.article || product.title}-${group.color}`.trim().toUpperCase().replace(/\s+/g, "-"); const colorPrice = group.variants.map((variant) => amountOf(variant.price || product.price)).filter(Boolean); const colorSoldOut = colorOnline < 1; return <Fragment key={colorKey}><tr className="inventory-row inventory-row--color"><td><SelectionCheckbox label={`${group.color} barcha razmerlarini tanlash`} {...colorState} onChange={(checked) => setVariants(group.variants, checked)} /></td><td><button type="button" className="inventory-expand" onClick={() => toggleOpen(setOpenColors, colorKey)} aria-expanded={openColors.has(colorKey)}>{openColors.has(colorKey) ? "▼" : "▶"}</button><span className="inventory-color-name"><i style={{ backgroundColor: colorHex(group.color) }} />{group.color}</span></td><td>{colorSku}</td><td></td><td>Rang</td><td>{money(colorPrice.length ? Math.min(...colorPrice) : amountOf(product.price), product.currencyCode)}</td><td>{quantityCell(colorCreated)}</td><td>{quantityCell(colorOnline)}</td><td>{quantityCell(colorOffline)}</td><td><span className="inventory-number inventory-number--sold"><b>{quantityCell(colorSold)}</b></span></td><td><span className={`inventory-stock-status${colorSoldOut ? " is-sold-out" : ""}`}>{colorSoldOut ? "Sold out" : "Active"}</span></td><td /></tr>
+            {openColors.has(colorKey) && group.variants.map((variant) => { const active = isValid(variant); const value = selected[variant.id]; const soldOut = variant.inventoryQuantity < 1; return <tr className="inventory-row inventory-row--size" key={variant.id}><td><SelectionCheckbox label={`${group.color} ${variant.size || "ONE SIZE"} ni tanlash`} checked={value !== undefined} disabled={!active} onChange={(checked) => setVariants([variant], checked)} /></td><td><span className="inventory-size-name">{variant.size || "ONE SIZE"}</span></td><td>{variant.sku || "—"}</td><td>{variant.barcode || ""}</td><td>Razmer</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{quantityCell(variant.totalInventoryAdded ?? physicalOf(variant))}</td><td>{quantityCell(variant.inventoryQuantity)}</td><td>{quantityCell(offlineOf(variant))}</td><td><span className="inventory-number inventory-number--sold"><b>{quantityCell(variant.soldQuantity ?? 0)}</b></span></td><td><span className={`inventory-stock-status${soldOut ? " is-sold-out" : ""}`}>{soldOut ? "Sold out" : variant.isActive ? "Active" : "Faol emas"}</span></td><td>{value !== undefined ? <label className="inventory-qty"><span>Transfer</span><input type="number" min="1" max={variant.inventoryQuantity} value={value} onChange={(event) => setSelected((current) => ({ ...current, [variant.id]: Math.min(variant.inventoryQuantity, Math.max(1, Number(event.target.value) || 1)) }))} /></label> : <span className="inventory-unavailable">{active ? "Tanlang" : "Mavjud emas"}</span>}</td></tr>; })}</Fragment>; })}</Fragment>;
       })}
       {!filtered.length && <tr><td colSpan={12}><Empty>Qidiruv yoki filter bo‘yicha mahsulot topilmadi.</Empty></td></tr>}
     </tbody></table></div>
@@ -999,7 +1056,7 @@ function ProductInspector({ product, onClose }: { product: Product; onClose: () 
   const salePrices = product.variants.map((variant) => amountOf(variant.price)).filter(Boolean);
   const article = product.metadata?.article || "—";
   const totalAdded = Math.max(Number(product.metadata?.baseInventoryQuantity ?? 0), product.variants.reduce((sum, variant) => sum + (variant.totalInventoryAdded ?? variant.inventoryQuantity), 0));
-  return <div className="product-inspector-backdrop" role="presentation" onMouseDown={onClose}><section className="product-inspector" role="dialog" aria-modal="true" aria-label={`${product.title} ma’lumotlari`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">PRODUCT INSPECTOR</p><h3>{product.title}</h3><span>{article} · {product.status}</span></div><button type="button" onClick={onClose} aria-label="Yopish">×</button></header><div className="product-inspector-metrics"><div><span>Sotilgan</span><b>{product.soldQuantity ?? 0}</b></div><div><span>Ko‘rishlar</span><b>{Number(product.metadata?.views ?? 0)}</b></div><div><span>Ombordagi qoldiq</span><b>{stock}</b></div><div><span>Jami kiritilgan</span><b>{totalAdded}</b></div><div><span>Yaratilgan sana</span><b>{readableDate(product.createdAt)}</b></div><div><span>Tannarx</span><b>{money(cost, product.currencyCode)}</b></div><div><span>Xarajat</span><b>{money(expense, product.currencyCode)}</b></div><div><span>Sotuv narxi</span><b>{salePrices.length ? `${money(Math.min(...salePrices), product.currencyCode)} — ${money(Math.max(...salePrices), product.currencyCode)}` : money(amountOf(product.price), product.currencyCode)}</b></div></div><div className="product-inspector-table-wrap"><table><thead><tr><th>SKU</th><th>Rang</th><th>Razmer</th><th>Qoldiq</th><th>Tannarx</th><th>Xarajat</th><th>Sotuv narxi</th><th>Holat</th></tr></thead><tbody>{product.variants.length ? product.variants.map((variant) => <tr key={variant.id}><td>{variant.sku}</td><td>{variant.color || "—"}</td><td>{variant.size || "ONE SIZE"}</td><td>{variant.inventoryQuantity}</td><td>{money(amountOf(variant.attributes?.costPrice), product.currencyCode)}</td><td>{money(amountOf(variant.attributes?.expensePrice), product.currencyCode)}</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.isActive ? "Active" : "Off"}</td></tr>) : <tr><td colSpan={8}>Variantlar yo‘q.</td></tr>}</tbody></table></div><footer><Button type="button" variant="outline" onClick={onClose}>Yopish</Button><Link className="ui-button ui-button--primary" href={`/products/${product.slug}`}>Saytda ko‘rish <ChevronRight size={15} /></Link></footer></section></div>;
+  return <div className="product-inspector-backdrop" role="presentation" onMouseDown={onClose}><section className="product-inspector" role="dialog" aria-modal="true" aria-label={`${product.title} ma’lumotlari`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">PRODUCT INSPECTOR</p><h3>{product.title}</h3><span>{article} · {product.status}</span></div><button type="button" onClick={onClose} aria-label="Yopish">×</button></header><div className="product-inspector-metrics"><div><span>Sotilgan</span><b>{product.soldQuantity ?? 0}</b></div><div><span>Ko‘rishlar</span><b>{Number(product.metadata?.views ?? 0)}</b></div><div><span>Favoritga qo‘shganlar</span><b>{product.favoriteCount ?? 0}</b></div><div><span>Savatga qo‘shganlar</span><b>{product.cartAddCount ?? 0}</b></div><div><span>Ombordagi qoldiq</span><b>{stock}</b></div><div><span>Jami kiritilgan</span><b>{totalAdded}</b></div><div><span>Yaratilgan sana</span><b>{readableDate(product.createdAt)}</b></div><div><span>Tannarx</span><b>{money(cost, product.currencyCode)}</b></div><div><span>Xarajat</span><b>{money(expense, product.currencyCode)}</b></div><div><span>Sotuv narxi</span><b>{salePrices.length ? `${money(Math.min(...salePrices), product.currencyCode)} — ${money(Math.max(...salePrices), product.currencyCode)}` : money(amountOf(product.price), product.currencyCode)}</b></div></div><div className="product-inspector-table-wrap"><table><thead><tr><th>SKU</th><th>Rang</th><th>Razmer</th><th>Qoldiq</th><th>Tannarx</th><th>Xarajat</th><th>Sotuv narxi</th><th>Holat</th></tr></thead><tbody>{product.variants.length ? product.variants.map((variant) => <tr key={variant.id}><td>{variant.sku}</td><td>{variant.color || "—"}</td><td>{variant.size || "ONE SIZE"}</td><td>{variant.inventoryQuantity}</td><td>{money(amountOf(variant.attributes?.costPrice), product.currencyCode)}</td><td>{money(amountOf(variant.attributes?.expensePrice), product.currencyCode)}</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.isActive ? "Active" : "Off"}</td></tr>) : <tr><td colSpan={8}>Variantlar yo‘q.</td></tr>}</tbody></table></div><footer><Button type="button" variant="outline" onClick={onClose}>Yopish</Button><Link className="ui-button ui-button--primary" href={`/products/${product.slug}`}>Saytda ko‘rish <ChevronRight size={15} /></Link></footer></section></div>;
 }
 type AdminModuleConfig = { title: string; description: string; tabs: string[]; columns: string[]; fields: string[]; metrics?: string[]; action: string };
 const adminModules: Record<"delivery" | "customers" | "promos" | "partners" | "finance" | "currencies" | "analytics" | "settings", AdminModuleConfig> = {
@@ -1050,11 +1107,13 @@ function FinanceManager({ token, onNotice }: { token: string; onNotice: (message
 }
 function CustomerManager({ customers, loading, error, token }: { customers: CustomerRecord[]; loading: boolean; error: string; token: string }) {
   const [query, setQuery] = useState("");
+  const [segment, setSegment] = useState<"all" | "vip">("all");
   const [selected, setSelected] = useState<CustomerDetail | null>(null);
   const [receipt, setReceipt] = useState<CustomerDetail["orders"][number] | null>(null);
   const [detailError, setDetailError] = useState("");
   const [opening, setOpening] = useState(false);
-  const filtered = customers.filter((customer) => `${customer.firstName} ${customer.lastName} ${customer.email ?? ""} ${customer.phone ?? ""}`.toLocaleLowerCase("uz-UZ").includes(query.toLocaleLowerCase("uz-UZ")));
+  const isVip = (customer: Pick<CustomerRecord, "totalSpent">) => Number(customer.totalSpent) >= 10_000_000;
+  const filtered = customers.filter((customer) => `${customer.firstName} ${customer.lastName} ${customer.email ?? ""} ${customer.phone ?? ""}`.toLocaleLowerCase("uz-UZ").includes(query.toLocaleLowerCase("uz-UZ")) && (segment === "all" || isVip(customer)));
   const openCustomer = async (customer: CustomerRecord) => {
     setOpening(true); setDetailError("");
     try { setSelected(await api<CustomerDetail>(`/admin/customers/${customer.id}`, token)); }
@@ -1065,7 +1124,8 @@ function CustomerManager({ customers, loading, error, token }: { customers: Cust
   const closeProfile = () => { setSelected(null); setReceipt(null); };
   return <section className="tailadmin-customers-page">
     <header className="tailadmin-page-heading"><div><p className="ui-overline">MIJOZLAR</p><h2>Barcha mijozlar</h2><span>Mijoz profili, buyurtmalar va xarid faolligi.</span></div><Badge variant="neutral">{customers.length} ta mijoz</Badge></header>
-    <div className="tailadmin-data-card"><div className="tailadmin-data-card-toolbar admin-table-tools"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ism, email yoki telefon qidirish..." aria-label="Mijoz qidirish" /></div>{loading ? <div className="admin-module-state">Yuklanmoqda…</div> : error ? <div className="admin-module-state is-error">{error}</div> : <div className="admin-module-table-wrap"><table className="admin-module-table customer-list-table"><thead><tr><th>Mijoz</th><th>Telefon</th><th>Email</th><th>Buyurtmalar</th><th>Jami savdo</th><th>O‘rtacha chek</th><th>Oxirgi buyurtma</th><th>Holat</th></tr></thead><tbody>{filtered.map((customer) => { const average = customer.totalOrders ? customer.totalSpent / customer.totalOrders : 0; return <tr key={customer.id}><td><button type="button" className="customer-name-trigger" onClick={() => void openCustomer(customer)}>{customerName(customer)}<small>Profilni ko‘rish</small></button></td><td>{customer.phone || "—"}</td><td>{customer.email || "—"}{customer.emailVerifiedAt ? <small> ✓</small> : null}</td><td>{customer.totalOrders}</td><td><b>{Math.round(customer.totalSpent).toLocaleString("uz-UZ")} UZS</b></td><td>{Math.round(average).toLocaleString("uz-UZ")} UZS</td><td>—</td><td><span className={`customer-segment${customer.welcomeDiscountEligible ? " is-welcome" : ""}`}>{customer.isActive === false ? "Nofaol" : customer.welcomeDiscountEligible ? `${customer.welcomeDiscountPercent || 15}% welcome` : "Faol"}</span></td></tr>; })}{!filtered.length && <tr><td colSpan={8}><Empty>{query ? "Qidiruv bo‘yicha mijoz topilmadi." : "Hali customer yozuvi yo‘q."}</Empty></td></tr>}</tbody></table></div>}<div className="admin-table-pagination"><span>{filtered.length} ta natija</span></div></div>
+    <div className="customer-segments"><button type="button" className={segment === "all" ? "is-active" : ""} onClick={() => setSegment("all")}>Barcha mijozlar <span>{customers.length}</span></button><button type="button" className={segment === "vip" ? "is-active" : ""} onClick={() => setSegment("vip")}>VIP mijozlar <span>{customers.filter(isVip).length}</span></button></div>
+    <div className="tailadmin-data-card"><div className="tailadmin-data-card-toolbar admin-table-tools"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ism, email yoki telefon qidirish..." aria-label="Mijoz qidirish" /></div>{loading ? <div className="admin-module-state">Yuklanmoqda…</div> : error ? <div className="admin-module-state is-error">{error}</div> : <div className="admin-module-table-wrap"><table className="admin-module-table customer-list-table"><thead><tr><th>Mijoz</th><th>Telefon</th><th>Email</th><th>Buyurtmalar</th><th>Jami savdo</th><th>O‘rtacha chek</th><th>Oxirgi buyurtma</th><th>Holat</th></tr></thead><tbody>{filtered.map((customer) => { const average = customer.totalOrders ? customer.totalSpent / customer.totalOrders : 0; const vip = isVip(customer); return <tr key={customer.id}><td><button type="button" className="customer-name-trigger" onClick={() => void openCustomer(customer)}>{customerName(customer)}<small>Profilni ko‘rish</small></button></td><td>{customer.phone || "—"}</td><td>{customer.email || "—"}{customer.emailVerifiedAt ? <small> ✓</small> : null}</td><td>{customer.totalOrders}</td><td><b>{Math.round(customer.totalSpent).toLocaleString("uz-UZ")} UZS</b></td><td>{Math.round(average).toLocaleString("uz-UZ")} UZS</td><td>—</td><td><span className={`customer-segment${vip ? " is-vip" : customer.welcomeDiscountEligible ? " is-welcome" : ""}`}>{customer.isActive === false ? "Nofaol" : vip ? "VIP" : customer.welcomeDiscountEligible ? `${customer.welcomeDiscountPercent || 15}% welcome` : "Faol"}</span></td></tr>; })}{!filtered.length && <tr><td colSpan={8}><Empty>{query ? "Qidiruv bo‘yicha mijoz topilmadi." : segment === "vip" ? "Hali 10 000 000 UZS dan oshgan VIP mijoz yo‘q." : "Hali customer yozuvi yo‘q."}</Empty></td></tr>}</tbody></table></div>}<div className="admin-table-pagination"><span>{filtered.length} ta natija</span></div></div>
     {opening && <p className="customer-detail-loading">Mijoz profili yuklanmoqda…</p>}{detailError && <p className="admin-module-state is-error">{detailError}</p>}
     {selected && <div className="inventory-confirm-backdrop customer-detail-backdrop" onMouseDown={closeProfile}><section className="customer-detail-dialog" role="dialog" aria-modal="true" aria-label={`${customerName(selected)} profili`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">MIJOZ PROFILI</p><h3>{customerName(selected)}</h3><span>{selected.email || "Email kiritilmagan"}</span></div><button type="button" onClick={closeProfile} aria-label="Yopish">×</button></header><div className="customer-detail-metrics"><div><span>Buyurtmalar</span><b>{selected.totalOrders} ta</b></div><div><span>To‘langan</span><b>{selected.paidOrders} ta</b></div><div><span>Jami savdo</span><b>{money(selected.totalSpent, "UZS")}</b></div><div><span>O‘rtacha chek</span><b>{money(selected.averageOrder, "UZS")}</b></div></div><div className="customer-detail-columns"><section><h4>Aloqa va joylashuv</h4><dl><div><dt>Telefon</dt><dd>{selected.phone || "—"}</dd></div><div><dt>Hudud</dt><dd>{selected.region || "—"}</dd></div><div><dt>Ro‘yxatdan o‘tgan</dt><dd>{readableDate(selected.createdAt)}</dd></div><div><dt>Oxirgi kirish</dt><dd>{selected.lastLoginAt ? readableDate(selected.lastLoginAt) : "—"}</dd></div></dl>{selected.addresses.length ? <div className="customer-addresses">{selected.addresses.map((address) => <p key={address.id}><b>{address.isDefault ? "Asosiy manzil" : "Manzil"}</b><span>{[address.country, address.city, address.line1, address.line2, address.postalCode].filter(Boolean).join(", ")}</span></p>)}</div> : <p className="customer-detail-empty">Saqlangan manzil yo‘q.</p>}</section><section><h4>Buyurtmalar tarixi</h4><div className="customer-detail-orders">{selected.orders.map((order) => <article key={order.id}><div><button type="button" className="customer-receipt-trigger" onClick={() => setReceipt(order)}>#{order.orderNumber}</button><span>{readableDate(order.createdAt)} · {order.paymentStatus}</span><small>{order.items.map((item) => `${item.title} × ${item.quantity}`).join(", ") || "Mahsulot yo‘q"}</small></div><strong>{money(Number(order.totalAmount), order.currencyCode || "UZS")}</strong></article>)}{!selected.orders.length && <p className="customer-detail-empty">Bu mijozda buyurtma yo‘q.</p>}</div></section></div></section></div>}
     {receipt && <div className="inventory-confirm-backdrop customer-receipt-backdrop" onMouseDown={() => setReceipt(null)}><section className="customer-receipt-dialog" role="dialog" aria-modal="true" aria-label={`Chek #${receipt.orderNumber}`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">BUYURTMA CHEKI</p><h3>Chek #{receipt.orderNumber}</h3><span>{readableDate(receipt.createdAt)} · {receipt.paymentStatus}</span></div><button type="button" onClick={() => setReceipt(null)} aria-label="Yopish">×</button></header><div className="customer-receipt-items">{receipt.items.map((item, index) => <article key={`${item.sku || item.title}-${index}`}><div><b>{item.title}</b><span>{item.sku || "SKU yo‘q"} × {item.quantity}</span></div><strong>{money(Number(item.unitPrice) * item.quantity, receipt.currencyCode || "UZS")}</strong></article>)}</div><dl><div><dt>To‘lov turi</dt><dd>{receipt.paymentMethod || "—"}</dd></div><div><dt>Buyurtma holati</dt><dd>{receipt.status}</dd></div><div className="is-total"><dt>Jami</dt><dd>{money(Number(receipt.totalAmount), receipt.currencyCode || "UZS")}</dd></div></dl></section></div>}
@@ -1101,6 +1161,19 @@ function flavor(x: string) {
       : ("danger" as const);
 }
 type OrderStage = "pending" | "paid" | "on-way" | "success" | "fail";
+type OrderWorkflowAction = { label: string; payload: { status: string; fulfillmentStatus: string } };
+function nextOrderWorkflowAction(order: Order): OrderWorkflowAction | null {
+  const pickup = order.shippingAddress?.fulfillmentMethod === "pickup";
+  const status = (order.fulfillmentStatus || "").toLowerCase();
+  if (["cancelled", "refunded", "refund_completed", "pickup_expired", "picked_up", "pickup_completed", "delivered"].includes(status) || ["cancelled", "refunded", "delivered"].includes(order.status)) return null;
+  if (["pending_acceptance", "unfulfilled", "awaiting_pickup", ""].includes(status)) return { label: "Qabul qilish", payload: { status: "pending", fulfillmentStatus: pickup ? "accepted_pickup" : "accepted" } };
+  if (pickup && status === "accepted_pickup") return { label: "Olib ketishga tayyor", payload: { status: "pending", fulfillmentStatus: "ready_for_pickup" } };
+  if (pickup && status === "ready_for_pickup") return { label: "Olib ketildi", payload: { status: "delivered", fulfillmentStatus: "picked_up" } };
+  if (!pickup && status === "accepted") return { label: "Yig‘ildi", payload: { status: "processing", fulfillmentStatus: "processing" } };
+  if (!pickup && status === "processing") return { label: "Yo‘lga jo‘natish", payload: { status: "shipped", fulfillmentStatus: "shipped" } };
+  if (!pickup && status === "shipped") return { label: "Yetkazildi", payload: { status: "delivered", fulfillmentStatus: "delivered" } };
+  return null;
+}
 const orderStage = (order: Pick<Order, "status" | "paymentStatus" | "fulfillmentStatus">): OrderStage => {
   const status = order.status.toLowerCase(); const payment = order.paymentStatus.toLowerCase(); const fulfillment = (order.fulfillmentStatus || "").toLowerCase();
   if (["cancelled", "refunded", "failed", "fail"].includes(status) || ["failed", "fail", "refunded"].includes(payment)) return "fail";
@@ -1110,6 +1183,8 @@ const orderStage = (order: Pick<Order, "status" | "paymentStatus" | "fulfillment
   return "pending";
 };
 function OrderStageBadge({ order }: { order: Pick<Order, "status" | "paymentStatus" | "fulfillmentStatus"> }) {
+  if (["refund_requested", "cash_refund_pending"].includes(order.paymentStatus.toLowerCase())) return <span className="order-stage-badge is-refund-pending"><i aria-hidden="true" />REFUND SO‘ROVI</span>;
+  if (order.paymentStatus.toLowerCase() === "refunded") return <span className="order-stage-badge is-refunded">Naqd qaytarildi</span>;
   const stage = orderStage(order); const label: Record<OrderStage, string> = { pending: "PENDING", paid: "PAID", "on-way": "ON WAY", success: "SUCCESS", fail: "FAIL" };
   return <span className={`order-stage-badge is-${stage}`}><i aria-hidden="true" />{label[stage]}</span>;
 }
@@ -1346,6 +1421,10 @@ export default function AdminConsole() {
   const [collections, setCollections] = useState<Taxonomy[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancellationPhoto, setCancellationPhoto] = useState<File | null>(null);
+  const [cancellationSaving, setCancellationSaving] = useState(false);
   const [deliveryOrder, setDeliveryOrder] = useState<Order | null>(null);
   const [orderCustomer, setOrderCustomer] = useState<CustomerDetail | null>(null);
   const [orderCustomerLoading, setOrderCustomerLoading] = useState(false);
@@ -1368,6 +1447,12 @@ export default function AdminConsole() {
   >([]);
   const [audit, setAudit] = useState<Record<string, unknown>[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creationReviewOpen, setCreationReviewOpen] = useState(false);
+  const [creationReviewChecked, setCreationReviewChecked] = useState(false);
+  const [editSaveReviewOpen, setEditSaveReviewOpen] = useState(false);
+  const [editSaveApproved, setEditSaveApproved] = useState(false);
+  const [priceEditPrompt, setPriceEditPrompt] = useState<"expensePrice" | "price" | null>(null);
+  const [approvedPriceFields, setApprovedPriceFields] = useState<string[]>([]);
   const [confirmProductDeletion, setConfirmProductDeletion] = useState(false);
   const [inspectedProductId, setInspectedProductId] = useState<string | null>(null);
   const [productView, setProductView] = useState<"list" | "create" | "edit">(
@@ -1423,12 +1508,13 @@ export default function AdminConsole() {
     Number(form.inventoryQuantity) -
       productVariants.reduce(
         (sum, item) =>
-          sum + (item.id === editingVariantId ? 0 : item.inventoryQuantity),
+          sum + (item.id === editingVariantId ? 0 : (item.totalInventoryAdded ?? item.inventoryQuantity)),
         0,
       ),
   );
   const article = form.article.trim();
   const updateArticle = (value: string) => {
+    setCreationReviewChecked(false);
     setForm({ ...form, article: value });
     setVariant((current) => ({ ...current, sku: generatedVariantSku(value, current.color, current.size) }));
     setAdditionalVariants((current) => current.map((item) => ({ ...item, sku: generatedVariantSku(value, item.color, item.size) })));
@@ -1440,7 +1526,20 @@ export default function AdminConsole() {
     });
   };
   const creationDrafts = [variant, ...additionalVariants];
+  const creationReviewGroups = creationDrafts.reduce<Array<{ color: string; rows: Array<ReturnType<typeof blankVariant>>; quantity: number }>>((groups, draft) => {
+    const color = draft.color.trim() || "Rang kiritilmagan";
+    const group = groups.find((item) => item.color.toLowerCase() === color.toLowerCase());
+    if (group) { group.rows.push(draft); group.quantity += draft.inventoryQuantity; }
+    else groups.push({ color, rows: [draft], quantity: draft.inventoryQuantity });
+    return groups;
+  }, []);
   const updateCreationDraft = (index: number, updates: Partial<ReturnType<typeof blankVariant>>) => {
+    setCreationReviewChecked(false);
+    setEditSaveApproved(false);
+    if (updates.inventoryQuantity !== undefined) {
+      const usedByOthers = creationDrafts.reduce((sum, item, itemIndex) => sum + (itemIndex === index ? 0 : item.inventoryQuantity), 0);
+      updates = { ...updates, inventoryQuantity: Math.min(Math.max(0, Number(updates.inventoryQuantity) || 0), Math.max(0, Number(form.inventoryQuantity) - usedByOthers)) };
+    }
     if (index === 0) {
       updateVariant(updates);
       return;
@@ -1577,7 +1676,7 @@ export default function AdminConsole() {
         setOrders(nextOrders);
       }
       if (t === "products" || t === "catalog" || t === "discounts" || t === "partners") await catalog();
-      if (t === "orders") setOrders(await api<Order[]>("/admin/orders", token));
+      if (t === "orders" || t === "refunds") setOrders(await api<Order[]>("/admin/orders", token));
       if (t === "customers") setCustomers(await api<CustomerRecord[]>("/admin/customers", token));
       if (t === "pages") setPages(await api<CmsPage[]>("/admin/content/pages", token));
       if (t === "content") {
@@ -1663,6 +1762,8 @@ export default function AdminConsole() {
     });
   };
   const pick = (p: Product) => {
+    setCreationReviewChecked(false);
+    setEditSaveApproved(false); setApprovedPriceFields([]);
     const translations = p.metadata?.translations;
     const [firstDraft, ...restDrafts] = p.variants.map(variantDraftFrom);
     setSelectedId(p.id);
@@ -1704,6 +1805,8 @@ export default function AdminConsole() {
     setEditingVariantId(null);
   };
   const startCreate = () => {
+    setCreationReviewChecked(false);
+    setEditSaveApproved(false); setApprovedPriceFields([]);
     setSelectedId(null);
     setProductView("create");
     setForm(blankProduct());
@@ -1717,6 +1820,8 @@ export default function AdminConsole() {
     setEditingVariantId(null);
   };
   const closeEditor = () => {
+    setCreationReviewChecked(false);
+    setEditSaveApproved(false); setApprovedPriceFields([]);
     setSelectedId(null);
     setProductView("list");
     setForm(blankProduct());
@@ -1758,16 +1863,6 @@ export default function AdminConsole() {
       setError(`“${article}” artikuli boshqa mahsulotga tegishli. Har mahsulotda unikal artikul bo‘lishi kerak.`);
       return;
     }
-    const allocated = selected?.variants.reduce(
-      (sum, item) => sum + item.inventoryQuantity,
-      0,
-    ) ?? 0;
-    if (Number(form.inventoryQuantity) < allocated) {
-      setError(
-        `Umumiy ombor soni variantlarga ajratilgan ${allocated} donadan kam bo‘la olmaydi.`,
-      );
-      return;
-    }
     const variantDrafts = [variant, ...additionalVariants].map((item) => ({
       ...item,
       sku: generatedVariantSku(article, item.color, item.size) || item.sku,
@@ -1775,6 +1870,27 @@ export default function AdminConsole() {
     const variantsForCreation = isCreate
       ? variantDrafts
       : variantDrafts.filter((item) => Boolean(item.sourceId || item.sku.trim()));
+    const colorVariantCounts = new Map<string, number>();
+    variantsForCreation.forEach((item) => {
+      const key = item.color.trim().toLowerCase();
+      colorVariantCounts.set(key, (colorVariantCounts.get(key) ?? 0) + 1);
+    });
+    if (isCreate && variantsForCreation.some((item) => (colorVariantCounts.get(item.color.trim().toLowerCase()) ?? 0) > 1 && !item.size.trim())) {
+      setError("Bir rangda bir nechta qator bo‘lsa, har bir SKU-RANG-RAZMER uchun razmer kiriting yoki bo‘sh qatorni o‘chiring.");
+      return;
+    }
+    const duplicateSize = variantsForCreation.find((item, index) => item.size.trim() && variantsForCreation.findIndex((other) => other.color.trim().toLowerCase() === item.color.trim().toLowerCase() && other.size.trim().toLowerCase() === item.size.trim().toLowerCase()) !== index);
+    if (isCreate && duplicateSize) {
+      setError(`${duplicateSize.color} rangi uchun “${duplicateSize.size}” razmeri takrorlangan. Har SKU-RANG-RAZMER noyob bo‘lishi kerak.`);
+      return;
+    }
+    const allocated = variantsForCreation.length
+      ? variantsForCreation.reduce((sum, item) => sum + item.inventoryQuantity, 0)
+      : selected?.variants.reduce((sum, item) => sum + (item.totalInventoryAdded ?? item.inventoryQuantity), 0) ?? 0;
+    if (Number(form.inventoryQuantity) < allocated) {
+      setError(`Jami yaratilgan son variantlarga ajratilgan ${allocated} donadan kam bo‘la olmaydi.`);
+      return;
+    }
     const variantPrices = variantsForCreation
       .map((item) => Number(item.price))
       .filter((price) => Number.isFinite(price) && price > 0);
@@ -1787,10 +1903,15 @@ export default function AdminConsole() {
       setError("Variant SKU lari takrorlanmasligi kerak.");
       return;
     }
-    if (isCreate && variantsForCreation.reduce((sum, item) => sum + item.inventoryQuantity, 0) > Number(form.inventoryQuantity)) {
-      setError("Variantlar ombori umumiy ombordagi sondan ko‘p bo‘la olmaydi.");
+    if (isCreate && allocated !== Number(form.inventoryQuantity)) {
+      setError(`Variantlar jami ${allocated} ta bo‘ldi. Mahsulot uchun yaratilgan limit ${Number(form.inventoryQuantity)} ta — barcha razmerlarga to‘liq ajrating.`);
       return;
     }
+    if (isCreate && !creationReviewChecked) {
+      setCreationReviewOpen(true);
+      return;
+    }
+    if (!isCreate && !editSaveApproved) { setEditSaveReviewOpen(true); return; }
     await run(async () => {
       const uploadedSizeGuide = sizeGuideFile
         ? await (async () => {
@@ -1873,6 +1994,7 @@ export default function AdminConsole() {
               method: sourceId ? "PATCH" : "POST",
               body: JSON.stringify({
                 ...variantPayload,
+                totalInventoryAdded: variantDraft.inventoryQuantity,
                 name: variantDraft.sku,
                 color: variantDraft.color || null,
                 size: variantDraft.size || null,
@@ -1913,7 +2035,7 @@ export default function AdminConsole() {
       return;
     }
     const allocated = selected?.variants.reduce(
-      (sum, item) => sum + (item.id === editingVariantId ? 0 : item.inventoryQuantity),
+      (sum, item) => sum + (item.id === editingVariantId ? 0 : (item.totalInventoryAdded ?? item.inventoryQuantity)),
       0,
     ) ?? 0;
     const available = Number(form.inventoryQuantity) - allocated;
@@ -1943,6 +2065,7 @@ export default function AdminConsole() {
         method: editingVariantId ? "PATCH" : "POST",
         body: JSON.stringify({
           ...variantPayload,
+          totalInventoryAdded: preparedVariant.inventoryQuantity,
           name: preparedVariant.sku,
           color: variant.color || null,
           size: variant.size || null,
@@ -2054,6 +2177,40 @@ export default function AdminConsole() {
       else new Notification("SIREN · Yangi buyurtma", options);
     });
   }, [browserNotificationPermission, orderActivities]);
+  const submitCancellation = async (event: FormEvent) => {
+    event.preventDefault(); if (!cancellingOrder || !cancellationReason.trim()) return;
+    setCancellationSaving(true);
+    try {
+      let evidenceUrl: string | undefined;
+      if (cancellationPhoto) { const data = new FormData(); data.append("file", cancellationPhoto); evidenceUrl = (await api<{ url: string }>("/admin/content/banners/upload", token, { method: "POST", body: data })).url; }
+      await api(`/admin/orders/${cancellingOrder.id}/cancel`, token, { method: "POST", body: JSON.stringify({ reason: cancellationReason.trim(), evidenceUrl }) });
+      setNotice(cancellingOrder.paymentMethod?.toLowerCase().includes("налич") || cancellingOrder.paymentMethod?.toLowerCase().includes("naqd") ? "Buyurtma bekor qilindi. Naqd pulni mijozga qaytaring." : "Buyurtma bekor qilindi. Payme refund qayta ishlashga yuborildi.");
+      setSelectedOrder(null); setCancellingOrder(null); setCancellationReason(""); setCancellationPhoto(null); await refresh("orders");
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Buyurtmani bekor qilib bo‘lmadi."); } finally { setCancellationSaving(false); }
+  };
+  const advanceOrder = async (order: Order) => {
+    const action = nextOrderWorkflowAction(order);
+    if (!action) return;
+    try {
+      await api(`/admin/orders/${order.id}`, token, { method: "PATCH", body: JSON.stringify(action.payload) });
+      setNotice(`Chek #${order.orderNumber}: ${action.label.toLowerCase()}. Mijozga xabar yuborildi.`);
+      setDeliveryOrder(null); setSelectedOrder(null); await refresh("orders");
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Buyurtma holati yangilanmadi."); }
+  };
+  useEffect(() => {
+    if (!selectedOrder) return;
+    const refundPending = ["cash_refund_pending", "refund_requested"].includes(selectedOrder.paymentStatus);
+    if (["cancelled", "refunded"].includes(selectedOrder.status) && !refundPending) return;
+    const modal = document.querySelector<HTMLElement>(".reference-order-modal"); if (!modal || modal.querySelector("[data-order-cancel]")) return;
+    const slot = document.createElement("div"); slot.dataset.orderCancel = "true"; modal.appendChild(slot); const root = createRoot(slot);
+    root.render(refundPending ? <button type="button" className="reference-order-cancel is-refund" onClick={() => void (async () => { try { await api(`/admin/orders/${selectedOrder.id}/refund-complete`, token, { method: "POST" }); setNotice("Refund muvaffaqiyatli yakunlandi."); setSelectedOrder(null); await refresh("orders"); } catch (error) { setNotice(error instanceof Error ? error.message : "Refund yakunlanmadi."); } })()}>Refundni tasdiqlash</button> : <button type="button" className="reference-order-cancel" onClick={() => { setCancellingOrder(selectedOrder); setSelectedOrder(null); }}>Buyurtmani bekor qilish</button>);
+    return () => { window.setTimeout(() => { root.unmount(); slot.remove(); }, 0); };
+  }, [selectedOrder, token, refresh]);
+  useEffect(() => {
+    if (!cancellingOrder) return; const host = document.createElement("div"); document.body.appendChild(host); const root = createRoot(host);
+    root.render(<CancellationDialog order={cancellingOrder} token={token} onClose={() => setCancellingOrder(null)} onDone={(message) => { setNotice(message); setCancellingOrder(null); void refresh("orders"); }} />);
+    return () => { window.setTimeout(() => { root.unmount(); host.remove(); }, 0); };
+  }, [cancellingOrder, token, refresh]);
   if (!token)
     return (
       <main className="tailadmin-auth-page">
@@ -2102,6 +2259,8 @@ export default function AdminConsole() {
     ["products", "Mahsulotlar", Package],
     ["catalog", "Kategoriyalar", Tags],
     ["orders", "Buyurtmalar", ShoppingBag],
+    ["refunds", "Refundlar", RefreshCw],
+    ["pickup", "Olib ketish nuqtalari", MapPin],
     ["customers", "Mijozlar", Users],
     ["discounts", "Chegirmalar", Tags],
     ["partners", "Hamkorlar", Crown],
@@ -2141,13 +2300,13 @@ export default function AdminConsole() {
     ["content-social", "Ijtimoiy tarmoqlar", Smartphone],
   ];
   const standardNavGroups: Array<[string, Array<[string, string, ElementType]>]> = [
-    ["Asosiy", nav.slice(0, 4)],
-    ["Savdo", nav.slice(4, 9)],
-    ["Offline do‘kon", nav.slice(9, 13)],
-    ["Kontent", [...contentSidebarNav, ...nav.slice(13, 15)]],
-    ["Tizim", nav.slice(15)],
+    ["Asosiy", nav.slice(0, 5)],
+    ["Savdo", nav.slice(5, 10)],
+    ["Offline do‘kon", nav.slice(10, 14)],
+    ["Kontent", [...contentSidebarNav, ...nav.slice(14, 16)]],
+    ["Tizim", nav.slice(16)],
   ];
-  const offlineNav = nav.slice(9, 13);
+  const offlineNav = nav.slice(10, 14);
   const navGroups: Array<[string, Array<[string, string, ElementType]>]> = adminProfile?.role === "cashier" ? [["Offline do‘kon", offlineNav]] : standardNavGroups;
   const activeSidebarId = tab === "content" ? `content-${contentSubsection}` : tab;
   const activeContentLabel = contentNavigation.find(([id]) => id === contentSubsection)?.[1] ?? "Kontent";
@@ -2306,11 +2465,12 @@ export default function AdminConsole() {
                         <h3>Asosiy sozlamalar</h3>
                       </div>
                       <div className="ui-form-grid">
-                      <Field label="Ombordagi umumiy son">
-                        <input
-                          type="number"
-                          min="0"
-                          value={form.inventoryQuantity || ""}
+                      <Field label="Jami yaratilgan son">
+                          <input
+                            type="number"
+                            min="0"
+                            disabled={Boolean(selected)}
+                            value={form.inventoryQuantity || ""}
                           onChange={(e) =>
                             setForm({
                               ...form,
@@ -2415,6 +2575,8 @@ export default function AdminConsole() {
                         <form onSubmit={(event) => event.preventDefault()} className="variant-characteristics-create">
                           <VariantCharacteristics
                             drafts={creationDrafts}
+                            totalCreated={Number(form.inventoryQuantity) || 0}
+                            quantityLocked={Boolean(selected)}
                             onUpdate={updateCreationDraft}
                             onAddColor={() => {
                               setAdditionalVariants((current) => [...current, blankVariant()]);
@@ -2611,13 +2773,20 @@ export default function AdminConsole() {
                       {showVariantForm && <VariantImages drafts={creationDrafts} onAddImage={addVariantImage} onRemoveImage={removeVariantImage} />}
                       <FinanceTable
                         currency={form.currencyCode}
+                        vatPercent={form.vatPercent}
+                        editing={Boolean(selected)}
+                        approvedFields={approvedPriceFields}
+                        onRequestEdit={(field) => setPriceEditPrompt(field)}
                         rows={creationDrafts}
-                        onChange={(indices, field, value) => indices.forEach((index) => updateCreationDraft(index, { [field]: value }))}
+                        onChange={(indices, field, value) => indices.forEach((index) => updateCreationDraft(index, field === "price" && form.vatPercent > 0 ? { price: value, expensePrice: String(Math.round((Number(value) || 0) * form.vatPercent / 100)) } : { [field]: value }))}
                       />
                     </section>
                   )}
                 </CardContent>
               </Card>
+              {creationReviewOpen && <div className="inventory-confirm-backdrop" role="presentation" onMouseDown={() => { setCreationReviewChecked(false); setCreationReviewOpen(false); }}><section className="inventory-confirm product-creation-review" role="dialog" aria-modal="true" aria-label="Mahsulot yaratishni tekshirish" onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">YARATISHDAN OLDIN TEKSHIRUV</p><h3>Ombor taqsimoti to‘g‘rimi?</h3><p>Rang mustaqil limit emas. SKU-RANG soni uning ichidagi barcha SKU-RANG-RAZMER qatorlari yig‘indisidan hisoblanadi.</p><div className="product-creation-review-list"><div><b>SKU · {article}</b><strong>{form.inventoryQuantity} ta</strong></div>{creationReviewGroups.map((group) => <div key={group.color}><b>SKU-RANG · {article}−{group.color.toUpperCase()}</b><strong>{group.quantity} ta</strong>{group.rows.map((row) => <small key={`${row.color}-${row.size}`}><span>SKU-RANG-RAZMER · {row.sku || generatedVariantSku(article, row.color, row.size)}</span><b>{row.inventoryQuantity} ta</b></small>)}</div>)}</div><label className="ui-checkbox product-creation-review-check"><input type="checkbox" checked={creationReviewChecked} onChange={(event) => setCreationReviewChecked(event.target.checked)} /> Taqsimotni tekshirdim</label><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => { setCreationReviewChecked(false); setCreationReviewOpen(false); }}>Orqaga</Button><Button type="button" disabled={!creationReviewChecked} onClick={() => { setCreationReviewOpen(false); window.setTimeout(() => (document.getElementById("product-editor-form") as HTMLFormElement | null)?.requestSubmit(), 0); }}>Yaratish</Button></div></section></div>}
+              {priceEditPrompt && <div className="inventory-confirm-backdrop" role="presentation" onMouseDown={() => setPriceEditPrompt(null)}><section className="inventory-confirm product-edit-review" role="dialog" aria-modal="true" aria-label="Narx o‘zgartirishni tasdiqlash" onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">NARXNI O‘ZGARTIRISH</p><h3>{priceEditPrompt === "price" ? "Sotuv narxini" : "Xarajatni"} o‘zgartirasizmi?</h3><p>Bu maydon mahsulotning marjasi va sof foyda hisobiga ta’sir qiladi. Davom etishni tasdiqlang.</p><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setPriceEditPrompt(null)}>O‘zgartirmaslik</Button><Button type="button" onClick={() => { setApprovedPriceFields((current) => [...new Set([...current, priceEditPrompt])]); setPriceEditPrompt(null); }}>Davom etish</Button></div></section></div>}
+              {editSaveReviewOpen && <div className="inventory-confirm-backdrop" role="presentation" onMouseDown={() => setEditSaveReviewOpen(false)}><section className="inventory-confirm product-edit-review" role="dialog" aria-modal="true" aria-label="Mahsulot tahririni tasdiqlash" onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">O‘ZGARISHLARNI SAQLASH</p><h3>Yangilashni tasdiqlaysizmi?</h3><p>Yaratilgan son, rang va razmer himoyalangan. Tasdiqlangan narx hamda boshqa ma’lumotlar yangilanadi.</p><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setEditSaveReviewOpen(false)}>Orqaga</Button><Button type="button" onClick={() => { setEditSaveApproved(true); setEditSaveReviewOpen(false); window.setTimeout(() => (document.getElementById("product-editor-form") as HTMLFormElement | null)?.requestSubmit(), 0); }}>Saqlash</Button></div></section></div>}
             </section>
           )}
         </TabsContent>
@@ -2634,13 +2803,14 @@ export default function AdminConsole() {
                 <label><Search size={19} /><input value={orderQuery} onChange={(event) => setOrderQuery(event.target.value)} placeholder="Buyurtma, mijoz yoki telefon qidirish..." /></label>
                 <div className="reference-filter-control"><Button type="button" variant="outline" className="reference-filter-trigger" onClick={() => setOrderFilterOpen((open) => !open)}><SlidersHorizontal size={18} /> Filter</Button>{orderFilterOpen && <div className="reference-filter-panel"><label>Buyurtma holati<select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value)}><option value="all">Barcha holatlar</option>{[...new Set(orders.map((order) => order.status).filter(Boolean))].map((status) => <option key={status} value={status}>{status}</option>)}</select></label><label>To‘lov holati<select value={orderPaymentFilter} onChange={(event) => setOrderPaymentFilter(event.target.value)}><option value="all">Barcha to‘lovlar</option>{[...new Set(orders.map((order) => order.paymentStatus).filter(Boolean))].map((status) => <option key={status} value={status}>{status}</option>)}</select></label><label>Yetkazib berish<select value={orderDeliveryFilter} onChange={(event) => setOrderDeliveryFilter(event.target.value)}><option value="all">Barcha yetkazib berishlar</option><option value="arranged">Rasmiylashtirilgan</option><option value="unarranged">Rasmiylashtirilmagan</option></select></label><div className="reference-filter-actions"><Button type="button" size="sm" variant="outline" onClick={() => { setOrderStatusFilter("all"); setOrderPaymentFilter("all"); setOrderDeliveryFilter("all"); }}>Tozalash</Button><Button type="button" size="sm" onClick={() => setOrderFilterOpen(false)}>Qo‘llash</Button></div></div>}</div>
               </div>
-              {orders.length ? <div className="inventory-table-wrap reference-table-50"><table className="inventory-table"><thead><tr><th>Buyurtma</th><th>Mijoz</th><th>Telefon</th><th>Mahsulotlar</th><th>To‘lov</th><th>Jami</th><th>Holat</th><th>Sana</th><th>Yetkazib berish</th></tr></thead><tbody>{orders.filter((o) => `${o.orderNumber} ${o.customer?.email || ""} ${o.customer?.firstName || ""} ${o.customer?.lastName || ""} ${o.customer?.phone || ""}`.toLowerCase().includes(orderQuery.toLowerCase()) && (orderStatusFilter === "all" || o.status === orderStatusFilter) && (orderPaymentFilter === "all" || o.paymentStatus === orderPaymentFilter) && (orderDeliveryFilter === "all" || (orderDeliveryFilter === "unarranged" ? !o.fulfillmentStatus || o.fulfillmentStatus === "unfulfilled" : Boolean(o.fulfillmentStatus && o.fulfillmentStatus !== "unfulfilled")))).map((o) => { const deliveryEnabled = o.paymentStatus === "paid"; const customerLabel = `${o.customer?.firstName || ""} ${o.customer?.lastName || ""}`.trim() || o.customer?.email || "Guest"; return <tr key={o.id} className="reference-order-row"><td><button type="button" className="reference-order-open" onClick={() => setSelectedOrder(o)}>#{o.orderNumber}</button></td><td><button type="button" className="reference-customer-open" disabled={!o.customer?.id} title={o.customer?.id ? "Mijoz profilini ochish" : "Mijoz profili biriktirilmagan"} onClick={() => void openOrderCustomer(o.customer?.id)}>{customerLabel}</button></td><td>{o.customer?.phone || "—"}</td><td>{o.items?.reduce((sum, item) => sum + item.quantity, 0) || 0} ta</td><td>{o.paymentMethod || "—"}<small>{o.paymentStatus || "—"}</small></td><td><b>{money(Number(o.totalAmount), "UZS")}</b></td><td><OrderStageBadge order={o} /></td><td>{readableDate(o.createdAt)}</td><td><button type="button" disabled={!deliveryEnabled} className="reference-delivery-open" aria-label={`Buyurtma #${o.orderNumber} yetkazib berish ma’lumotlari`} title={deliveryEnabled ? "Yetkazib berish ma’lumotlari" : "Avval to‘lov tasdiqlanishi kerak"} onClick={() => setDeliveryOrder(o)}><Truck size={18} /></button></td></tr>; })}</tbody></table></div> : <Empty><ShoppingBag />Hali buyurtmalar yo‘q.</Empty>}
+              {orders.length ? <div className="inventory-table-wrap reference-table-50"><table className="inventory-table"><thead><tr><th>Buyurtma</th><th>Mijoz</th><th>Telefon</th><th>Mahsulotlar</th><th>To‘lov</th><th>Jami</th><th>Holat</th><th>Sana</th><th>Amal</th></tr></thead><tbody>{orders.filter((o) => `${o.orderNumber} ${o.customer?.email || ""} ${o.customer?.firstName || ""} ${o.customer?.lastName || ""} ${o.customer?.phone || ""}`.toLowerCase().includes(orderQuery.toLowerCase())).map((o) => { const action = nextOrderWorkflowAction(o); const customerLabel = `${o.customer?.firstName || ""} ${o.customer?.lastName || ""}`.trim() || o.customer?.email || "Guest"; return <tr key={o.id}><td><button type="button" className="reference-order-open" onClick={() => setSelectedOrder(o)}>#{o.orderNumber}</button></td><td>{customerLabel}</td><td>{o.customer?.phone || "—"}</td><td>{o.items?.reduce((sum, item) => sum + item.quantity, 0) || 0} ta</td><td>{o.paymentMethod || "—"}<small>{o.paymentStatus || "—"}</small></td><td><b>{money(Number(o.totalAmount), "UZS")}</b></td><td><OrderStageBadge order={o} /></td><td>{readableDate(o.createdAt)}</td><td><button type="button" disabled={!action} className="reference-delivery-open" onClick={() => void advanceOrder(o)}>{action?.label || "Yakunlangan"}</button></td></tr>; })}</tbody></table></div> : <Empty><ShoppingBag />Hali buyurtmalar yo‘q.</Empty>}
             </div>
             {selectedOrder && <div className="inventory-confirm-backdrop" onMouseDown={() => setSelectedOrder(null)}><section className="inventory-confirm reference-order-modal" onMouseDown={(event) => event.stopPropagation()}><button className="reference-modal-close" onClick={() => setSelectedOrder(null)}>×</button><p className="ui-overline">BUYURTMA #{selectedOrder.orderNumber}</p><h3>{`${selectedOrder.customer?.firstName || ""} ${selectedOrder.customer?.lastName || ""}`.trim() || selectedOrder.customer?.email || "Guest"}</h3><p><b>Email:</b> {selectedOrder.customer?.email || "—"}<br /><b>Telefon:</b> {selectedOrder.customer?.phone || "—"}<br /><b>Yetkazish:</b> {selectedOrder.shippingAddress?.country || "—"}, {selectedOrder.shippingAddress?.city || "—"}, {selectedOrder.shippingAddress?.address || "—"}<br /><b>To‘lov:</b> {selectedOrder.paymentMethod || "—"} · {selectedOrder.paymentStatus || "—"}</p><div className="reference-modal-items">{selectedOrder.items?.map((item, index) => <p key={`${item.skuSnapshot}-${index}`}>{item.imageUrl && <img src={item.imageUrl.startsWith("/uploads/") ? `${API.replace(/\/api$/, "")}${item.imageUrl}` : item.imageUrl} alt="" />}<b>{item.titleSnapshot}</b><span>{item.skuSnapshot || "SKU kiritilmagan"} × {item.quantity}</span><strong>{money(Number(item.unitPrice), "UZS")}</strong></p>)}</div><dl className="reference-order-totals"><div><dt>Mahsulotlar jami</dt><dd>{money(Number(selectedOrder.subtotalAmount ?? selectedOrder.items?.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0) ?? 0), "UZS")}</dd></div><div><dt>Chegirma</dt><dd className="is-discount">−{money(Number(selectedOrder.discountAmount ?? 0), "UZS")}</dd></div><div><dt>Yetkazib berish</dt><dd>{money(Number(selectedOrder.shippingAmount ?? 0), "UZS")}</dd></div><div className="is-total"><dt>To‘langan</dt><dd>{money(Number(selectedOrder.totalAmount), "UZS")}</dd></div></dl></section></div>}
-            {deliveryOrder && <div className="inventory-confirm-backdrop" onMouseDown={() => setDeliveryOrder(null)}><section className="inventory-confirm reference-delivery-modal" onMouseDown={(event) => event.stopPropagation()}><button className="reference-modal-close" onClick={() => setDeliveryOrder(null)}>×</button><p className="ui-overline">YETKAZIB BERISH · #{deliveryOrder.orderNumber}</p><h3>Jo‘natmaga tayyorlash</h3><p><b>Qabul qiluvchi:</b> {`${deliveryOrder.customer?.firstName || ""} ${deliveryOrder.customer?.lastName || ""}`.trim() || deliveryOrder.customer?.email || "—"}<br /><b>Telefon:</b> {deliveryOrder.customer?.phone || "—"}<br /><b>Manzil:</b> {deliveryOrder.shippingAddress?.country || "—"}, {deliveryOrder.shippingAddress?.city || "—"}, {deliveryOrder.shippingAddress?.address || "—"}<br /><b>Holat:</b> {deliveryOrder.fulfillmentStatus || "unfulfilled"}</p><div className="reference-delivery-note"><Truck size={19} /><span>UzPost integratsiyasi ulanganda bu yerda jo‘natma kodi va pochta yuborish amali chiqadi.</span></div></section></div>}
+            {deliveryOrder && <div className="inventory-confirm-backdrop" onMouseDown={() => setDeliveryOrder(null)}><section className="inventory-confirm reference-delivery-modal" onMouseDown={(event) => event.stopPropagation()}><button className="reference-modal-close" onClick={() => setDeliveryOrder(null)}>×</button><p className="ui-overline">{deliveryOrder.shippingAddress?.fulfillmentMethod === "pickup" ? "OLIB KETISH" : "YETKAZIB BERISH"} · #{deliveryOrder.orderNumber}</p><h3>{deliveryOrder.shippingAddress?.fulfillmentMethod === "pickup" ? "Olib ketish jarayoni" : "Jo‘natma jarayoni"}</h3><p><b>Qabul qiluvchi:</b> {`${deliveryOrder.customer?.firstName || ""} ${deliveryOrder.customer?.lastName || ""}`.trim() || deliveryOrder.customer?.email || "—"}<br /><b>Telefon:</b> {deliveryOrder.customer?.phone || "—"}<br /><b>{deliveryOrder.shippingAddress?.fulfillmentMethod === "pickup" ? "Nuqta:" : "Manzil:"}</b> <DeliveryAddressMapLink shippingAddress={deliveryOrder.shippingAddress} /><br /><b>Holat:</b> {deliveryOrder.fulfillmentStatus || "pending_acceptance"}</p>{nextOrderWorkflowAction(deliveryOrder) ? <Button type="button" onClick={() => void advanceOrder(deliveryOrder)}><CheckCheck size={16} /> {nextOrderWorkflowAction(deliveryOrder)?.label}</Button> : <div className="reference-delivery-note"><CheckCheck size={19} /><span>Buyurtma jarayoni yakunlangan.</span></div>}</section></div>}
           </section>
         </TabsContent>
-        <TabsContent value="delivery"><AdminModulePage config={adminModules.delivery} loading={loading} error={error} onNotify={setNotice} /></TabsContent>
+        <TabsContent value="refunds"><RefundManager orders={orders} onRefresh={() => void run(() => refresh("refunds"))} /></TabsContent>
+        <TabsContent value="pickup"><PickupLocationManager token={token} onNotice={setNotice} /></TabsContent>
         <TabsContent value="customers"><CustomerManager customers={customers} loading={loading} error={error} token={token} /></TabsContent>
         <TabsContent value="discounts"><DiscountManager token={token} products={products} onNotice={setNotice} /></TabsContent>
         <TabsContent value="partners"><PartnerManager token={token} products={products} onNotice={setNotice} /></TabsContent>

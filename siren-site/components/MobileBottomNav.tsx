@@ -38,12 +38,6 @@ export default function MobileBottomNav() {
         const className = `${isActive ? "is-active" : ""}${hasItems ? " has-items" : ""}`.trim();
         const ariaLabel = t(item.label);
 
-        if (item.href === "/cart") {
-          return <Link key={item.label} href="/cart" aria-label={ariaLabel} aria-current={isActive ? "page" : undefined} className={`${className} mobile-bottom-nav-button`.trim()}>
-            <NavIcon icon={item.icon} />
-            {hasItems && <span aria-hidden="true" />}
-          </Link>;
-        }
         return (
         <Link
           key={item.label}

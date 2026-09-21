@@ -280,6 +280,7 @@ export function toStorefrontColorCards(products: ApiProduct[]): StorefrontProduc
       const rawColor = representative.color || "Default";
       return {
         id: product.slug,
+        productId: product.id,
         cardId: `${product.id}-${key}`,
         image: images[0] || "/images/p1.jpg",
         hoverImage: images[1],
@@ -302,6 +303,7 @@ export function toStorefrontColorCards(products: ApiProduct[]): StorefrontProduc
 export function toStorefrontProduct(product: ApiProduct): StorefrontProduct {
   return {
     id: product.slug,
+    productId: product.id,
     image: storefrontProductImages(product)[0] || '/images/p1.jpg',
     alt: product.title,
     title: product.title,

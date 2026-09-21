@@ -42,6 +42,7 @@ export default function TopBar() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoreNotification[]>([]);
   const [readAt, setReadAt] = useState<Record<string, string>>({});
+  const [readStateReady, setReadStateReady] = useState(false);
   const [visitorId, setVisitorId] = useState("");
   const [headerMessage, setHeaderMessage] = useState<HeaderMessage>({ kind: "quote", quotes: [] });
   const [quoteIndex, setQuoteIndex] = useState(0);
@@ -87,6 +88,7 @@ export default function TopBar() {
       if (Array.isArray(knownRead)) setReadAt(Object.fromEntries(knownRead.filter((id): id is string => typeof id === "string").map((id) => [id, new Date().toISOString()])));
       else if (knownRead && typeof knownRead === "object") setReadAt(Object.fromEntries(Object.entries(knownRead).filter(([id, date]) => typeof id === "string" && typeof date === "string")));
     } catch { setReadAt({}); }
+    finally { setReadStateReady(true); }
   }, []);
   useEffect(() => {
     const stored = localStorage.getItem("siren-notification-visitor-id");
@@ -94,21 +96,15 @@ export default function TopBar() {
     if (!stored) localStorage.setItem("siren-notification-visitor-id", id);
     setVisitorId(id);
   }, []);
-  useEffect(() => { localStorage.setItem("siren-read-notifications", JSON.stringify(readAt)); }, [readAt]);
+  useEffect(() => { if (readStateReady) localStorage.setItem("siren-read-notifications", JSON.stringify(readAt)); }, [readAt, readStateReady]);
   const copy = (value?: Record<string, string>) => value?.[locale] || value?.ru || value?.en || value?.uz || "";
-  // A store alert remains available in the inbox. After a customer has read
-  // it, bring it back to the badge after 30 minutes as a gentle reminder.
-  const reminderInterval = 30 * 60 * 1000;
   const allowedItems = items.filter((item) => {
     if (!customer || !item.kind || item.kind === "general") return true;
     const preferences = customer.metadata?.notificationPreferences;
     return item.kind === "blog" ? preferences?.blog === true : item.kind === "discounts" ? preferences?.discounts === true : preferences?.products === true;
   });
   const visibleItems = allowedItems;
-  const isUnread = (id: string) => {
-    const readTime = readAt[id] ? new Date(readAt[id]).getTime() : 0;
-    return !readTime || Date.now() - readTime >= reminderInterval;
-  };
+  const isUnread = (id: string) => !readAt[id];
   const unreadItems = visibleItems.filter((item) => isUnread(item.id));
   const trackClick = (id: string) => { if (visitorId) void fetch(`${API}/content/notifications/${encodeURIComponent(id)}/click`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ visitorId }), keepalive: true }); };
 

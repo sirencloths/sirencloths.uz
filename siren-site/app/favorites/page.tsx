@@ -2,9 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
-import Recommendation from "@/components/Recommendation";
 import type { Product } from "@/lib/data";
 import { useFavorites } from "@/components/FavoriteContext";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -46,20 +44,13 @@ export default function FavoritesPage() {
   const { t } = useLanguage();
 
   return (
-    <>
-      <main className="favorites-page">
+    <main className="favorites-page">
         <section className="favorites-list">
           <h1>{t("favoritesTitle")} <span>({favorites.length})</span></h1>
           {favorites.length ? (
             <div className="favorites-grid">{favorites.map((product) => <FavoriteCard key={`${product.id}:${product.colorSlug || product.color}`} product={product} />)}</div>
           ) : <p className="favorites-empty">{t("favoritesEmpty")}</p>}
         </section>
-
-        <section className="favorites-recommendations">
-          <Recommendation />
-        </section>
       </main>
-      <Footer />
-    </>
   );
 }

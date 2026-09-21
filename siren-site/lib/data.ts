@@ -1,5 +1,7 @@
 export type Product = {
   id: string;
+  /** Database product id when a storefront card uses its public slug as `id`. */
+  productId?: string;
   /** Stable listing-only identity. The parent id remains the detail/cart identity. */
   cardId?: string;
   image: string;

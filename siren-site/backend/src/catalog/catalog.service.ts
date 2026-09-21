@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { randomInt, randomUUID } from 'node:crypto';
-import { AuditLog, Category, CollectionEntity, InventoryTransfer, OrderItem, Product, ProductDiscount, ProductGender, ProductStatus, ProductVariant, SiteSetting } from '../database/entities';
+import { AuditLog, Category, CollectionEntity, InventoryTransfer, OrderItem, Product, ProductDiscount, ProductEngagement, ProductGender, ProductStatus, ProductVariant, SiteSetting } from '../database/entities';
 
 export type ProductInput = {
   slug: string; title: string; description?: string; status?: ProductStatus; price: string;
@@ -10,7 +10,7 @@ export type ProductInput = {
   media?: Array<{ url: string; alt?: string; position?: number }>; seo?: Record<string, unknown>; metadata?: Record<string, unknown>;
   scheduledAt?: Date | null; showLaunchCountdown?: boolean; launchCountdownText?: string | null;
 };
-export type VariantInput = { sku: string; name?: string; barcode?: string | null; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity?: number; isActive?: boolean; attributes?: Record<string, unknown> };
+export type VariantInput = { sku: string; name?: string; barcode?: string | null; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity?: number; totalInventoryAdded?: number; isActive?: boolean; attributes?: Record<string, unknown> };
 export type TaxonomyInput = { slug: string; name: string; description?: string | null; imageUrl?: string | null; heroImageUrl?: string | null; position?: number; isVisible?: boolean };
 export type DiscountInput = { productId: string; color?: string | null; size?: string | null; percent: number; endsAt?: string | null };
 
@@ -20,6 +20,7 @@ export class CatalogService {
     @InjectRepository(Product) private readonly products: Repository<Product>,
     @InjectRepository(ProductVariant) private readonly variants: Repository<ProductVariant>,
     @InjectRepository(ProductDiscount) private readonly discounts: Repository<ProductDiscount>,
+    @InjectRepository(ProductEngagement) private readonly engagements: Repository<ProductEngagement>,
     @InjectRepository(OrderItem) private readonly orderItems: Repository<OrderItem>,
     @InjectRepository(InventoryTransfer) private readonly transfers: Repository<InventoryTransfer>,
     @InjectRepository(AuditLog) private readonly auditLogs: Repository<AuditLog>,
@@ -138,20 +139,84 @@ export class CatalogService {
 
   async adminProducts() {
     await this.activateDueProducts();
-    const [products, soldRows] = await Promise.all([
+    const [products, soldRows, variantSoldRows, engagementRows] = await Promise.all([
       this.products.find({ relations: { variants: true, category: true }, order: { updatedAt: 'DESC' } }),
       this.orderItems.createQueryBuilder('item')
         .innerJoin('item.order', 'order')
         .select('item.product_id', 'productId')
         .addSelect('COALESCE(SUM(item.quantity), 0)', 'soldQuantity')
-        .where('order.payment_status = :paymentStatus', { paymentStatus: 'paid' })
-        .andWhere('order.status NOT IN (:...excluded)', { excluded: ['cancelled', 'refunded'] })
+        // Checkout reserves stock immediately.  The inventory screen must
+        // therefore include accepted/reserved units, not only paid orders.
+        .where('order.status NOT IN (:...excluded)', { excluded: ['cancelled', 'refunded'] })
         .groupBy('item.product_id')
         .getRawMany<{ productId: string; soldQuantity: string }>(),
+      this.orderItems.createQueryBuilder('item')
+        .innerJoin('item.order', 'order')
+        .select('item.variant_id', 'variantId')
+        .addSelect('COALESCE(SUM(item.quantity), 0)', 'soldQuantity')
+        .where('item.variant_id IS NOT NULL')
+        .andWhere('order.status NOT IN (:...excluded)', { excluded: ['cancelled', 'refunded'] })
+        .groupBy('item.variant_id')
+        .getRawMany<{ variantId: string; soldQuantity: string }>(),
+      this.engagements.createQueryBuilder('engagement')
+        .select('engagement.product_id', 'productId')
+        .addSelect('engagement.kind', 'kind')
+        .addSelect('COUNT(*)', 'count')
+        .where('engagement.active = true')
+        .groupBy('engagement.product_id')
+        .addGroupBy('engagement.kind')
+        .getRawMany<{ productId: string; kind: 'favorite' | 'cart'; count: string }>(),
     ]);
     const soldByProduct = new Map(soldRows.map((row) => [row.productId, Number(row.soldQuantity)]));
+    const soldByVariant = new Map(variantSoldRows.map((row) => [row.variantId, Number(row.soldQuantity)]));
+    const engagementByProduct = new Map<string, { favoriteCount: number; cartAddCount: number }>();
+    engagementRows.forEach((row) => {
+      const current = engagementByProduct.get(row.productId) ?? { favoriteCount: 0, cartAddCount: 0 };
+      if (row.kind === 'favorite') current.favoriteCount = Number(row.count);
+      if (row.kind === 'cart') current.cartAddCount = Number(row.count);
+      engagementByProduct.set(row.productId, current);
+    });
     await this.ensureVariantEan13(products);
-    return products.map((product) => ({ ...product, soldQuantity: soldByProduct.get(product.id) ?? 0 }));
+    return products.map((product) => {
+      // Cost and expense are entered once per colour in the product editor.
+      // Older products may have those fields on only one size row; inherit
+      // that known value for the other sizes instead of showing false 0 UZS.
+      const financeByColor = new Map<string, { costPrice?: unknown; expensePrice?: unknown }>();
+      product.variants.forEach((variant) => {
+        const key = (variant.color ?? '').trim().toLowerCase();
+        const current = financeByColor.get(key) ?? {};
+        const costPrice = variant.attributes?.costPrice;
+        const expensePrice = variant.attributes?.expensePrice;
+        if (Number(costPrice) > 0 && current.costPrice === undefined) current.costPrice = costPrice;
+        if (Number(expensePrice) > 0 && current.expensePrice === undefined) current.expensePrice = expensePrice;
+        financeByColor.set(key, current);
+      });
+      return {
+        ...product,
+        variants: product.variants.map((variant) => {
+          const fallback = financeByColor.get((variant.color ?? '').trim().toLowerCase()) ?? {};
+          const attributes = { ...(variant.attributes ?? {}) };
+          if (!(Number(attributes.costPrice) > 0) && fallback.costPrice !== undefined) attributes.costPrice = fallback.costPrice;
+          if (!(Number(attributes.expensePrice) > 0) && fallback.expensePrice !== undefined) attributes.expensePrice = fallback.expensePrice;
+          return { ...variant, attributes, soldQuantity: soldByVariant.get(variant.id) ?? 0 };
+        }),
+        soldQuantity: soldByProduct.get(product.id) ?? 0,
+        ...(engagementByProduct.get(product.id) ?? { favoriteCount: 0, cartAddCount: 0 }),
+      };
+    });
+  }
+
+  async trackEngagement(productId: string, kind: 'favorite' | 'cart', visitorId: string, active = true) {
+    const product = await this.products.findOne({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Product not found');
+    const existing = await this.engagements.findOne({ where: { productId, kind, visitorId } });
+    if (existing) {
+      existing.active = kind === 'favorite' ? active : true;
+      await this.engagements.save(existing);
+    } else {
+      await this.engagements.save(this.engagements.create({ productId, kind, visitorId, active: kind === 'favorite' ? active : true }));
+    }
+    return { ok: true };
   }
   async createProduct(input: ProductInput) {
     await this.validateProductAssignment(input, true);
@@ -196,14 +261,33 @@ export class CatalogService {
 
   variantsFor(productId: string) { return this.variants.find({ where: { productId }, order: { sku: 'ASC' } }); }
   async createVariant(productId: string, input: VariantInput) {
-    await this.productOrFail(productId);
+    const product = await this.productOrFail(productId);
     const inventoryQuantity = input.inventoryQuantity ?? 0;
+    const totalInventoryAdded = input.totalInventoryAdded ?? inventoryQuantity;
+    if (!Number.isInteger(inventoryQuantity) || !Number.isInteger(totalInventoryAdded) || inventoryQuantity < 0 || totalInventoryAdded < 0) throw new BadRequestException('Variant miqdori manfiy bo‘lmagan butun son bo‘lishi kerak.');
+    if (totalInventoryAdded !== inventoryQuantity) throw new BadRequestException('Yangi variantda yaratilgan miqdor va ombor miqdori bir xil bo‘lishi kerak.');
+    await this.assertAllocationWithinProduct(product, totalInventoryAdded);
     const attributes = this.normalizedVariantAttributes(input.attributes);
-    return this.variants.save(this.variants.create({ productId, ...input, barcode: await this.generateEan13(), name: input.name ?? '', inventoryQuantity, totalInventoryAdded: inventoryQuantity, isActive: input.isActive ?? true, attributes }));
+    const { totalInventoryAdded: _totalInventoryAdded, ...variantInput } = input;
+    return this.variants.save(this.variants.create({ productId, ...variantInput, barcode: await this.generateEan13(), name: input.name ?? '', inventoryQuantity, totalInventoryAdded, isActive: input.isActive ?? true, attributes }));
   }
   async updateVariant(id: string, input: Partial<VariantInput>) {
-    const { barcode: _barcode, ...changes } = input;
-    const variant = await this.variants.preload({ id, ...changes, ...(changes.attributes ? { attributes: this.normalizedVariantAttributes(changes.attributes) } : {}) });
+    const current = await this.variants.findOneBy({ id });
+    if (!current) throw new NotFoundException('Variant not found');
+    const product = await this.productOrFail(current.productId);
+    const { barcode: _barcode, totalInventoryAdded: requestedAllocation, ...changes } = input;
+    const currentAllocation = this.variantAllocation(current);
+    // Admin edits use the immutable "created total" allocation. Translate
+    // its difference to the live online balance so past sales/transfers stay
+    // intact instead of being overwritten.
+    const nextAllocation = requestedAllocation === undefined
+      ? currentAllocation + ((changes.inventoryQuantity ?? current.inventoryQuantity) - current.inventoryQuantity)
+      : requestedAllocation;
+    if (!Number.isInteger(nextAllocation) || nextAllocation < 0) throw new BadRequestException('Yaratilgan miqdor manfiy bo‘lmagan butun son bo‘lishi kerak.');
+    const nextOnline = current.inventoryQuantity + (nextAllocation - currentAllocation);
+    if (nextOnline < 0) throw new BadRequestException('Bu miqdor sotilgan yoki offlinega ajratilgan mavjud mahsulotdan past bo‘la olmaydi.');
+    await this.assertAllocationWithinProduct(product, nextAllocation, current.id);
+    const variant = await this.variants.preload({ id, ...changes, inventoryQuantity: nextOnline, totalInventoryAdded: nextAllocation, ...(changes.attributes ? { attributes: this.normalizedVariantAttributes(changes.attributes) } : {}) });
     if (!variant) throw new NotFoundException('Variant not found');
     return this.variants.save(variant);
   }
@@ -341,6 +425,20 @@ export class CatalogService {
   async updateCollection(id: string, input: Partial<TaxonomyInput>) { const entity = await this.collections.preload({ id, ...input }); if (!entity) throw new NotFoundException('Collection not found'); return this.collections.save(entity); }
   async removeCollection(id: string) { await this.collections.delete(id); return { deleted: true }; }
 
+  private variantAllocation(variant: ProductVariant) {
+    return Math.max(0, Number(variant.totalInventoryAdded ?? variant.inventoryQuantity) || 0);
+  }
+  private async assertAllocationWithinProduct(product: Product, nextAllocation: number, replacingVariantId?: string) {
+    const cap = Number(product.metadata?.baseInventoryQuantity);
+    // Older products may not yet have an explicit total. Do not invent a cap
+    // for them; newly created/edited admin products always send this value.
+    if (!Number.isFinite(cap) || cap < 0) return;
+    const variants = await this.variants.find({ where: { productId: product.id } });
+    const allocated = variants.reduce((sum, variant) => sum + (variant.id === replacingVariantId ? 0 : this.variantAllocation(variant)), 0);
+    if (allocated + nextAllocation > cap) {
+      throw new BadRequestException(`Variantlar jami ${allocated + nextAllocation} ta bo‘ladi. Mahsulot uchun yaratilgan limit ${cap} ta.`);
+    }
+  }
   private async productOrFail(id: string) { const product = await this.products.findOneBy({ id }); if (!product) throw new NotFoundException('Product not found'); return product; }
   private ean13CheckDigit(base: string) {
     const sum = base.split('').reduce((total, digit, index) => total + Number(digit) * (index % 2 === 0 ? 1 : 3), 0);
