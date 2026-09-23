@@ -7,10 +7,10 @@ import { getStorefrontPosts, type ApiBlogPost } from "@/lib/api";
 import { useLanguage } from "./LanguageProvider";
 
 const imageSource = (url?: string | null) => !url ? "/images/banner.jpg" : url.startsWith("http") ? url : `${(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "")}${url}`;
-const displayDate = (value?: string | null) => value ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : "";
+const displayDate = (value: string | null | undefined, locale: string) => value ? new Intl.DateTimeFormat(locale === "uz" ? "uz-UZ" : locale === "en" ? "en-GB" : "ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : "";
 
 export default function Blog() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [posts, setPosts] = useState<ApiBlogPost[] | null>(null);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function Blog() {
           {published.map((post, index) => (
             <Link className="blog-card blog-card--article" href="/blog" key={post.id}>
               <img src={imageSource(post.coverImageUrl)} alt={post.title} />
-              <div className="blog-copy"><time>{displayDate(post.publishedAt)}</time><h3>{post.title}</h3><p>{post.excerpt || post.body}</p><span>{typeof post.seo?.textLinkLabel === "string" && post.seo.textLinkLabel || t("readMore")}</span></div>
+              <div className="blog-copy"><time>{displayDate(post.publishedAt, locale)}</time><h3>{post.title}</h3><p>{post.excerpt || post.body}</p><span>{typeof post.seo?.textLinkLabel === "string" && post.seo.textLinkLabel || t("readMore")}</span></div>
             </Link>
           ))}
         </div>

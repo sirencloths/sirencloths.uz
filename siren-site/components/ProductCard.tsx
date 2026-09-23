@@ -57,14 +57,14 @@ export default function ProductCard({ product, small = false, favoriteCard = fal
         {favoriteCard ? <button className="favorite-remove-btn" type="button" aria-label={t("unselect")} onPointerDown={(event) => event.stopPropagation()} onClick={() => removeFavorite(product)}><Image src="/icons/close.svg" alt="" width={15} height={15} /></button> : <button
           className={`like-btn${liked ? " is-liked" : ""}`}
           type="button"
-          aria-label={liked ? "Удалить из избранного" : "Добавить в избранное"}
+          aria-label={liked ? t("removeFavorite") : t("favoriteAdd")}
           aria-pressed={liked}
           onPointerDown={(event) => event.stopPropagation()}
           onClick={() => toggleFavorite(product)}
         >
           <Image src={liked ? "/icons/heart-filled.svg" : "/icons/heart.svg"} alt="" width={17} height={17} />
         </button>}
-        {product.available === false && <span className="product-card-soldout-overlay">SOLD OUT</span>}
+        {product.available === false && <span className="product-card-soldout-overlay">{t("soldOut")}</span>}
         {product.discountPercent ? <span className="product-card-discount-overlay">−{product.discountPercent}%</span> : null}
       </div>
 

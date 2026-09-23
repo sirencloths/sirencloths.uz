@@ -35,7 +35,15 @@ class UpdateOrderDto {
   @IsOptional() @IsString() fulfillmentStatus?: string;
   @IsOptional() @IsString() note?: string;
 }
-class CancelOrderDto { @IsString() reason!: string; @IsOptional() @IsString() evidenceUrl?: string; }
+class ShipmentRequestDto {
+  @IsString() provider!: string;
+  @IsString() senderName!: string;
+  @IsString() senderPhone!: string;
+  @IsString() weightKg!: string;
+  @IsString() packageCount!: string;
+  @IsOptional() @IsString() comment?: string;
+}
+class CancelOrderDto { @IsOptional() @IsString() reason?: string; @IsOptional() @IsString() evidenceUrl?: string; }
 
 @Controller('checkout')
 export class CheckoutController {
@@ -43,9 +51,15 @@ export class CheckoutController {
   @Post('orders') async createOrder(@Body() body: CheckoutDto, @Headers('authorization') authorization?: string) {
     return this.commerce.checkout({ ...body, customerId: await this.auth.customerIdFromToken(authorization) });
   }
+  @Get('payme/checkout/:orderId') paymeCheckout(@Param('orderId') orderId: string) { return this.commerce.createPaymeCheckout(orderId); }
+  @Post('payme/merchant') paymeMerchant(@Body() body: Record<string, unknown>, @Headers('authorization') authorization?: string) { return this.commerce.handlePaymeMerchant(body, authorization); }
   @Post('promo/validate') validatePromo(@Body() body: PromoValidationDto) { return this.commerce.validatePromo(body.promoCode, body.variantIds); }
   @UseGuards(CustomerJwtGuard)
   @Get('customer/orders') customerOrders(@CurrentUser() customer: { id: string }) { return this.commerce.listCustomerOrders(customer.id); }
+  @UseGuards(CustomerJwtGuard)
+  @Get('customer/notifications') customerNotifications(@CurrentUser() customer: { id: string }) { return this.commerce.listCustomerNotifications(customer.id); }
+  @UseGuards(CustomerJwtGuard)
+  @Post('customer/orders/:id/cancel') cancelCustomerOrder(@Param('id') id: string, @CurrentUser() customer: { id: string }, @Body() body: CancelOrderDto) { return this.commerce.cancelCustomerOrder(id, customer.id, body); }
 }
 
 @Controller('pickup-locations')
@@ -69,7 +83,9 @@ export class AdminPickupLocationsController {
 export class AdminCommerceController {
   constructor(private readonly commerce: CommerceService) {}
   @Get('orders') orders() { return this.commerce.listOrders(); }
+  @Get('payments/payme/status') paymeStatus() { return this.commerce.paymeAdminStatus(); }
   @Patch('orders/:id') updateOrder(@Param('id') id: string, @Body() body: UpdateOrderDto) { return this.commerce.updateOrder(id, body); }
+  @Post('orders/:id/shipment') shipment(@Param('id') id: string, @Body() body: ShipmentRequestDto) { return this.commerce.createShipmentRequest(id, body); }
   @Post('orders/:id/cancel') cancelOrder(@Param('id') id: string, @Body() body: CancelOrderDto) { return this.commerce.cancelOrder(id, body); }
   @Post('orders/:id/refund-complete') completeRefund(@Param('id') id: string) { return this.commerce.completeRefund(id); }
   @Get('customers') customers() { return this.commerce.listCustomers(); }

@@ -26,7 +26,7 @@ export const heroProducts: Product[] = [
     alt: "LEGACY DROP ARM TANK",
     title: "LEGACY DROP ARM TANK",
     color: "GRAY",
-    price: "930.000 СУМ",
+    price: "930.000 UZS",
   },
   {
     id: "legacy-drop-arm-tank-2",
@@ -34,7 +34,7 @@ export const heroProducts: Product[] = [
     alt: "LEGACY DROP ARM TANK",
     title: "LEGACY DROP ARM TANK",
     color: "GRAY",
-    price: "930.000 СУМ",
+    price: "930.000 UZS",
   },
   {
     id: "legacy-drop-arm-tank-3",
@@ -42,7 +42,7 @@ export const heroProducts: Product[] = [
     alt: "LEGACY DROP ARM TANK",
     title: "LEGACY DROP ARM TANK",
     color: "GRAY",
-    price: "930.000 СУМ",
+    price: "930.000 UZS",
   },
   {
     id: "legacy-drop-arm-tank-4",
@@ -50,7 +50,7 @@ export const heroProducts: Product[] = [
     alt: "LEGACY DROP ARM TANK",
     title: "LEGACY DROP ARM TANK",
     color: "GRAY",
-    price: "930.000 СУМ",
+    price: "930.000 UZS",
   },
 ];
 
@@ -61,7 +61,7 @@ export const collectionSideProducts: Product[] = [
     alt: "LEGACY DROP ARM TANK",
     title: "LEGACY DROP ARM TANK",
     color: "GRAY",
-    price: "930.000 СУМ",
+    price: "930.000 UZS",
   },
   {
     id: "legacy-drop-arm-tank-2",
@@ -69,7 +69,7 @@ export const collectionSideProducts: Product[] = [
     alt: "LEGACY DROP ARM TANK",
     title: "LEGACY DROP ARM TANK",
     color: "GRAY",
-    price: "930.000 СУМ",
+    price: "930.000 UZS",
   },
 ];
 
@@ -80,7 +80,7 @@ export const newArrivals: Product[] = [
     alt: "LEGACY DROP ARM TANK",
     title: "LEGACY DROP ARM TANK",
     color: "GRAY",
-    price: "930.000 СУМ",
+    price: "930.000 UZS",
   },
   {
     id: "legacy-drop-arm-tank-3",
@@ -88,7 +88,7 @@ export const newArrivals: Product[] = [
     alt: "LEGACY DROP ARM TANK",
     title: "LEGACY DROP ARM TANK",
     color: "GRAY",
-    price: "930.000 СУМ",
+    price: "930.000 UZS",
   },
   {
     id: "legacy-drop-arm-tank-2",
@@ -96,7 +96,7 @@ export const newArrivals: Product[] = [
     alt: "LEGACY DROP ARM TANK",
     title: "LEGACY DROP ARM TANK",
     color: "GRAY",
-    price: "930.000 СУМ",
+    price: "930.000 UZS",
   },
   {
     id: "legacy-drop-arm-tank-1",

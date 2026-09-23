@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { randomInt, randomUUID } from 'node:crypto';
 import { AuditLog, Category, CollectionEntity, InventoryTransfer, OrderItem, Product, ProductDiscount, ProductEngagement, ProductGender, ProductStatus, ProductVariant, SiteSetting } from '../database/entities';
+import { TelegramService } from '../telegram/telegram.service';
 
 export type ProductInput = {
   slug: string; title: string; description?: string; status?: ProductStatus; price: string;
@@ -28,6 +29,7 @@ export class CatalogService {
     @InjectRepository(CollectionEntity) private readonly collections: Repository<CollectionEntity>,
     @InjectRepository(SiteSetting) private readonly settings: Repository<SiteSetting>,
     private readonly dataSource: DataSource,
+    private readonly telegram: TelegramService,
   ) {}
 
   /** Keeps fiscal codes sourced from the National Catalog instead of local guesses. */
@@ -222,6 +224,7 @@ export class CatalogService {
     await this.validateProductAssignment(input, true);
     const product = await this.products.save(this.products.create({ ...this.scheduleProduct(input), media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} }));
     if (product.status === ProductStatus.ACTIVE) await this.appendProductNotification(product);
+    void this.telegram.control(`#MAHSULOT\n\n➕ YANGI MAHSULOT QO‘SHILDI\n\n${product.title}\nNarx: ${Number(product.price).toLocaleString('en-US')} UZS\nHolat: ${product.status}`);
     return product;
   }
   async updateProduct(id: string, input: Partial<ProductInput>) {
@@ -230,6 +233,7 @@ export class CatalogService {
     if (!product) throw new NotFoundException('Product not found');
     const saved = await this.products.save(this.scheduleProduct(product));
     if (saved.status === ProductStatus.ACTIVE && before?.status !== ProductStatus.ACTIVE) await this.appendProductNotification(saved);
+    void this.telegram.control(`#MAHSULOT\n\n✏️ MAHSULOT O‘ZGARDI\n\n${saved.title}\nNarx: ${Number(before?.price ?? 0).toLocaleString('en-US')} UZS → ${Number(saved.price).toLocaleString('en-US')} UZS\nHolat: ${saved.status}`);
     return saved;
   }
   async removeProduct(id: string) { await this.products.delete(id); return { deleted: true }; }
@@ -269,7 +273,9 @@ export class CatalogService {
     await this.assertAllocationWithinProduct(product, totalInventoryAdded);
     const attributes = this.normalizedVariantAttributes(input.attributes);
     const { totalInventoryAdded: _totalInventoryAdded, ...variantInput } = input;
-    return this.variants.save(this.variants.create({ productId, ...variantInput, barcode: await this.generateEan13(), name: input.name ?? '', inventoryQuantity, totalInventoryAdded, isActive: input.isActive ?? true, attributes }));
+    const saved = await this.variants.save(this.variants.create({ productId, ...variantInput, barcode: await this.generateEan13(), name: input.name ?? '', inventoryQuantity, totalInventoryAdded, isActive: input.isActive ?? true, attributes }));
+    void this.telegram.control(`#QOLDIQ\n\n➕ YANGI VARIANT QO‘SHILDI\n\nSKU: ${saved.sku}\nOnline qoldiq: ${saved.inventoryQuantity} ta`);
+    return saved;
   }
   async updateVariant(id: string, input: Partial<VariantInput>) {
     const current = await this.variants.findOneBy({ id });
@@ -289,7 +295,9 @@ export class CatalogService {
     await this.assertAllocationWithinProduct(product, nextAllocation, current.id);
     const variant = await this.variants.preload({ id, ...changes, inventoryQuantity: nextOnline, totalInventoryAdded: nextAllocation, ...(changes.attributes ? { attributes: this.normalizedVariantAttributes(changes.attributes) } : {}) });
     if (!variant) throw new NotFoundException('Variant not found');
-    return this.variants.save(variant);
+    const saved = await this.variants.save(variant);
+    void this.telegram.control(`#QOLDIQ\n\n🔄 VARIANT O‘ZGARDI\n\nSKU: ${saved.sku}\nOnline qoldiq: ${current.inventoryQuantity} ta → ${saved.inventoryQuantity} ta`);
+    return saved;
   }
   async removeVariant(id: string) { await this.variants.delete(id); return { deleted: true }; }
 
@@ -315,6 +323,7 @@ export class CatalogService {
     if (!matches.length) throw new BadRequestException('Tanlangan SKU, rang yoki razmer uchun variant topilmadi.');
     const discount = await this.discounts.save(this.discounts.create({ productId: product.id, color, size, percent, endsAt, isActive: true }));
     await this.auditLogs.save(this.auditLogs.create({ actorId: actorId ?? null, action: 'created', entityType: 'product_discount', entityId: discount.id, payload: { productId: product.id, color, size, percent, endsAt: endsAt?.toISOString() ?? null } }));
+    void this.telegram.control(`#AKSIYA\n\n🏷 AKSIYA YOQILDI\n\n${product.title}\nChegirma: ${percent}%\nTugaydi: ${endsAt ? endsAt.toLocaleString('uz-UZ') : 'Muddatsiz'}`);
     return discount;
   }
   async removeDiscount(id: string, actorId?: string) { const discount = await this.discounts.findOneBy({ id }); if (!discount) throw new NotFoundException('Chegirma topilmadi.'); await this.discounts.delete(id); await this.auditLogs.save(this.auditLogs.create({ actorId: actorId ?? null, action: 'deleted', entityType: 'product_discount', entityId: id, payload: {} })); return { deleted: true }; }
@@ -345,7 +354,8 @@ export class CatalogService {
   private async appendProductNotification(product: Product) {
     const setting = await this.settings.findOneBy({ key: 'site-notifications' });
     const items = Array.isArray(setting?.value?.items) ? setting.value.items : [];
-    const imageUrl = [...(product.media ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? '';
+    const productWithMedia = product.media?.length ? product : await this.products.findOne({ where: { id: product.id }, relations: { variants: true } }) ?? product;
+    const imageUrl = [...(productWithMedia.media ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? productWithMedia.variants?.flatMap((variant) => Array.isArray(variant.attributes?.images) ? variant.attributes.images : []).find((url): url is string => typeof url === 'string' && Boolean(url.trim())) ?? '';
     const item = {
       id: randomUUID(), kind: 'products',
       title: { ru: `Новый товар: ${product.title}`, uz: `Yangi mahsulot: ${product.title}`, en: `New product: ${product.title}` },
@@ -363,7 +373,7 @@ export class CatalogService {
       if (!item.variantId || !Number.isInteger(quantity) || quantity < 1) throw new BadRequestException('Transfer miqdori musbat butun son bo‘lishi kerak.');
       merged.set(item.variantId, (merged.get(item.variantId) ?? 0) + quantity);
     }
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const changed: Array<{ variant: ProductVariant; quantity: number }> = [];
       for (const [variantId, quantity] of merged) {
         const variant = await manager.findOne(ProductVariant, { where: { id: variantId } });
@@ -410,6 +420,8 @@ export class CatalogService {
       }
       return { movedUnits: changed.reduce((sum, item) => sum + item.quantity, 0), movedVariants: changed.length };
     });
+    void this.telegram.control(`#TRANSFER\n\n🔄 OMBOR TRANSFERI\n\nYo‘nalish: ${direction === 'to_offline' ? 'Online → Offline do‘kon' : 'Offline do‘kon → Online'}\nMiqdor: ${result.movedUnits} ta\nVariantlar: ${result.movedVariants} ta`);
+    return result;
   }
 
   async adminCategories() { const categories = await this.categories.find({ order: { position: 'ASC', name: 'ASC' } }); return Promise.all(categories.map(async (category) => ({ ...category, productCount: await this.products.count({ where: { categoryId: category.id } }) }))); }

@@ -27,7 +27,7 @@ export class AdminController {
   @Get('dashboard') dashboard(
     @Query('period') period?: 'today' | '7d' | '30d' | 'month' | 'year' | 'custom',
     @Query('metric') metric?: 'visitors' | 'customers' | 'orders' | 'units' | 'revenue' | 'profit',
-    @Query('granularity') granularity?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    @Query('granularity') granularity?: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly',
     @Query('currency') currency?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,

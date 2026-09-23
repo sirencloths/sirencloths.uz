@@ -14,6 +14,7 @@ import { PartnersModule } from './partners/partners.module';
 import { OfflineModule } from './offline/offline.module';
 import { TeamRbacModule } from './team/team-rbac.module';
 import { FinanceModule } from './finance/finance.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { FinanceModule } from './finance/finance.module';
     OfflineModule,
     TeamRbacModule,
     FinanceModule,
+    TelegramModule,
   ],
 })
 export class AppModule {}

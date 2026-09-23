@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import { Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, Product, ProductStatus, SiteSetting } from '../database/entities';
+import { TelegramService } from '../telegram/telegram.service';
 
 const DEFAULT_NAVIGATION = [
   { id: 'shop', href: '/shop', label: 'shop', translationKey: 'shop', isActive: true, isBuiltIn: true },
@@ -22,6 +23,7 @@ export class CmsService {
     @InjectRepository(MusicRecord) private readonly records: Repository<MusicRecord>,
     @InjectRepository(Product) private readonly products: Repository<Product>,
     @InjectRepository(SiteSetting) private readonly settings: Repository<SiteSetting>,
+    private readonly telegram: TelegramService,
   ) {}
   bannersForStorefront() { return this.banners.find({ where: { isActive: true }, order: { position: 'ASC' } }); }
   postsForStorefront() { return this.posts.find({ where: { isPublished: true }, order: { publishedAt: 'DESC' } }); }
@@ -90,7 +92,8 @@ export class CmsService {
   private async appendLaunchNotification(product: Product) {
     const setting = await this.settings.findOneBy({ key: 'site-notifications' });
     const items = Array.isArray(setting?.value?.items) ? setting.value.items : [];
-    const imageUrl = [...(product.media ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? '';
+    const productWithMedia = product.media?.length ? product : await this.products.findOne({ where: { id: product.id }, relations: { variants: true } }) ?? product;
+    const imageUrl = [...(productWithMedia.media ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? productWithMedia.variants?.flatMap((variant) => Array.isArray(variant.attributes?.images) ? variant.attributes.images : []).find((url): url is string => typeof url === 'string' && Boolean(url.trim())) ?? '';
     const item = {
       id: randomUUID(), kind: 'products',
       title: { ru: `Дроп уже вышел: ${product.title}`, uz: `Drop chiqdi: ${product.title}`, en: `Drop is live: ${product.title}` },
@@ -105,9 +108,9 @@ export class CmsService {
     return { ...page, sections: await this.sections.find({ where: { pageId: page.id, isVisible: true }, order: { position: 'ASC' } }) };
   }
   adminBanners() { return this.banners.find({ order: { position: 'ASC' } }); }
-  createBanner(input: Partial<Banner>) { return this.banners.save(this.banners.create(input)); }
-  async updateBanner(id: string, input: Partial<Banner>) { const entity = await this.banners.preload({ id, ...input }); if (!entity) throw new NotFoundException('Banner not found'); return this.banners.save(entity); }
-  async removeBanner(id: string) { await this.banners.delete(id); return { deleted: true }; }
+  async createBanner(input: Partial<Banner>) { const saved = await this.banners.save(this.banners.create(input)); void this.telegram.control(`#BANNER\n\n🖼 BANNER QO‘SHILDI\n\nNomi: ${saved.title}\nHolat: ${saved.isActive ? 'Faol' : 'Nofaol'}`); return saved; }
+  async updateBanner(id: string, input: Partial<Banner>) { const entity = await this.banners.preload({ id, ...input }); if (!entity) throw new NotFoundException('Banner not found'); const saved = await this.banners.save(entity); void this.telegram.control(`#BANNER\n\n✏️ BANNER O‘ZGARDI\n\nNomi: ${saved.title}\nHolat: ${saved.isActive ? 'Faol' : 'Nofaol'}`); return saved; }
+  async removeBanner(id: string) { await this.banners.delete(id); void this.telegram.control(`#BANNER\n\n🗑 BANNER O‘CHIRILDI`); return { deleted: true }; }
   adminPosts() { return this.posts.find({ order: { updatedAt: 'DESC' } }); }
   async createPost(input: Partial<BlogPost>) {
     const post = await this.posts.save(this.posts.create(input));
@@ -124,11 +127,11 @@ export class CmsService {
   async notificationsForStorefront() {
     const setting = await this.settings.findOneBy({ key: 'site-notifications' });
     const items = setting?.value?.items;
-    return Array.isArray(items)
-      ? items.filter((item) => item && typeof item === 'object' && (item as { isActive?: boolean }).isActive !== false)
-        .sort((a, b) => String((b as { createdAt?: string }).createdAt ?? '').localeCompare(String((a as { createdAt?: string }).createdAt ?? '')))
-        .map((item) => { const { clickVisitorIds: _clickVisitorIds, ...safe } = item as Record<string, unknown>; return safe; })
-      : [];
+    const activeItems = Array.isArray(items) ? items.filter((item) => item && typeof item === 'object' && (item as { isActive?: boolean }).isActive !== false) : [];
+    const slugs = activeItems.map((item) => String((item as { href?: string }).href ?? '').match(/^\/products\/([^/?#]+)/)?.[1]).filter((slug): slug is string => Boolean(slug));
+    const products = slugs.length ? await this.products.find({ where: slugs.map((slug) => ({ slug })), relations: { variants: true } }) : [];
+    const images = new Map(products.map((product) => [product.slug, [...(product.media ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? product.variants?.flatMap((variant) => Array.isArray(variant.attributes?.images) ? variant.attributes.images : []).find((url): url is string => typeof url === 'string' && Boolean(url.trim())) ?? '']));
+    return activeItems.sort((a, b) => String((b as { createdAt?: string }).createdAt ?? '').localeCompare(String((a as { createdAt?: string }).createdAt ?? ''))).map((item) => { const { clickVisitorIds: _clickVisitorIds, ...safe } = item as Record<string, unknown>; const slug = String(safe.href ?? '').match(/^\/products\/([^/?#]+)/)?.[1]; return { ...safe, imageUrl: safe.imageUrl || (slug ? images.get(slug) || '' : '') }; });
   }
   async recordNotificationClick(id: string, visitorId: string) {
     const cleanVisitorId = visitorId.trim().slice(0, 120);

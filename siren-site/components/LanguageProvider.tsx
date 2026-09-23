@@ -76,10 +76,23 @@ Object.assign(translations.ja, {
   favoritesTitle: "お気に入り", favoritesEmpty: "保存した商品はまだありません", siteTesting: "サイトはテスト中です",
 });
 
+Object.assign(common, {
+  news: "News", notifications: "notifications", readAll: "Read all", noNotifications: "No new notifications yet.",
+  recentSearches: "Recent searches", searchSuggestions: "Search suggestions", maybeLookingFor: "You may be looking for", noSearchResults: "No matching products found", recommended: "Recommended", soldOut: "Sold out", removeFavorite: "Remove from favorites",
+});
+Object.assign(translations.uz, {
+  news: "Yangiliklar", notifications: "bildirishnoma", readAll: "Barchasini o‘qish", noNotifications: "Hali yangi bildirishnoma yo‘q.",
+  recentSearches: "So‘nggi qidiruvlar", searchSuggestions: "Qidiruv variantlari", maybeLookingFor: "Balki shuni qidirgandirsiz", noSearchResults: "Mahsulot topilmadi", recommended: "Tavsiya qilamiz", soldOut: "Sotilgan", removeFavorite: "Sevimlilardan olib tashlash",
+});
+Object.assign(translations.ru, {
+  news: "Новости", notifications: "уведомлений", readAll: "ПРОЧИТАТЬ ВСЕ", noNotifications: "Новых уведомлений пока нет.",
+  recentSearches: "ПОСЛЕДНИЕ ЗАПРОСЫ", searchSuggestions: "ВАРИАНТЫ ПОИСКА", maybeLookingFor: "Возможно, вы искали", noSearchResults: "ВАШ ТОВАР НЕ НАЙДЕН", recommended: "РЕКОМЕНДУЕМ", soldOut: "НЕТ В НАЛИЧИИ", removeFavorite: "Удалить из избранного",
+});
+
 type LanguageContextValue = {
   locale: Locale;
   language: (typeof languages)[number];
-  t: (key: keyof typeof common) => string;
+  t: (key: string) => string;
   openLanguageSelector: () => void;
 };
 
@@ -143,7 +156,7 @@ export function useLanguage() {
   return context;
 }
 
-export function T({ text }: { text: keyof typeof common }) {
+export function T({ text }: { text: string }) {
   const { t } = useLanguage();
   return <>{t(text)}</>;
 }

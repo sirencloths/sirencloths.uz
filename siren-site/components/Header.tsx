@@ -90,6 +90,7 @@ export default function Header() {
             const isActive = link.href === "/"
               ? pathname === "/"
               : pathname === link.href || pathname.startsWith(`${link.href}/`);
+            const knownKey = link.translationKey || (link.id === "blog" || link.href === "/blog" ? "blog" : link.id === "lookbook" || link.href === "/lookbook" ? "lookbook" : link.id === "collections" || link.href === "/collections" ? "collections" : link.id === "records" || link.href === "/records" ? "records" : undefined);
 
             return (
               <li key={link.href}>
@@ -101,7 +102,7 @@ export default function Header() {
                       : "nav-link"
                   }
                 >
-                  {link.translationKey ? t(link.translationKey) : link.label}
+                  {knownKey ? t(knownKey) : link.label}
                 </Link>
               </li>
             );

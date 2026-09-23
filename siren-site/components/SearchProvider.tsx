@@ -135,9 +135,9 @@ export function SearchContents({
             placeholder={t("search")}
           />
         </label>
-        {isInputActive && !query && history.length > 0 && <div className="site-search-history"><p>ПОСЛЕДНИЕ ЗАПРОСЫ</p><div className="site-search-categories">{history.map((category) => <button key={category} type="button" onClick={() => { setQuery(category); saveQuery(category); }}>{category}<span>→</span></button>)}</div></div>}
-        {isInputActive && Boolean(query) && relatedSearches.length > 0 && <div className="site-search-suggestions" aria-label="Варианты поиска">
-          {relatedSearches.map((suggestion) => <button key={suggestion} type="button" onClick={() => setQuery(suggestion)}>Возможно, вы искали: <strong>{suggestion}</strong></button>)}
+        {isInputActive && !query && history.length > 0 && <div className="site-search-history"><p>{t("recentSearches")}</p><div className="site-search-categories">{history.map((category) => <button key={category} type="button" onClick={() => { setQuery(category); saveQuery(category); }}>{category}<span>→</span></button>)}</div></div>}
+        {isInputActive && Boolean(query) && relatedSearches.length > 0 && <div className="site-search-suggestions" aria-label={t("searchSuggestions")}>
+          {relatedSearches.map((suggestion) => <button key={suggestion} type="button" onClick={() => setQuery(suggestion)}>{t("maybeLookingFor")}: <strong>{suggestion}</strong></button>)}
         </div>}
         {isInputActive && Boolean(query) && filtered.length > 0 && <div className="site-search-products">
           {filtered.map((product) => (
@@ -149,9 +149,9 @@ export function SearchContents({
         </div>
         }
         {isInputActive && Boolean(query) && !filtered.length && <section className="site-search-no-results">
-          <p className="site-search-empty">ВАШ ТОВАР НЕ НАЙДЕН</p>
-          <button type="button" className="site-search-back" onClick={() => setQuery("")}>НАЗАД</button>
-          <p className="site-search-recommendation-title">РЕКОМЕНДУЕМ</p>
+          <p className="site-search-empty">{t("noSearchResults")}</p>
+          <button type="button" className="site-search-back" onClick={() => setQuery("")}>{t("back")}</button>
+          <p className="site-search-recommendation-title">{t("recommended")}</p>
           <div className="site-search-products">
             {recommendations.map((product) => (
               <Link href={`/products/${product.id}${product.colorSlug ? `?color=${encodeURIComponent(product.colorSlug)}` : ""}`} key={product.cardId ?? product.id} onClick={() => { saveQuery(query); onProductClick?.(); }} className="site-search-product">

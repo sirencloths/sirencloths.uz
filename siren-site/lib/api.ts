@@ -204,7 +204,7 @@ export async function getStorefrontPage(slug: string): Promise<ApiPage> {
 export function formatStorePrice(price: string, currencyCode: string) {
   const value = Number(price);
   if (!Number.isFinite(value)) return price;
-  return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value).replace(/\u00A0/g, '.') } ${currencyCode === 'UZS' ? 'СУМ' : currencyCode}`;
+  return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value).replace(/\u00A0/g, '.') } ${currencyCode === 'UZS' ? 'UZS' : currencyCode}`;
 }
 
 export function storefrontProductPrice(product: Pick<ApiProduct, 'price' | 'variants'>) {
