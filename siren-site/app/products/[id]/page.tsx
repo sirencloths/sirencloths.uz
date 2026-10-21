@@ -1,7 +1,6 @@
 import Footer from "@/components/Footer";
 import Recommendation from "@/components/Recommendation";
-import ProductInfoAccordion from "@/components/ProductInfoAccordion";
-import ProductDetailClient from "@/components/ProductDetailClient";
+import LocalizedProductDetail from "@/components/LocalizedProductDetail";
 import ProductColorGallery from "@/components/ProductColorGallery";
 import { T } from "@/components/LanguageProvider";
 import { heroProducts } from "@/lib/data";
@@ -19,11 +18,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
     const product = await getStorefrontProduct(id);
-    const image = storefrontProductImages(product)[0];
-    const description = product.description?.trim() || `Shop ${product.title} by SIREN. Explore available sizes, colours and delivery details.`;
-    return pageMetadata({ title: product.title, description, path: `/products/${encodeURIComponent(product.slug)}`, image });
+    const image = product.seo?.image || storefrontProductImages(product)[0];
+    const description = product.seo?.description?.trim() || product.description?.trim() || `Shop ${product.title} by PREVAILEN. Explore available sizes, colours and delivery details.`;
+    return pageMetadata({ title: product.seo?.title?.trim() || product.title, description, path: `/products/${encodeURIComponent(product.slug)}`, image });
   } catch {
-    return pageMetadata({ title: "Product", description: "Explore SIREN streetwear products.", path: `/products/${encodeURIComponent(id)}`, noIndex: true });
+    return pageMetadata({ title: "Product", description: "Explore PREVAILEN streetwear products.", path: `/products/${encodeURIComponent(id)}`, noIndex: true });
   }
 }
 
@@ -47,9 +46,9 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
   const canonicalPath = `/products/${encodeURIComponent(apiProduct?.slug ?? id)}`;
   const productSchema = apiProduct ? {
     "@context": "https://schema.org", "@type": "Product", name: title,
-    description: apiProduct.description || `SIREN ${title}`,
+    description: apiProduct.description || `PREVAILEN ${title}`,
     image: images.map((item) => absoluteUrl(item)), sku: variants[0]?.sku || article || undefined,
-    brand: { "@type": "Brand", name: "SIREN" },
+    brand: { "@type": "Brand", name: "PREVAILEN" },
     offers: {
       "@type": "Offer", url: absoluteUrl(canonicalPath), priceCurrency: apiProduct.currencyCode || "UZS",
       price: String(storefrontProductPrice(apiProduct)), itemCondition: "https://schema.org/NewCondition",
@@ -81,9 +80,9 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
     <main className="product-detail">
       <ProductColorGallery key={apiProduct?.id ?? legacy!.id} productId={apiProduct?.id ?? legacy!.id} initialColor={initialColor} imagesByColor={imagesByColor} fallbackImages={images.length ? images : [image]} alt={title} />
       <div className="product-detail-info">
-        <h1 className="product-detail-title">{title}</h1>
-        <ProductDetailClient key={apiProduct?.id ?? legacy!.id} id={apiProduct?.id ?? legacy!.id} title={title} price={price} currencyCode={apiProduct?.currencyCode ?? "UZS"} image={image} variants={variants} initialColor={initialColor} sizeGuideImageUrl={apiProduct?.metadata?.sizeGuideImageUrl} />
-        <ProductInfoAccordion description={apiProduct?.description} article={article} />
+        {apiProduct
+          ? <LocalizedProductDetail product={apiProduct} image={image} price={price} initialColor={initialColor} article={article} />
+          : <LocalizedProductDetail product={{ id: legacy!.id, slug: legacy!.id, title, description: "", price: "", currencyCode: "UZS", media: [], variants: [] }} image={image} price={price} initialColor={initialColor} article={article} />}
       </div>
     </main>
     <div className="product-detail-recommendations"><Recommendation products={recommendationProducts} /></div>

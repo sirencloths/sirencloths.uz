@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
+import { readFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 import { OfflineDailyReport, OfflineSale, Order, OrderStatus } from '../database/entities';
 
 type BotChannel = 'orders' | 'control';
@@ -64,6 +66,34 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     return this.send('orders', this.orderMessage(heading, order));
   }
   async control(text: string) { return this.send('control', text); }
+  async controlPhoto(photoUrl: string | null | undefined, caption: string) {
+    if (!photoUrl) return this.control(caption);
+    const { token, chatId } = this.config('control');
+    if (!token || !chatId) return false;
+    try {
+      const form = new FormData();
+      form.append('chat_id', chatId);
+      form.append('caption', caption.slice(0, 1024));
+      if (photoUrl.startsWith('/uploads/')) {
+        const relative = photoUrl.slice('/uploads/'.length);
+        if (!relative || relative.includes('..')) return this.control(caption);
+        const path = join(process.cwd(), 'uploads', relative);
+        const bytes = await readFile(path);
+        form.append('photo', new Blob([bytes]), basename(path));
+      } else {
+        form.append('photo', photoUrl);
+      }
+      const response = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
+      if (!response.ok) {
+        this.logger.warn(`Telegram control rasmi yuborilmadi: ${response.status}`);
+        return this.control(caption);
+      }
+      return true;
+    } catch (error) {
+      this.logger.warn(`Telegram control rasmi xatosi: ${error instanceof Error ? error.message : String(error)}`);
+      return this.control(caption);
+    }
+  }
 
   private orderMessage(heading: string, order: Order) {
     const customer = order.customer;

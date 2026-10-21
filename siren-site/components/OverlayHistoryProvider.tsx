@@ -7,6 +7,7 @@ type OverlayHistoryValue = {
   isOverlayOpen: (overlay: OverlayName) => boolean;
   openOverlay: (overlay: OverlayName) => void;
   closeOverlay: (overlay: OverlayName) => void;
+  dismissOverlay: (overlay: OverlayName) => void;
 };
 
 const HISTORY_KEY = "__sirenOverlays";
@@ -63,11 +64,20 @@ export function OverlayHistoryProvider({ children }: { children: ReactNode }) {
     apply(next);
   }, [apply]);
 
+  // Use this before a route transition. Replacing the transient history state
+  // prevents history.back() from racing a router.push() and leaving checkout.
+  const dismissOverlay = useCallback((overlay: OverlayName) => {
+    const next = overlaysRef.current.filter((item) => item !== overlay);
+    window.history.replaceState({ ...window.history.state, [HISTORY_KEY]: next }, "", window.location.href);
+    apply(next);
+  }, [apply]);
+
   const value = useMemo<OverlayHistoryValue>(() => ({
     isOverlayOpen: (overlay) => overlays.includes(overlay),
     openOverlay,
     closeOverlay,
-  }), [overlays, openOverlay, closeOverlay]);
+    dismissOverlay,
+  }), [overlays, openOverlay, closeOverlay, dismissOverlay]);
 
   return <OverlayHistoryContext.Provider value={value}>{children}</OverlayHistoryContext.Provider>;
 }

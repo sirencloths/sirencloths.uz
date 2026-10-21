@@ -44,6 +44,8 @@ class ShipmentRequestDto {
   @IsOptional() @IsString() comment?: string;
 }
 class CancelOrderDto { @IsOptional() @IsString() reason?: string; @IsOptional() @IsString() evidenceUrl?: string; }
+class CustomerStateDto { @IsOptional() @IsArray() cart?: Array<{ variantId: string; quantity: number }>; @IsOptional() @IsArray() favorites?: string[]; }
+class PersonalDiscountDto { @IsString() productId!: string; @IsInt() @Min(1) percent!: number; }
 
 @Controller('checkout')
 export class CheckoutController {
@@ -60,6 +62,9 @@ export class CheckoutController {
   @Get('customer/notifications') customerNotifications(@CurrentUser() customer: { id: string }) { return this.commerce.listCustomerNotifications(customer.id); }
   @UseGuards(CustomerJwtGuard)
   @Post('customer/orders/:id/cancel') cancelCustomerOrder(@Param('id') id: string, @CurrentUser() customer: { id: string }, @Body() body: CancelOrderDto) { return this.commerce.cancelCustomerOrder(id, customer.id, body); }
+  @UseGuards(CustomerJwtGuard) @Get('customer/commerce-state') state(@CurrentUser() customer: { id: string }) { return this.commerce.customerCommerceState(customer.id); }
+  @UseGuards(CustomerJwtGuard) @Patch('customer/commerce-state') saveState(@CurrentUser() customer: { id: string }, @Body() body: CustomerStateDto) { return this.commerce.saveCustomerCommerceState(customer.id, body); }
+  @UseGuards(CustomerJwtGuard) @Delete('customer/personal-discounts/:productId') removeOwnDiscount(@Param('productId') productId: string, @CurrentUser() customer: { id: string }) { return this.commerce.removeCustomerDiscount(customer.id, productId); }
 }
 
 @Controller('pickup-locations')
@@ -90,4 +95,6 @@ export class AdminCommerceController {
   @Post('orders/:id/refund-complete') completeRefund(@Param('id') id: string) { return this.commerce.completeRefund(id); }
   @Get('customers') customers() { return this.commerce.listCustomers(); }
   @Get('customers/:id') customer(@Param('id') id: string) { return this.commerce.customerDetails(id); }
+  @Post('customers/:id/personal-discounts') discount(@Param('id') id: string, @Body() body: PersonalDiscountDto, @CurrentUser() user: { id: string }) { return this.commerce.issueCustomerDiscount(id, body.productId, body.percent, user.id); }
+  @Delete('customers/:id/personal-discounts/:productId') removeDiscount(@Param('id') id: string, @Param('productId') productId: string) { return this.commerce.removeCustomerDiscount(id, productId); }
 }

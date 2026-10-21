@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Product } from "@/lib/data";
 import { useFavorites } from "./FavoriteContext";
 import { useLanguage } from "./LanguageProvider";
+import { useCustomerAuth } from "./CustomerAuthProvider";
 
 const apiOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
 
@@ -16,6 +17,7 @@ type Props = {
 export default function ProductCard({ product, small = false, favoriteCard = false }: Props) {
   const { isFavorite, toggleFavorite, removeFavorite } = useFavorites();
   const { t } = useLanguage();
+  const { customer, openAuth } = useCustomerAuth();
   const liked = isFavorite(product);
   // Admin-created products may not have an image yet. Never pass an empty URL to next/image.
   const candidateImage = typeof product.image === "string" ? product.image.trim() : "";
@@ -60,7 +62,7 @@ export default function ProductCard({ product, small = false, favoriteCard = fal
           aria-label={liked ? t("removeFavorite") : t("favoriteAdd")}
           aria-pressed={liked}
           onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => toggleFavorite(product)}
+          onClick={() => { if (!customer) { openAuth(); return; } toggleFavorite(product); }}
         >
           <Image src={liked ? "/icons/heart-filled.svg" : "/icons/heart.svg"} alt="" width={17} height={17} />
         </button>}
@@ -70,7 +72,7 @@ export default function ProductCard({ product, small = false, favoriteCard = fal
 
       <Link href={detailHref} className="product-card-link">
         <h2>{product.title}</h2>
-        <p>{product.color === "GRAY" ? t("gray") : product.color}</p>
+        <p>{product.color?.toUpperCase() === "GRAY" ? t("gray") : product.color?.toUpperCase() === "DEFAULT" ? t("defaultOption") : product.color}</p>
         <div className={`product-card-pricing${product.discountPercent ? " is-sale" : ""}`}>
           <strong className={product.discountPercent ? "product-card-price--sale" : ""}>{product.price}</strong>
           {product.oldPrice && <del className="product-card-old-price">{product.oldPrice}</del>}

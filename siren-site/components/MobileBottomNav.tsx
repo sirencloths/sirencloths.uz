@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
 import { useCart } from "./CartContext";
+import { useCustomerAuth } from "./CustomerAuthProvider";
 
 const items = [
   { href: "/", label: "home", icon: "/icons/home.svg" },
@@ -23,6 +24,7 @@ export default function MobileBottomNav() {
   const { t } = useLanguage();
   const pathname = usePathname();
   const { cartCount } = useCart();
+  const { customer, openAuth } = useCustomerAuth();
 
   if (pathname.startsWith("/admin") || pathname.startsWith("/social")) return null;
 
@@ -37,6 +39,7 @@ export default function MobileBottomNav() {
             : pathname === item.href;
         const className = `${isActive ? "is-active" : ""}${hasItems ? " has-items" : ""}`.trim();
         const ariaLabel = t(item.label);
+        const requiresAccount = item.href === "/cart" || item.href === "/favorites" || item.href === "/profile";
 
         return (
         <Link
@@ -45,6 +48,7 @@ export default function MobileBottomNav() {
           aria-label={ariaLabel}
           aria-current={isActive ? "page" : undefined}
           className={className}
+          onClick={(event) => { if (requiresAccount && !customer) { event.preventDefault(); openAuth(); } }}
         >
           <NavIcon icon={item.icon} home={item.href === "/"} />
           {hasItems && <span aria-hidden="true" />}

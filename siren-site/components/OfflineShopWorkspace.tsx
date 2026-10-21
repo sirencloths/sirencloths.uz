@@ -21,7 +21,7 @@ async function api<T>(path: string, token: string, init: RequestInit = {}) {
 }
 async function upload(file: File, token: string) { const form = new FormData(); form.append("file", file); return api<{ url: string }>("/offline/uploads", token, { method: "POST", body: form }); }
 
-export function OfflineCashier({ token, onChanged }: { token: string; onChanged: () => void }) {
+function LegacyOfflineCashier({ token, onChanged }: { token: string; onChanged: () => void }) {
   const [inventory, setInventory] = useState<OfflineProduct[]>([]), [cart, setCart] = useState<CartRow[]>([]), [ean, setEan] = useState(""), [payment, setPayment] = useState("cash"), [discount, setDiscount] = useState("0"), [note, setNote] = useState(""), [noteFile, setNoteFile] = useState<File | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
   const load = useCallback(() => api<OfflineProduct[]>("/offline/inventory", token).then(setInventory).catch((e: Error) => setError(e.message)), [token]); useEffect(() => { void load(); }, [load]);
   const add = (row: OfflineProduct) => { setError(""); setCart((current) => { const hit = current.find((item) => item.id === row.id); if (hit) return current.map((item) => item.id === row.id ? { ...item, quantity: Math.min(item.offlineInventoryQuantity, item.quantity + 1) } : item); return [...current, { ...row, quantity: 1 }]; }); };
@@ -51,4 +51,86 @@ export function OfflineReports({ token, role }: { token: string; role: Role }) {
   const load = useCallback(() => api<any>(`/offline/reports/${date}`, token).then((result) => { setData(result); if (result.report) setForm({ cashAmount: String(result.report.cashAmount), cardAmount: String(result.report.cardAmount), transferAmount: String(result.report.transferAmount ?? (Number(result.report.clickAmount) + Number(result.report.paymeAmount))), expenseAmount: String(result.report.expenseAmount ?? 0), note: result.report.note || "" }); }).catch((e: Error) => setError(e.message)), [date, token]); useEffect(() => { void load(); }, [load]);
   const save = async () => { try { await api(`/offline/reports/${date}`, token, { method: "PUT", body: JSON.stringify({ reportDate: date, cashAmount: Number(form.cashAmount), cardAmount: Number(form.cardAmount), transferAmount: Number(form.transferAmount), expenseAmount: Number(form.expenseAmount), note: form.note }) }); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Hisobot saqlanmadi."); } };
   return <section className="offline-workspace"><header className="offline-heading"><div><p className="ui-overline">OFFLINE DO‘KON</p><h2>Offline do‘kon hisoboti</h2><span>{admin ? "Savdo, topshirilgan summa va xarajatlarni bir joyda nazorat qiling." : "Kun yakuni summalari va xarajatni topshiring."}</span></div><label className="offline-date">Sana<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label></header>{admin ? <Card><CardContent><div className="offline-table-wrap"><table className="offline-table"><thead><tr><th>Kassir</th><th>Naqd</th><th>Karta</th><th>Kartaga o‘tkazma</th><th>Xarajat</th><th>Farq</th><th>Holat</th></tr></thead><tbody>{(data?.comparisons || []).map((row: any) => <tr className={row.isMismatch ? "offline-mismatch" : ""} key={row.cashierId}><td><b>{`${row.cashier?.firstName || ""} ${row.cashier?.lastName || ""}`.trim() || row.cashier?.email}</b></td>{["cash", "card", "transfer"].map((key) => <td key={key}>{money(row.computer[key])} / {row.report ? money(row.declared[key]) : "Hisobot yo‘q"}</td>)}<td className="offline-red">−{money(row.expense)}</td><td><b>{money(row.totalDifference)}</b></td><td>{row.isMismatch ? <span className="offline-red">Farq bor</span> : <span className="offline-green">Mos</span>}</td></tr>)}{!(data?.comparisons || []).length && <tr><td colSpan={7} className="offline-empty">Bu kunga kassir savdosi yoki hisoboti yo‘q.</td></tr>}</tbody></table></div></CardContent></Card> : <Card className="offline-report-form"><CardHeader><div><CardTitle>Kassir hisoboti</CardTitle><CardDescription>Kompyuter summalari kassirga ko‘rsatilmaydi.</CardDescription></div></CardHeader><CardContent>{([['cashAmount','Naqd pul'],['cardAmount','Karta / terminal'],['transferAmount','Kartaga o‘tkazma'],['expenseAmount','Xarajat, UZS']] as const).map(([key,label]) => <label className="offline-field" key={key}>{label}<input type="number" min="0" value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} /></label>)}<label className="offline-field">Izoh<textarea value={form.note} onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} placeholder="Xarajat yoki kun yakuni bo‘yicha izoh" /></label><Button onClick={() => void save()}><CheckCircle2 size={17} /> Hisobotni topshirish</Button></CardContent></Card>}{error && <p className="offline-error">{error}</p>}</section>;
+}
+
+/**
+ * Cashier-first POS flow. The basket is intentionally kept locally until the
+ * receipt is created; the backend remains the source of truth for stock.
+ */
+export function OfflineCashier({ token, onChanged }: { token: string; onChanged: () => void }) {
+  const storageKey = "prevailen-offline-pos-cart";
+  const [inventory, setInventory] = useState<OfflineProduct[]>([]);
+  const [cart, setCart] = useState<CartRow[]>([]);
+  const [query, setQuery] = useState("");
+  const [scanValue, setScanValue] = useState("");
+  const [payment, setPayment] = useState<"cash" | "card" | "transfer">("cash");
+  const [discount, setDiscount] = useState("0");
+  const [tendered, setTendered] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [lastSale, setLastSale] = useState<OfflineSale | null>(null);
+
+  const load = useCallback(async () => {
+    try { setError(""); setInventory(await api<OfflineProduct[]>("/offline/inventory", token)); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Kassa ma’lumotlari yuklanmadi."); }
+  }, [token]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as Array<{ id: string; quantity: number }>;
+      if (!Array.isArray(stored)) return;
+      setCart(stored.map((line) => {
+        const item = inventory.find((row) => row.id === line.id);
+        return item ? { ...item, quantity: Math.max(1, Math.min(item.offlineInventoryQuantity, Number(line.quantity) || 1)) } : null;
+      }).filter((line): line is CartRow => Boolean(line)));
+    } catch { localStorage.removeItem(storageKey); }
+  }, [inventory]);
+  useEffect(() => { localStorage.setItem(storageKey, JSON.stringify(cart.map(({ id, quantity }) => ({ id, quantity })))); }, [cart]);
+  const add = (item: OfflineProduct) => {
+    setError("");
+    setCart((rows) => {
+      const current = rows.find((row) => row.id === item.id);
+      if (current) return rows.map((row) => row.id === item.id ? { ...row, quantity: Math.min(item.offlineInventoryQuantity, row.quantity + 1) } : row);
+      return [...rows, { ...item, quantity: 1 }];
+    });
+  };
+  const setQuantity = (id: string, quantity: number) => setCart((rows) => rows.map((row) => row.id === id ? { ...row, quantity: Math.max(1, Math.min(row.offlineInventoryQuantity, quantity)) } : row));
+  const scan = async (event: FormEvent) => {
+    event.preventDefault(); const value = scanValue.trim(); if (!value) return;
+    try { add(await api<OfflineProduct>(`/offline/scan/${encodeURIComponent(value)}`, token)); setScanValue(""); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Mahsulot topilmadi."); }
+  };
+  const subtotal = cart.reduce((sum, row) => sum + Number(row.price) * row.quantity, 0);
+  const discountValue = Math.min(subtotal, Math.max(0, Math.floor(Number(discount) || 0)));
+  const total = subtotal - discountValue;
+  const tenderedValue = Math.max(0, Number(tendered) || 0);
+  const change = payment === "cash" ? Math.max(0, tenderedValue - total) : 0;
+  const insufficientCash = payment === "cash" && tendered.trim() !== "" && tenderedValue < total;
+  const visibleInventory = inventory.filter((item) => {
+    const text = `${item.product.title} ${item.sku} ${item.barcode ?? ""} ${item.color ?? ""} ${item.size ?? ""}`.toLocaleLowerCase("uz-UZ");
+    return text.includes(query.trim().toLocaleLowerCase("uz-UZ"));
+  });
+  const paymentName = payment === "cash" ? "Naqd pul" : payment === "card" ? "Karta / terminal" : "Kartaga o‘tkazma";
+  const checkout = async () => {
+    if (!cart.length) return setError("Kassaga mahsulot qo‘shing.");
+    if (insufficientCash) return setError("Mijoz bergan naqd pul yakuniy summadan kam.");
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const sale = await api<OfflineSale>("/offline/sales", token, { method: "POST", body: JSON.stringify({ items: cart.map(({ id, quantity }) => ({ variantId: id, quantity })), paymentMethod: payment, discountAmount: discountValue, note: note.trim() }) });
+      setLastSale(sale); setCart([]); localStorage.removeItem(storageKey); setDiscount("0"); setTendered(""); setNote(""); setNotice(`Chek #${sale.receiptNumber} muvaffaqiyatli yaratildi.`); await load(); onChanged();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Sotuv yakunlanmadi."); }
+    finally { setBusy(false); }
+  };
+  const printReceipt = () => window.print();
+  return <section className="offline-workspace offline-pos-v2">
+    <header className="offline-heading"><div><p className="ui-overline">OFFLINE DO‘KON · POS</p><h2>Kassa</h2><span>Skaner, tezkor savat, qaytim nazorati va chek bilan ishlash.</span></div><div className="offline-pos-actions"><Button variant="outline" onClick={() => { setCart([]); localStorage.removeItem(storageKey); }}>Savatni tozalash</Button><Button variant="outline" onClick={() => void load()}><RefreshCw size={16} /> Yangilash</Button></div></header>
+    <div className="offline-pos-kpis"><article><span>Savatdagi birliklar</span><b>{cart.reduce((sum, row) => sum + row.quantity, 0)} ta</b></article><article><span>Mahsulot turlari</span><b>{cart.length} ta</b></article><article className="is-total"><span>To‘lanadi</span><b>{money(total)}</b></article></div>
+    <div className="offline-cashier-grid">
+      <Card><CardHeader><div><CardTitle><ScanLine size={19} /> Mahsulot tanlash</CardTitle><CardDescription>EAN-13 skaner, SKU yoki mahsulot nomi bo‘yicha qidiring.</CardDescription></div></CardHeader><CardContent><form className="offline-scan" onSubmit={scan}><ScanLine size={20} /><input autoFocus value={scanValue} onChange={(event) => setScanValue(event.target.value)} placeholder="EAN-13 yoki SKU ni skanerlang" /><Button type="submit">Qo‘shish</Button></form><label className="offline-search"><Barcode size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Mahsulot nomi, SKU, rang yoki o‘lcham" /></label><div className="offline-product-grid">{visibleInventory.map((item) => <button type="button" key={item.id} className="offline-product-pick" onClick={() => add(item)}><img src={asset(item.product.imageUrl)} alt="" /><span><b>{item.product.title}</b><small>{item.sku} · {item.color || "Default"} / {item.size || "ONE SIZE"}</small><em>{item.offlineInventoryQuantity} dona qoldi</em><strong>{money(item.price)}</strong></span></button>)}{!visibleInventory.length && <p className="offline-empty">Bu qidiruv bo‘yicha offline mahsulot topilmadi.</p>}</div></CardContent></Card>
+      <Card className="offline-cart"><CardHeader><div><CardTitle><ShoppingCart size={19} /> Joriy savdo</CardTitle><CardDescription>{cart.length ? "Savat avtomatik saqlanadi." : "Mahsulot tanlang yoki skanerlang."}</CardDescription></div></CardHeader><CardContent><div className="offline-cart-lines">{cart.map((item) => <article key={item.id}><img src={asset(item.product.imageUrl)} alt="" /><div><b>{item.product.title}</b><small>{item.sku} · {money(item.price)}</small><div className="offline-quantity"><button type="button" onClick={() => setQuantity(item.id, item.quantity - 1)}>−</button><input aria-label={`${item.product.title} miqdori`} type="number" min="1" max={item.offlineInventoryQuantity} value={item.quantity} onChange={(event) => setQuantity(item.id, Number(event.target.value) || 1)} /><button type="button" onClick={() => setQuantity(item.id, item.quantity + 1)}>+</button></div></div><button type="button" className="offline-remove" aria-label="Mahsulotni savatdan olib tashlash" onClick={() => setCart((rows) => rows.filter((row) => row.id !== item.id))}><Trash2 size={17} /></button></article>)}{!cart.length && <p className="offline-empty">Savat hozircha bo‘sh.</p>}</div><div className="offline-payment-choice">{(["cash", "card", "transfer"] as const).map((method) => <button type="button" key={method} className={payment === method ? "is-active" : ""} onClick={() => setPayment(method)}>{method === "cash" ? "Naqd" : method === "card" ? "Karta" : "O‘tkazma"}</button>)}</div><label className="offline-field">Chegirma, UZS<input type="number" min="0" max={subtotal} value={discount} onChange={(event) => setDiscount(event.target.value)} /></label>{payment === "cash" && <label className="offline-field">Mijoz bergan pul<input type="number" min="0" value={tendered} onChange={(event) => setTendered(event.target.value)} placeholder={money(total)} /></label>}<label className="offline-field">Izoh (ixtiyoriy)<textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Savdo bo‘yicha izoh" /></label><dl className="offline-totals"><div><dt>Jami</dt><dd>{money(subtotal)}</dd></div><div><dt>Chegirma</dt><dd>−{money(discountValue)}</dd></div><div className="offline-totals-final"><dt>To‘lanadi · {paymentName}</dt><dd>{money(total)}</dd></div>{payment === "cash" && tendered.trim() && <div className={insufficientCash ? "offline-tender-error" : "offline-tender-change"}><dt>{insufficientCash ? "Yetishmaydi" : "Qaytim"}</dt><dd>{money(insufficientCash ? total - tenderedValue : change)}</dd></div>}</dl>{error && <p className="offline-error">{error}</p>}{notice && <p className="offline-success">{notice}</p>}<Button disabled={busy || !cart.length || insufficientCash} onClick={() => void checkout()}>{busy ? "Sotuv saqlanmoqda…" : "Sotuvni yakunlash"}</Button></CardContent></Card>
+    </div>
+    {lastSale && <div className="offline-receipt-backdrop" role="presentation" onMouseDown={() => setLastSale(null)}><section className="offline-receipt-dialog" role="dialog" aria-modal="true" aria-label={`Chek ${lastSale.receiptNumber}`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">SOTUV MUVAFFAQIYATLI</p><h3>Chek #{lastSale.receiptNumber}</h3><span>{new Intl.DateTimeFormat("uz-UZ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(lastSale.createdAt))}</span></div><button type="button" onClick={() => setLastSale(null)}>×</button></header><div className="offline-receipt-items">{lastSale.items.map((item) => <p key={item.id}><span><b>{item.titleSnapshot}</b><small>{item.skuSnapshot} × {item.quantity}</small></span><strong>{money(item.totalPrice)}</strong></p>)}</div><dl><div><dt>To‘lov</dt><dd>{paymentName}</dd></div><div><dt>Jami</dt><dd>{money(lastSale.totalAmount)}</dd></div>{payment === "cash" && change > 0 && <div><dt>Qaytim</dt><dd>{money(change)}</dd></div>}</dl><div className="offline-receipt-actions"><Button type="button" variant="outline" onClick={() => setLastSale(null)}>Yopish</Button><Button type="button" onClick={printReceipt}>Chekni chop etish</Button></div></section></div>}
+  </section>;
 }

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { IsArray, IsEmail, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { CurrentUser, JwtAuthGuard } from '../auth/jwt.strategy';
 import { EmploymentStatus, EmploymentType, UserRole } from '../database/entities';
 import { TeamRbacService } from './team-rbac.service';
@@ -25,6 +25,7 @@ class RoleDto { @IsString() @MaxLength(120) name!: string; @IsOptional() @IsStri
 class RolesDto { @IsArray() roleIds!: string[]; }
 class TeamsDto { @IsArray() teamIds!: string[]; }
 class StatusDto { @IsEnum(EmploymentStatus) status!: EmploymentStatus; }
+class AcceptInvitationDto { @IsString() @MinLength(32) token!: string; @IsString() @MinLength(12) password!: string; }
 
 @UseGuards(JwtAuthGuard)
 @Controller('admin/team')
@@ -46,4 +47,11 @@ export class TeamRbacController {
   @Get('invitations') invitations(@CurrentUser() actor: { id: string; role: UserRole }) { return this.team.listInvitations(actor); }
   @Get('security/sessions') sessions(@CurrentUser() actor: { id: string; role: UserRole }) { return this.team.listSessions(actor); }
   @Post('security/sessions/:id/revoke') revokeSession(@Param('id') id: string, @CurrentUser() actor: { id: string; role: UserRole }) { return this.team.revokeSession(actor, id); }
+}
+
+/** The opaque, single-use invitation token is the authorization for this route. */
+@Controller('team-invitations')
+export class TeamInvitationController {
+  constructor(private readonly team: TeamRbacService) {}
+  @Post('accept') accept(@Body() body: AcceptInvitationDto) { return this.team.acceptInvitation(body.token, body.password); }
 }

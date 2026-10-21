@@ -172,8 +172,10 @@ export class Category {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Index({ unique: true }) @Column({ length: 180 }) slug!: string;
   @Column({ length: 180 }) name!: string;
+  @Column({ type: 'jsonb', default: {} }) translations!: Record<string, string>;
   @Column({ type: 'varchar', nullable: true }) description!: string | null;
   @Column({ name: 'image_url', type: 'varchar', nullable: true }) imageUrl!: string | null;
+  @Column({ type: 'jsonb', default: () => "'{}'" }) seo!: Record<string, unknown>;
   @Column({ type: 'int', default: 0 }) position!: number;
   @Column({ name: 'is_visible', default: true }) isVisible!: boolean;
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
@@ -279,6 +281,42 @@ export class Customer {
   @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
 }
 
+/** Persistent account cart — unlike anonymous engagement metrics, this is visible to admin staff. */
+@Entity('customer_cart_items')
+@Index(['customerId', 'variantId'], { unique: true })
+export class CustomerCartItem {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column({ name: 'customer_id', type: 'uuid' }) customerId!: string;
+  @Index() @Column({ name: 'variant_id', type: 'uuid' }) variantId!: string;
+  @Column({ type: 'int', default: 1 }) quantity!: number;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
+@Entity('customer_favorites')
+@Index(['customerId', 'productId'], { unique: true })
+export class CustomerFavorite {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column({ name: 'customer_id', type: 'uuid' }) customerId!: string;
+  @Index() @Column({ name: 'product_id', type: 'uuid' }) productId!: string;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+}
+
+/** A staff-issued discount that applies to one customer and one product only. */
+@Entity('customer_product_discounts')
+@Index(['customerId', 'productId'], { unique: true })
+export class CustomerProductDiscount {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column({ name: 'customer_id', type: 'uuid' }) customerId!: string;
+  @Index() @Column({ name: 'product_id', type: 'uuid' }) productId!: string;
+  @Column({ type: 'int' }) percent!: number;
+  @Column({ name: 'is_active', default: true }) isActive!: boolean;
+  @Column({ name: 'expires_at', type: 'timestamptz', nullable: true }) expiresAt!: Date | null;
+  @Column({ name: 'created_by', type: 'uuid', nullable: true }) createdBy!: string | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt!: Date;
+}
+
 @Entity('auth_otps')
 @Index(['email', 'purpose'])
 export class AuthOtp {
@@ -371,6 +409,7 @@ export class Banner {
   @Column({ name: 'mobile_image_url', type: 'varchar', nullable: true }) mobileImageUrl!: string | null;
   @Column({ name: 'target_url', type: 'varchar', nullable: true }) targetUrl!: string | null;
   @Column({ name: 'link_label', length: 80, default: 'Перейти' }) linkLabel!: string;
+  @Column({ type: 'jsonb', default: () => "'{}'" }) translations!: Record<string, { title?: string }>;
   @Column({ name: 'text_shadow', default: true }) textShadow!: boolean;
   @Column({ type: 'int', default: 0 }) position!: number;
   @Column({ name: 'is_active', default: true }) isActive!: boolean;
@@ -462,6 +501,16 @@ export class AuditLog {
   @Column({ name: 'entity_type', length: 100 }) entityType!: string;
   @Column({ name: 'entity_id', type: 'varchar', nullable: true }) entityId!: string | null;
   @Column({ type: 'jsonb', default: () => "'{}'" }) payload!: Record<string, unknown>;
+  @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
+}
+
+@Entity('site_visits')
+@Index(['visitorId', 'visitDate'], { unique: true })
+export class SiteVisit {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ name: 'visitor_id', length: 80 }) visitorId!: string;
+  @Column({ name: 'visit_date', type: 'date' }) visitDate!: string;
+  @Column({ name: 'path', length: 500, default: '/' }) path!: string;
   @CreateDateColumn({ name: 'created_at' }) createdAt!: Date;
 }
 
@@ -638,8 +687,8 @@ export class PickupLocation {
 }
 
 export const entities = [
-  User, Category, CollectionEntity, Product, ProductVariant, ProductEngagement, Customer, AuthOtp, AuthSession,
+  User, Category, CollectionEntity, Product, ProductVariant, ProductEngagement, Customer, CustomerCartItem, CustomerFavorite, CustomerProductDiscount, AuthOtp, AuthSession,
   CustomerAddress, Order, OrderItem, Banner, Page, PageSection, BlogPost,
-  LookbookEntry, MusicRecord, SiteSetting, AuditLog, InventoryTransfer, OfflineSale, OfflineSaleItem, OfflineSaleNote, OfflineDailyReport, ProductDiscount, Partner, PartnerPromoUsage, PartnerComment,
+  LookbookEntry, MusicRecord, SiteSetting, AuditLog, SiteVisit, InventoryTransfer, OfflineSale, OfflineSaleItem, OfflineSaleNote, OfflineDailyReport, ProductDiscount, Partner, PartnerPromoUsage, PartnerComment,
   Employee, Team, EmployeeTeam, AdminRole, Permission, RolePermission, EmployeeRole, EmployeeInvitation, FinanceEntry, PickupLocation,
 ];

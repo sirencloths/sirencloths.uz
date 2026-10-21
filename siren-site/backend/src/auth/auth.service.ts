@@ -105,7 +105,7 @@ export class AuthService implements OnApplicationBootstrap {
     Object.assign(customer, {
       email: payload.email, passwordHash, firstName: profile.firstName.trim(), lastName: profile.lastName.trim(),
       phone: this.normalizePhone(profile.phone), region: profile.region.trim(), emailVerifiedAt: new Date(), lastLoginAt: new Date(),
-      registrationSource: 'website', isActive: true, welcomeDiscountEligible: true, welcomeDiscountPercent: 15,
+      registrationSource: 'website', isActive: true, welcomeDiscountEligible: true, welcomeDiscountPercent: 10,
       welcomeDiscountExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
     const saved = await this.customers.save(customer);
@@ -153,6 +153,10 @@ export class AuthService implements OnApplicationBootstrap {
 
   async customerMe(id: string) {
     const customer = await this.customers.findOneByOrFail({ id });
+    if (customer.welcomeDiscountEligible && customer.welcomeDiscountPercent !== 10) {
+      customer.welcomeDiscountPercent = 10;
+      await this.customers.save(customer);
+    }
     const priorOrderCount = customer.welcomeDiscountEligible ? await this.orders.count({ where: { customerId: id } }) : 0;
     if (customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt && (this.welcomeDiscountExpiresAt(customer) <= new Date() || priorOrderCount > 0)) {
       customer.welcomeDiscountEligible = false;
@@ -181,6 +185,12 @@ export class AuthService implements OnApplicationBootstrap {
     await this.customers.save(customer);
     if (profile.address !== undefined || profile.region !== undefined) await this.saveDefaultAddress(customer.id, customer.region ?? '', profile.address);
     return this.customerMe(id);
+  }
+  async setCustomerPresence(id: string, online: boolean) {
+    const customer = await this.customers.findOneByOrFail({ id });
+    customer.metadata = { ...customer.metadata, presence: { online, lastSeen: new Date().toISOString() } };
+    await this.customers.save(customer);
+    return { success: true };
   }
 
   async customerIdFromToken(authorization?: string) {

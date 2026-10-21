@@ -14,8 +14,11 @@ const stage = (order: Order) => order.status === "refunded" || order.paymentStat
 export default function ProfileOrdersPage() {
   const { customer, loading, openAuth } = useCustomerAuth();
   const { locale } = useLanguage();
-  const text = (uz: string, ru: string, en: string) => locale === "ru" ? ru : locale === "en" ? en : uz;
-  const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "uz-UZ";
+  // This page used to route Japanese through Uzbek.  Keep every order-state
+  // label in the same four-language branch as the rest of the storefront.
+  const ja: Record<string, string> = { "Pul qaytarildi":"返金済み", "Bekor qilingan":"キャンセル済み", "Tasdiqlash kutilmoqda":"確認待ち", "Qabul qilindi":"受付済み", "Olib ketishga tayyor":"受取準備完了", "Olib ketildi":"受取済み", "Yig‘ildi":"梱包済み", "Yo‘lda":"配送中", "Yetkazildi":"配達済み", "Profilga qaytish":"プロフィールに戻る", "Buyurtmalar yuklanmoqda…":"注文を読み込んでいます…", "Buyurtmalar":"注文", "Buyurtmalar tarixini ko‘rish uchun akkauntga kiring.":"注文履歴を表示するにはログインしてください。", "Kirish / ro‘yxatdan o‘tish":"ログイン / アカウント作成", "BUYURTMALAR":"注文", "Barcha buyurtmalar":"すべての注文", "Faol, muvaffaqiyatli, bekor qilingan va refund buyurtmalar.":"進行中、完了、キャンセル、返金済みの注文。", "ta":"件", "Chek":"注文", "Chegirma":"割引", "Jami":"合計", "Buyurtma yo‘q":"注文はありません", "Barcha buyurtmalaringiz shu yerda ko‘rinadi.":"すべての注文がここに表示されます。", "Xarid qilish":"ショップへ" };
+  const text = (uz: string, ru: string, en: string) => locale === "ja" ? (ja[uz] ?? en) : locale === "ru" ? ru : locale === "en" ? en : uz;
+  const dateLocale = locale === "ja" ? "ja-JP" : locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "uz-UZ";
   const money = (value: string) => `${new Intl.NumberFormat(dateLocale, { maximumFractionDigits: 0 }).format(Number(value) || 0)} UZS`;
   const [orders, setOrders] = useState<Order[]>([]); const [ordersLoading, setOrdersLoading] = useState(false);
   useEffect(() => { const token = localStorage.getItem("siren-customer-token"); if (!customer || !token) { setOrders([]); return; } setOrdersLoading(true); void customerApi("/checkout/customer/orders", undefined, token).then(setOrders).catch(() => setOrders([])).finally(() => setOrdersLoading(false)); }, [customer?.id]);

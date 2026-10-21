@@ -7,13 +7,27 @@ export type ApiProduct = {
   description?: string;
   price: string;
   currencyCode: string;
+  seo?: { title?: string; description?: string; image?: string };
   media: Array<{ url: string; alt?: string; position?: number }>;
   variants: Array<{ id: string; sku: string; color?: string | null; size?: string | null; price?: string | null; originalPrice?: string; discountPercent?: number; discountEndsAt?: string; discountScope?: "product" | "color" | "size"; inventoryQuantity: number; isActive?: boolean; attributes?: Record<string, unknown> }>;
   category?: { name: string } | null;
-  metadata?: { article?: string; sizeGuideImageUrl?: string };
+  metadata?: {
+    article?: string;
+    sizeGuideImageUrl?: string;
+    translations?: {
+      titleUz?: string;
+      titleRu?: string;
+      titleEn?: string;
+      titleJa?: string;
+      descriptionUz?: string;
+      descriptionRu?: string;
+      descriptionEn?: string;
+      descriptionJa?: string;
+    };
+  };
   gender?: "male" | "female" | "unisex";
 };
-export type ApiCategory = { id: string; slug: string; name: string; description?: string | null; isVisible: boolean };
+export type ApiCategory = { id: string; slug: string; name: string; translations?: Record<string, string>; description?: string | null; imageUrl?: string | null; seo?: Record<string, unknown>; isVisible: boolean };
 export type ApiCollection = { id: string; slug: string; name: string; description?: string | null; isVisible: boolean };
 export type ListingFacet = { value: string; count: number };
 export type StorefrontListing = { products: ApiProduct[]; total: number; facets: { genders: ListingFacet[]; colors: ListingFacet[]; sizes: ListingFacet[]; price: { min: number; max: number } } };
@@ -62,6 +76,7 @@ export type ApiBanner = {
   mobileImageUrl?: string | null;
   targetUrl?: string | null;
   linkLabel: string;
+  translations?: Record<string, { title?: string }>;
   textShadow: boolean;
   position: number;
 };
@@ -244,6 +259,17 @@ export function storefrontProductImagesByColor(product: Pick<ApiProduct, 'varian
 
 export type StorefrontProduct = Product & { category?: string };
 
+export type StorefrontLocale = "uz" | "ru" | "en" | "ja";
+
+/** Uses the primary product copy as a safe fallback while a translation is being written. */
+export function localizeStorefrontProduct(product: ApiProduct, locale: StorefrontLocale): ApiProduct {
+  const translations = product.metadata?.translations;
+  const suffix = locale === "ru" ? "Ru" : locale === "en" ? "En" : locale === "ja" ? "Ja" : "Uz";
+  const title = translations?.[`title${suffix}` as const]?.trim() || translations?.titleUz?.trim() || product.title;
+  const description = translations?.[`description${suffix}` as const]?.trim() || translations?.descriptionUz?.trim() || product.description;
+  return { ...product, title, ...(description !== undefined ? { description } : {}) };
+}
+
 const colorKey = (value?: string | null) => (value || "Default").trim().toLocaleLowerCase("uz-UZ");
 const colorSlug = (value?: string | null) => colorKey(value).replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "default";
 
@@ -252,8 +278,9 @@ const colorSlug = (value?: string | null) => colorKey(value).replace(/[^\p{L}\p{
  * always routes to the parent product and the exact size SKU remains inside
  * Product Detail / Cart.
  */
-export function toStorefrontColorCards(products: ApiProduct[]): StorefrontProduct[] {
+export function toStorefrontColorCards(products: ApiProduct[], locale: StorefrontLocale = "uz"): StorefrontProduct[] {
   return products.flatMap((product) => {
+    product = localizeStorefrontProduct(product, locale);
     const grouped = new Map<string, ApiProduct["variants"]>();
     product.variants.forEach((variant) => {
       const key = colorKey(variant.color);

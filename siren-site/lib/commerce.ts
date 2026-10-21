@@ -21,6 +21,10 @@ export function cartSubtotal(cart: CartItem[]) {
   return cart.reduce((sum, item) => sum + cartItemPrice(item.price) * item.quantity, 0);
 }
 
+export function cartDiscount(cart: CartItem[]) {
+  return cart.reduce((sum, item) => sum + Math.max(0, cartItemPrice(item.originalPrice ?? item.price) - cartItemPrice(item.price)) * item.quantity, 0);
+}
+
 export function shippingCost(_subtotal: number, _itemCount: number) {
   // Delivery is currently included in the order total. Keep this single source
   // of truth so the cart, drawer and checkout never calculate different totals.

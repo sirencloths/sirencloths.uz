@@ -5,6 +5,7 @@ import type { ElementType, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Dropdown } from "./ui/dropdown/Dropdown";
 import { DropdownItem } from "./ui/dropdown/DropdownItem";
+import Image from "next/image";
 import Link from "next/link";
 
 export type TailAdminNavItem = { id: string; label: string; icon: ElementType };
@@ -28,6 +29,7 @@ export default function AdminShell({ activeId, groups, onNavigate, compact, onCo
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string>(() => groups.find((group) => group.items.some((item) => item.id === activeId))?.label ?? groups[0]?.label ?? "");
   const searchRef = useRef<HTMLInputElement>(null);
   const initials = `${profile?.firstName?.[0] ?? ""}${profile?.lastName?.[0] ?? ""}` || profile?.email?.[0]?.toUpperCase() || "A";
   const name = `${profile?.firstName ?? ""} ${profile?.lastName ?? ""}`.trim() || profile?.email || "Admin";
@@ -48,6 +50,10 @@ export default function AdminShell({ activeId, groups, onNavigate, compact, onCo
     root.classList.toggle("dark", theme === "midnight" || theme === "graphite");
     return () => { root.classList.toggle("dark", wasDark); };
   }, [theme]);
+  useEffect(() => {
+    const activeGroup = groups.find((group) => group.items.some((item) => item.id === activeId));
+    if (activeGroup) setOpenGroup(activeGroup.label);
+  }, [activeId, groups]);
 
   const toggleSidebar = () => { if (window.innerWidth >= 1280) onCompactChange(!compact); else setMobileOpen((open) => !open); };
   const navigate = (id: string) => {
@@ -64,24 +70,35 @@ export default function AdminShell({ activeId, groups, onNavigate, compact, onCo
     {mobileOpen && <button aria-label="Menyuni yopish" className="fixed inset-0 z-40 bg-gray-900/50 xl:hidden" onClick={() => setMobileOpen(false)} />}
     <aside className={`fixed top-0 left-0 z-50 flex h-full flex-col border-r border-gray-200 bg-white px-5 text-gray-900 transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 ${sideWidth} ${expanded ? "translate-x-0" : "-translate-x-full"}`} style={{ ...surfaceStyle, borderColor: "#e4e7ec" }}>
       <div className={`flex py-8 ${expanded ? "justify-start" : "justify-center"}`}>
-        <Link href="/" className="flex items-center gap-2 text-gray-900 dark:text-white" style={{ color: darkMode ? "#ffffff" : "#101828" }}>
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-sm font-bold text-white">S</span>
-          {expanded && <span className="whitespace-nowrap text-lg font-semibold tracking-tight">SIREN Admin</span>}
+        <Link href="/" aria-label="PREVAILEN Admin bosh sahifasi" className="flex items-center gap-2">
+          {expanded && <Image
+            src="/brand/wordmark-black-transparent.svg"
+            alt="PREVAILEN Admin"
+            width={178}
+            height={44}
+            priority
+            className="tailadmin-brand-wordmark"
+            style={{ filter: darkMode ? "none" : "brightness(0)" }}
+          />}
+          {expanded && <span className="tailadmin-brand-admin">Admin</span>}
         </Link>
       </div>
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-        <nav className="mb-6 flex flex-col gap-6">
-          {groups.map((group) => <section key={group.label}>
-            <h2 className={`mb-4 flex text-xs leading-5 text-gray-400 uppercase ${expanded ? "justify-start" : "justify-center"}`}>{expanded ? group.label : "•••"}</h2>
-            <ul className="flex flex-col gap-1">
+        <nav className="mb-6 flex flex-col gap-2">
+          {groups.map((group) => { const GroupIcon = group.items[0]?.icon ?? Menu; const isOpen = openGroup === group.label; const hasActive = group.items.some((item) => item.id === activeId); return <section key={group.label} className="tailadmin-nav-group">
+            <button type="button" onClick={() => setOpenGroup(isOpen ? "" : group.label)} aria-expanded={isOpen} className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-sm font-semibold transition-colors ${expanded ? "px-3" : "justify-center px-0"} ${hasActive ? "text-brand-500" : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"}`}>
+              <GroupIcon size={19} className={hasActive ? "text-brand-500" : "text-gray-500 dark:text-gray-400"} />
+              {expanded && <><span className="flex-1 text-left">{group.label}</span><ChevronDown size={17} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} /></>}
+            </button>
+            {isOpen && <ul className={`mt-1 flex flex-col gap-1 ${expanded ? "pl-3" : ""}`}>
               {group.items.map((item) => { const Icon = item.icon; const active = item.id === activeId; return <li key={item.id}>
                 <button type="button" title={item.label} onClick={() => navigate(item.id)} style={{ color: active ? (darkMode ? "#9cb9ff" : "#465fff") : (darkMode ? "#d0d5dd" : "#344054") }} className={`group flex w-full items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors ${expanded ? "justify-start px-3" : "justify-center px-0"} ${active ? "bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400" : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"}`}>
-                  <Icon size={19} className={active ? "text-brand-500 dark:text-brand-400" : "text-gray-500 dark:text-gray-400"} />
+                  <Icon size={18} className={active ? "text-brand-500 dark:text-brand-400" : "text-gray-500 dark:text-gray-400"} />
                   {expanded && <span className="truncate">{item.label}</span>}
                 </button>
               </li>; })}
-            </ul>
-          </section>)}
+            </ul>}
+          </section>; })}
         </nav>
       </div>
       <div className="border-t border-gray-200 py-4 dark:border-gray-800" style={{ borderColor: "#e4e7ec" }}>

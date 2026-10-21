@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, ClipboardCheck, PackageCheck, RotateCcw, Truck, XCircle } from "lucide-react";
 import { useLanguage } from "./LanguageProvider";
 import { customerApi, useCustomerAuth } from "./CustomerAuthProvider";
@@ -17,7 +17,7 @@ function OrderNotificationIcon({ title, text }: { title: string; text: string })
   const value = `${title} ${text}`.toLocaleLowerCase();
   const Icon = /достав|yetkaz|deliver/.test(value) ? CheckCircle2 : /в пути|йўлда|yo‘lda|yolda|on the way/.test(value) ? Truck : /собран|yig‘ildi|yig'ildi|packed/.test(value) ? PackageCheck : /отмен|bekor|cancel/.test(value) ? XCircle : /возврат|qaytar|refund/.test(value) ? RotateCcw : ClipboardCheck;
   const inverted = Icon === XCircle || Icon === RotateCcw;
-  return <span className="news-order-icon" style={{ display: "grid", width: "100%", aspectRatio: "1", placeItems: "center", boxSizing: "border-box", border: "1px solid #050505", borderRadius: 8, background: inverted ? "#050505" : "#fff", color: inverted ? "#fff" : "#050505" }}><Icon size={34} strokeWidth={1.8} /></span>;
+  return <span className={`news-order-icon${inverted ? " is-inverted" : ""}`}><Icon size={31} strokeWidth={1.8} /></span>;
 }
 
 function LaunchCountdown({ text, targetAt, locale }: { text: string; targetAt: string; locale: "uz" | "ru" | "en" | "ja" }) {
@@ -34,7 +34,7 @@ function LaunchCountdown({ text, targetAt, locale }: { text: string; targetAt: s
 
 export default function TopBar() {
   const { language, locale, openLanguageSelector, t } = useLanguage();
-  const { customer } = useCustomerAuth();
+  const { customer, openAuth } = useCustomerAuth();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoreNotification[]>([]);
   const [orderItems, setOrderItems] = useState<StoreNotification[]>([]);
@@ -42,20 +42,48 @@ export default function TopBar() {
   const [visitorId, setVisitorId] = useState("");
   const [headerMessage, setHeaderMessage] = useState<HeaderMessage>({ kind: "quote", quotes: [] });
   const [quoteIndex, setQuoteIndex] = useState(0);
-  const readReady = useRef(false);
+  const notificationStorageKey = customer?.id ? `prevailen-read-notifications:${customer.id}` : null;
   useModalLock(open);
-  const markRead = (ids: string[]) => setReadAt((current) => ({ ...current, ...Object.fromEntries(ids.map((id) => [id, current[id] ?? new Date().toISOString()])) }));
+  const markRead = (ids: string[]) => setReadAt((current) => {
+    const now = new Date().toISOString();
+    const next = { ...current, ...Object.fromEntries(ids.map((id) => [id, current[id] ?? now])) };
+    if (notificationStorageKey) localStorage.setItem(notificationStorageKey, JSON.stringify(next));
+    return next;
+  });
   const loadNotifications = useCallback(async () => { try { const response = await fetch(`${API}/content/notifications`, { cache: "no-store" }); setItems(response.ok ? await response.json() as StoreNotification[] : []); } catch { setItems([]); } }, []);
-  useEffect(() => { void loadNotifications(); }, [loadNotifications]);
+  useEffect(() => {
+    if (!customer?.id) {
+      setItems([]);
+      setOpen(false);
+      return;
+    }
+    void loadNotifications();
+  }, [customer?.id, loadNotifications]);
   useEffect(() => { const token = localStorage.getItem("siren-customer-token"); if (!customer || !token) { setOrderItems([]); return; } void customerApi("/checkout/customer/notifications", undefined, token).then((data) => setOrderItems(Array.isArray(data) ? data as StoreNotification[] : [])).catch(() => setOrderItems([])); }, [customer?.id]);
-  useEffect(() => { const load = async () => { try { const response = await fetch(`${API}/content/header-message`, { cache: "no-store" }); const value = response.ok ? await response.json() as Partial<HeaderMessage> : null; if (value?.kind === "countdown" && typeof value.text === "string" && typeof value.targetAt === "string") setHeaderMessage({ kind: "countdown", text: value.text, targetAt: value.targetAt }); else if (value?.kind === "quote" && Array.isArray(value.quotes)) setHeaderMessage({ kind: "quote", quotes: value.quotes.filter((quote): quote is string => typeof quote === "string" && Boolean(quote.trim())) }); } catch { /* optional header content */ } }; void load(); const timer = window.setInterval(() => void load(), 30_000); return () => window.clearInterval(timer); }, []);
-  useEffect(() => { setQuoteIndex(0); if (headerMessage.kind !== "quote" || headerMessage.quotes.length < 2) return; const timer = window.setInterval(() => setQuoteIndex((index) => (index + 1) % headerMessage.quotes.length), 10_000); return () => window.clearInterval(timer); }, [headerMessage]);
-  useEffect(() => { try { const stored = JSON.parse(localStorage.getItem("siren-read-notifications") ?? "{}"); if (stored && typeof stored === "object") setReadAt(stored); } catch { setReadAt({}); } finally { readReady.current = true; } const storedId = localStorage.getItem("siren-notification-visitor-id"); const id = storedId || crypto.randomUUID(); if (!storedId) localStorage.setItem("siren-notification-visitor-id", id); setVisitorId(id); }, []);
-  useEffect(() => { if (readReady.current) localStorage.setItem("siren-read-notifications", JSON.stringify(readAt)); }, [readAt]);
+  useEffect(() => { const load = async () => { try { const response = await fetch(`${API}/content/header-message`, { cache: "no-store" }); const value = response.ok ? await response.json() as Partial<HeaderMessage> : null; if (value?.kind === "countdown" && typeof value.text === "string" && typeof value.targetAt === "string") { const text = value.text; const targetAt = value.targetAt; setHeaderMessage((current) => current.kind === "countdown" && current.text === text && current.targetAt === targetAt ? current : { kind: "countdown", text, targetAt }); } else if (value?.kind === "quote" && Array.isArray(value.quotes)) { const quotes = value.quotes.filter((quote): quote is string => typeof quote === "string" && Boolean(quote.trim())); setHeaderMessage((current) => current.kind === "quote" && current.quotes.length === quotes.length && current.quotes.every((quote, index) => quote === quotes[index]) ? current : { kind: "quote", quotes }); } } catch { /* optional header content */ } }; void load(); const timer = window.setInterval(() => void load(), 30_000); return () => window.clearInterval(timer); }, []);
+  useEffect(() => { setQuoteIndex(0); if (headerMessage.kind !== "quote" || headerMessage.quotes.length < 2) return; const timer = window.setInterval(() => setQuoteIndex((index) => (index + 1) % headerMessage.quotes.length), 3_500); return () => window.clearInterval(timer); }, [headerMessage]);
+  useEffect(() => {
+    if (!notificationStorageKey) { setReadAt({}); return; }
+    try {
+      const saved = localStorage.getItem(notificationStorageKey);
+      const stored = JSON.parse(saved ?? localStorage.getItem("siren-read-notifications") ?? "{}");
+      const next = stored && typeof stored === "object" ? stored : {};
+      if (!saved) localStorage.setItem(notificationStorageKey, JSON.stringify(next));
+      setReadAt(next);
+    } catch { setReadAt({}); }
+  }, [notificationStorageKey]);
+  useEffect(() => { const storedId = localStorage.getItem("siren-notification-visitor-id"); const id = storedId || crypto.randomUUID(); if (!storedId) localStorage.setItem("siren-notification-visitor-id", id); setVisitorId(id); }, []);
   const copy = (value?: Record<string, string>) => value?.[locale] || value?.en || value?.ru || value?.uz || "";
-  const visibleItems = [...orderItems, ...items.filter((item) => { const preference = customer?.metadata?.notificationPreferences; return !customer || !item.kind || item.kind === "general" || item.kind === "blog" ? preference?.blog !== false : item.kind === "discounts" ? preference?.discounts !== false : preference?.products !== false; })].sort((left, right) => String(right.createdAt ?? "").localeCompare(String(left.createdAt ?? "")));
+  const registeredAt = customer?.createdAt ? new Date(customer.createdAt).getTime() : Number.NaN;
+  const visiblePublicItems = customer && Number.isFinite(registeredAt) ? items.filter((item) => {
+    const createdAt = item.createdAt ? new Date(item.createdAt).getTime() : Number.NaN;
+    if (!Number.isFinite(createdAt) || createdAt < registeredAt) return false;
+    const preference = customer.metadata?.notificationPreferences;
+    return !item.kind || item.kind === "general" || item.kind === "blog" ? preference?.blog !== false : item.kind === "discounts" ? preference?.discounts !== false : preference?.products !== false;
+  }) : [];
+  const visibleItems = [...orderItems, ...visiblePublicItems].sort((left, right) => String(right.createdAt ?? "").localeCompare(String(left.createdAt ?? "")));
   const unreadItems = visibleItems.filter((item) => !readAt[item.id]);
-  const dateLocale = locale === "uz" ? "uz-UZ" : locale === "en" ? "en-GB" : "ru-RU";
+  const dateLocale = locale === "ja" ? "ja-JP" : locale === "uz" ? "uz-UZ" : locale === "en" ? "en-GB" : "ru-RU";
   const trackClick = (id: string) => { if (visitorId) void fetch(`${API}/content/notifications/${encodeURIComponent(id)}/click`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ visitorId }), keepalive: true }); };
-  return <div className="topbar"><button className="topbar-control" type="button" onClick={openLanguageSelector} aria-label={t("language")}><Image src="/icons/lang.svg" alt="" width={22} height={22} /><span>{language.label}</span></button><div className="topbar-quote" aria-live="polite">{headerMessage.kind === "quote" && headerMessage.quotes.length > 0 ? <span className="topbar-quote-text">{headerMessage.quotes[quoteIndex]}</span> : headerMessage.kind === "countdown" ? <span className="topbar-quote-text">{headerMessage.text}</span> : null}</div><div className="topbar-news-wrap"><button className="topbar-control topbar-control--right" type="button" onClick={() => setOpen(true)} aria-expanded={open} aria-label={t("news")}>{unreadItems.length > 0 && <span className="cart-badge" aria-label={`${unreadItems.length} ${t("notifications")}`}>{unreadItems.length > 9 ? "9+" : unreadItems.length}</span>}<span>{t("news")}</span></button>{open && <div className="news-modal-backdrop" role="presentation" onMouseDown={() => setOpen(false)}><section className="news-modal" role="dialog" aria-modal="true" aria-label={t("news")} onMouseDown={(event) => event.stopPropagation()}><header><h2>{t("news")}</h2><button type="button" onClick={() => setOpen(false)} aria-label={t("close")}>×</button></header>{visibleItems.length ? <><div className="news-modal-list">{visibleItems.map((item) => <Link key={item.id} className={!readAt[item.id] ? "is-unread" : ""} href={item.href || "/"} onClick={() => { markRead([item.id]); trackClick(item.id); setOpen(false); }}>{item.kind === "order" ? <OrderNotificationIcon title={copy(item.title)} text={copy(item.text)} /> : <img src={asset(item.imageUrl)} alt="" />}<span><b>{copy(item.title)}</b><small>{copy(item.text)}</small><time>{item.createdAt ? new Intl.DateTimeFormat(dateLocale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(item.createdAt)) : ""}</time></span></Link>)}</div><footer><button type="button" disabled={!unreadItems.length} onClick={() => markRead(unreadItems.map((item) => item.id))}>{t("readAll")}</button></footer></> : <p>{t("noNotifications")}</p>}</section></div>}</div></div>;
+  return <div className="topbar"><button className="topbar-control" type="button" onClick={openLanguageSelector} aria-label={t("language")}><Image src="/icons/lang.svg" alt="" width={22} height={22} /><span>{language.label}</span></button><div className="topbar-quote" aria-live="polite">{headerMessage.kind === "quote" && headerMessage.quotes.length > 0 ? <span key={`quote-${quoteIndex}`} className={`topbar-quote-text is-direction-${quoteIndex % 2}`}>{headerMessage.quotes[quoteIndex]}</span> : headerMessage.kind === "countdown" ? <span className="topbar-quote-text">{headerMessage.text}</span> : null}</div><div className="topbar-news-wrap"><button className="topbar-control topbar-control--right" type="button" onClick={() => { if (!customer) { openAuth(); return; } setOpen(true); }} aria-expanded={open} aria-label={t("news")}>{unreadItems.length > 0 && <span className="cart-badge" aria-label={`${unreadItems.length} ${t("notifications")}`}>{unreadItems.length > 9 ? "9+" : unreadItems.length}</span>}<span>{t("news")}</span></button>{customer && open && <div className="news-modal-backdrop" role="presentation" onMouseDown={() => setOpen(false)}><section className="news-modal" role="dialog" aria-modal="true" aria-label={t("news")} onMouseDown={(event) => event.stopPropagation()}><header><h2>{t("news")}</h2><button type="button" onClick={() => setOpen(false)} aria-label={t("close")}>×</button></header>{visibleItems.length ? <><div className="news-modal-list">{visibleItems.map((item) => <Link key={item.id} className={!readAt[item.id] ? "is-unread" : ""} href={item.href || "/"} onClick={() => { markRead([item.id]); trackClick(item.id); setOpen(false); }}>{item.kind === "order" ? <OrderNotificationIcon title={copy(item.title)} text={copy(item.text)} /> : <img src={asset(item.imageUrl)} alt="" />}<span><b>{copy(item.title)}</b><small>{copy(item.text)}</small><time>{item.createdAt ? new Intl.DateTimeFormat(dateLocale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(item.createdAt)) : ""}</time></span></Link>)}</div><footer><button type="button" className={unreadItems.length ? "" : "is-all-read"} disabled={!unreadItems.length} onClick={() => markRead(unreadItems.map((item) => item.id))}>{unreadItems.length ? t("readAll") : t("allRead")}</button></footer></> : <p>{t("noNotifications")}</p>}</section></div>}</div></div>;
 }

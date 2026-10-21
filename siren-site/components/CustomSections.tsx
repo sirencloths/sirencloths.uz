@@ -1,6 +1,9 @@
+"use client";
+
 import { formatStorePrice, type ApiCustomSection, type ApiProduct } from "@/lib/api";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 const apiOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "");
 const imageUrl = (value: string) =>
@@ -23,6 +26,7 @@ export default function CustomSections({
   placement: number;
   products: ApiProduct[];
 }) {
+  const { t } = useLanguage();
   const visible = sections
     .filter((section) => section.isActive !== false && section.placement === placement)
     .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
@@ -32,7 +36,7 @@ export default function CustomSections({
     <div className="custom-sections">
       {visible.map((section) => {
         if (section.sectionKind === "banner" && section.desktopBannerTemplate && section.mobileBannerTemplate) {
-          return <BannerOnlySection key={section.id} section={section} />;
+          return <BannerOnlySection key={section.id} section={section} actionLabel={t("go")} />;
         }
         const desktopCartPosition = section.desktopCartPosition ?? "right";
         const mobileCartPosition = section.mobileCartPosition ?? "below";
@@ -80,8 +84,8 @@ export default function CustomSections({
                   <img src={desktopImage} alt="" />
                 </picture>
                 {section.shadow !== false && <span className="custom-section-shade" />}
-                <span className="custom-section-copy custom-section-copy--desktop"><b>{section.desktopName || section.name}</b><small>{section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</small></span>
-                <span className="custom-section-copy custom-section-copy--mobile"><b>{section.mobileName || section.desktopName || section.name}</b><small>{section.mobileLinkLabel || section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</small></span>
+                <span className="custom-section-copy custom-section-copy--desktop"><b>{section.desktopName || section.name}</b><small>{t("go")}</small></span>
+                <span className="custom-section-copy custom-section-copy--mobile"><b>{section.mobileName || section.desktopName || section.name}</b><small>{t("go")}</small></span>
               </ContentLink>
               {desktopCartPosition === "right" && desktopCart}
               {desktopCartPosition === "below" && desktopCart}
@@ -94,7 +98,7 @@ export default function CustomSections({
   );
 }
 
-function BannerOnlySection({ section }: { section: ApiCustomSection }) {
+function BannerOnlySection({ section, actionLabel }: { section: ApiCustomSection; actionLabel: string }) {
   const desktopTemplate = section.desktopBannerTemplate ?? "one-max";
   const mobileTemplate = section.mobileBannerTemplate ?? "one-full";
   const desktopCount = desktopTemplate === "one-max" ? 1 : 2;
@@ -120,8 +124,8 @@ function BannerOnlySection({ section }: { section: ApiCustomSection }) {
       {items.map((item, index) => <ContentLink className="custom-banner-only-slot" href={item.desktopLink || item.targetUrl || section.desktopLink || section.targetUrl || "#"} key={`${item.id}-${index}`}>
         <picture><source media="(max-width: 760px)" srcSet={imageUrl(item.mobileImageUrl || section.mobileImageUrl || section.desktopImageUrl)} /><img src={imageUrl(item.desktopImageUrl || section.desktopImageUrl)} alt="" /></picture>
         {section.shadow !== false && <span className="custom-section-shade" />}
-        <span className="custom-banner-only-copy custom-banner-only-copy--desktop"><b>{item.desktopName || section.desktopName || section.name}</b><small>{item.desktopLinkLabel || item.linkLabel || section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</small></span>
-        <span className="custom-banner-only-copy custom-banner-only-copy--mobile"><b>{item.mobileName || item.desktopName || section.mobileName || section.desktopName || section.name}</b><small>{item.mobileLinkLabel || item.desktopLinkLabel || item.linkLabel || section.mobileLinkLabel || section.desktopLinkLabel || section.linkLabel || "ПЕРЕЙТИ"}</small></span>
+        <span className="custom-banner-only-copy custom-banner-only-copy--desktop"><b>{item.desktopName || section.desktopName || section.name}</b><small>{actionLabel}</small></span>
+        <span className="custom-banner-only-copy custom-banner-only-copy--mobile"><b>{item.mobileName || item.desktopName || section.mobileName || section.desktopName || section.name}</b><small>{actionLabel}</small></span>
       </ContentLink>)}
     </div>
   </section>;

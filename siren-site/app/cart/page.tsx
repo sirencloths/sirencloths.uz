@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
 import { cartItemPrice, FREE_DELIVERY_THRESHOLD, shippingCost } from "@/lib/commerce";
+import { useCustomerAuth } from "@/components/CustomerAuthProvider";
 
 const legacyColorKeys: Record<string, "darkGray" | "black" | "cream" | "pink"> = {
   "ТЕМНО СЕРЫЙ": "darkGray",
@@ -25,6 +26,7 @@ const uzs = (value: number, locale: string) => `${value.toLocaleString(locale)} 
 export default function CartPage() {
   const { t, locale } = useLanguage();
   const router = useRouter();
+  const { customer, openAuth } = useCustomerAuth();
   const {
     cart,
     increaseQuantity,
@@ -35,6 +37,7 @@ export default function CartPage() {
   const [promo, setPromo] = useState("");
   const [discountApplied, setDiscountApplied] = useState(false);
   const [itemToRemove, setItemToRemove] = useState<CartItem | null>(null);
+  const proceedToCheckout = () => { if (!customer) { openAuth(); return; } router.push("/checkout"); };
 
   // Tanlangan mahsulotlar
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -386,7 +389,7 @@ export default function CartPage() {
           <button
             type="button"
             className="cart-checkout-btn"
-            onClick={() => router.push("/checkout")}
+            onClick={proceedToCheckout}
           >
             {t("checkout")}
           </button>
@@ -406,7 +409,7 @@ export default function CartPage() {
           <b>{uzs(total, locale)}</b>
         </div>
 
-        {cart.length > 0 && <button type="button" className="mobile-cart-checkout" onClick={() => router.push("/checkout")}>
+        {cart.length > 0 && <button type="button" className="mobile-cart-checkout" onClick={proceedToCheckout}>
           {t("checkout")}
         </button>}
       </aside>

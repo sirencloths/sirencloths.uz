@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Product } from "@/lib/data";
 import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
 import { trackProductEngagement } from "@/lib/product-engagement";
+import { customerApi, useCustomerAuth } from "./CustomerAuthProvider";
 
 type FavoriteContextValue = {
   favorites: Product[];
@@ -18,6 +19,7 @@ const favoriteKey = (product: Product) => `${product.id}:${product.colorSlug || 
 export function FavoriteProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const { customer } = useCustomerAuth();
 
   useEffect(() => {
     const saved = localStorage.getItem("siren-favorites");
@@ -35,6 +37,14 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loaded) localStorage.setItem("siren-favorites", JSON.stringify(favorites));
   }, [favorites, loaded]);
+
+  useEffect(() => {
+    if (!loaded || !customer) return;
+    const token = localStorage.getItem("siren-customer-token");
+    if (!token) return;
+    const timeout = window.setTimeout(() => { void customerApi("/checkout/customer/commerce-state", { favorites: favorites.map((item) => item.productId ?? item.id) }, token, "PATCH").catch(() => undefined); }, 350);
+    return () => window.clearTimeout(timeout);
+  }, [favorites, customer?.id, loaded]);
 
   // A favorite represents one product colour card. Refresh its current data
   // without collapsing other colours of the same product into one favorite.

@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "localhost", port: "4000" },
     ],
   },
 };

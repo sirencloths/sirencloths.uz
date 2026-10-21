@@ -85,5 +85,6 @@ export default function PolicyDocument({ kind }: { kind: Kind }) {
     : locale === "en" ? "Until legal details and integration data are completed, this page is not a final public offer."
       : locale === "ja" ? "販売者情報と連携情報が入力されるまで、このページは最終的な公開オファーではありません。"
         : "Rekvizitlar va integratsiya ma’lumotlari to‘ldirilmaguncha bu sahifa yakuniy ommaviy oferta hisoblanmaydi.";
-  return <main className="policy-document"><Link className="profile-settings-back" href="/">← SIREN</Link><header><p>{policy.eyebrow}</p><h1>{policy.title}</h1><span>{policy.intro}</span><small>{policy.updated}</small></header><aside><b>DRAFT — REBRANDING</b><span>{draftNotice}</span></aside><article>{policy.sections.map((section) => <section key={section.title}><h2>{section.title}</h2>{section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</section>)}</article></main>;
+  const brand = (value: string) => value.replaceAll("SIREN", "PREVAILEN");
+  return <main className="policy-document"><Link className="profile-settings-back" href="/">← PREVAILEN</Link><header><p>{policy.eyebrow}</p><h1>{policy.title}</h1><span>{brand(policy.intro)}</span><small>{policy.updated}</small></header><aside><b>DRAFT — REBRANDING</b><span>{draftNotice}</span></aside><article>{policy.sections.map((section) => <section key={section.title}><h2>{section.title}</h2>{section.paragraphs.map((paragraph) => <p key={paragraph}>{brand(paragraph)}</p>)}</section>)}</article></main>;
 }

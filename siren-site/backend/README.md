@@ -1,11 +1,11 @@
-# SIREN backend
+# PREVAILEN backend
 
 NestJS 11 + TypeORM + PostgreSQL commerce API. The API is served under `/api` and Swagger is available at `/api/docs`.
 
 ## Local setup
 
 1. Copy `.env.example` to `.env` in this folder and replace every placeholder.
-2. Create an empty PostgreSQL database named `siren`.
+2. Create an empty PostgreSQL database for PREVAILEN. Existing deployments may keep the legacy database name during migration.
 3. Run `database/001_initial_schema.sql` against that database. With Docker installed, `docker compose up -d postgres` runs it automatically on first startup. Without Docker, run the SQL file in pgAdmin, DBeaver, Supabase SQL Editor, or `psql`.
 4. Run `npm install`, then `npm run start:dev`.
 5. Open `http://localhost:4000/api/docs` for API documentation and `http://localhost:3000/admin` for the admin sign-in.
@@ -15,7 +15,7 @@ The first user is created only if the `users` table is empty. Set `ADMIN_EMAIL` 
 ## Environment
 
 ```env
-DATABASE_URL=postgresql://siren_user:strong_password@localhost:5432/siren
+DATABASE_URL=postgresql://prevailen_user:strong_password@localhost:5432/prevailen
 JWT_SECRET=a-long-random-secret-of-at-least-32-characters
 FRONTEND_URL=http://localhost:3000
 PORT=4000

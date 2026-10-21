@@ -7,7 +7,11 @@ import { getStorefrontPosts, type ApiBlogPost } from "@/lib/api";
 import { useLanguage } from "./LanguageProvider";
 
 const imageSource = (url?: string | null) => !url ? "/images/banner.jpg" : url.startsWith("http") ? url : `${(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/api$/, "")}${url}`;
-const displayDate = (value: string | null | undefined, locale: string) => value ? new Intl.DateTimeFormat(locale === "uz" ? "uz-UZ" : locale === "en" ? "en-GB" : "ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : "";
+const displayDate = (value: string | null | undefined, locale: string) => value ? new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : locale === "uz" ? "uz-UZ" : locale === "en" ? "en-GB" : "ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : "";
+const localized = (post: ApiBlogPost, locale: string) => {
+  const values = (post.seo?.translations as Record<string, { title?: string; excerpt?: string; body?: string }> | undefined)?.[locale];
+  return { title: values?.title?.trim() || post.title, excerpt: values?.excerpt?.trim() || post.excerpt, body: values?.body?.trim() || post.body };
+};
 
 export default function Blog() {
   const { t, locale } = useLanguage();
@@ -24,12 +28,12 @@ export default function Blog() {
       <section className="blog" id="blog">
         <div className="section-heading blog-heading"><h2>{t("blog")}</h2><Link href="/blog">{t("go")}</Link></div>
         <div className="blog-grid">
-          {published.map((post, index) => (
+          {published.map((post) => { const content = localized(post, locale); return (
             <Link className="blog-card blog-card--article" href="/blog" key={post.id}>
-              <img src={imageSource(post.coverImageUrl)} alt={post.title} />
-              <div className="blog-copy"><time>{displayDate(post.publishedAt, locale)}</time><h3>{post.title}</h3><p>{post.excerpt || post.body}</p><span>{typeof post.seo?.textLinkLabel === "string" && post.seo.textLinkLabel || t("readMore")}</span></div>
+              <img src={imageSource(post.coverImageUrl)} alt={content.title} />
+              <div className="blog-copy"><time>{displayDate(post.publishedAt, locale)}</time><h3>{content.title}</h3><p>{content.excerpt || content.body}</p><span>{t("go")}</span></div>
             </Link>
-          ))}
+          ); })}
         </div>
       </section>
     );
@@ -91,7 +95,7 @@ export default function Blog() {
         <a className="blog-card blog-card--image blog-card--portrait" href="#">
           <Image
             src="/images/large-banner.jpg"
-            alt="SIREN blog"
+            alt="PREVAILEN blog"
             width={840}
             height={900}
           />

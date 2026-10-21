@@ -12,6 +12,7 @@ import { CmsService } from './cms.service';
 class CmsDto { @IsOptional() @IsString() title?: string; @IsOptional() @IsString() slug?: string; @IsOptional() @IsString() imageUrl?: string; @IsOptional() @IsString() mobileImageUrl?: string | null; @IsOptional() @IsString() targetUrl?: string | null; @IsOptional() @IsString() linkLabel?: string; @IsOptional() @IsString() excerpt?: string; @IsOptional() @IsString() body?: string; @IsOptional() @IsString() coverImageUrl?: string | null; @IsOptional() @IsString() caption?: string | null; @IsOptional() @IsString() artist?: string; @IsOptional() @IsString() genre?: string; @IsOptional() @IsString() audioUrl?: string; @IsOptional() @IsString() publishedAt?: string | null; @IsOptional() @IsBoolean() isActive?: boolean; @IsOptional() @IsBoolean() isPublished?: boolean; @IsOptional() @IsBoolean() isVisible?: boolean; @IsOptional() @IsBoolean() textShadow?: boolean; @IsOptional() @IsInt() position?: number; @IsOptional() @IsObject() seo?: Record<string, unknown>; @IsOptional() @IsObject() content?: Record<string, unknown>; @IsOptional() @IsString() type?: string; }
 class SettingDto { @IsObject() value!: Record<string, unknown>; }
 class NotificationClickDto { @IsString() visitorId!: string; }
+class VisitDto { @IsString() visitorId!: string; @IsOptional() @IsString() path?: string; }
 
 @Controller('content')
 export class CmsController {
@@ -25,6 +26,8 @@ export class CmsController {
   @Get('records') records() { return this.cms.recordsForStorefront(); }
   @Get('notifications') notifications() { return this.cms.notificationsForStorefront(); }
   @Get('social-links') socialLinks() { return this.cms.socialLinksForStorefront(); }
+  @Get('auth-modal') authModal() { return this.cms.authModalForStorefront(); }
+  @Post('visits') visit(@Body() body: VisitDto) { return this.cms.recordVisit(body.visitorId, body.path); }
   @Post('notifications/:id/click') notificationClick(@Param('id') id: string, @Body() body: NotificationClickDto) { return this.cms.recordNotificationClick(id, body.visitorId); }
   @Get('pages/:slug') page(@Param('slug') slug: string) { return this.cms.pageForStorefront(slug); }
 }
@@ -72,6 +75,9 @@ export class AdminCmsController {
   @Post('records') createRecord(@Body() body: CmsDto) { return this.cms.createRecord(body); }
   @Patch('records/:id') updateRecord(@Param('id') id: string, @Body() body: CmsDto) { return this.cms.updateRecord(id, body); }
   @Delete('records/:id') removeRecord(@Param('id') id: string) { return this.cms.removeRecord(id); }
+  @Post('records/upload-cover')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: (_request, file, callback) => callback(null, file.mimetype.startsWith('image/')) }))
+  async uploadRecordCover(@UploadedFile() file?: { originalname: string; mimetype: string; buffer: Buffer }) { return this.saveImage(file, 'records/covers'); }
   @Post('records/upload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 25 * 1024 * 1024 }, fileFilter: (_request, file, callback) => callback(null, file.mimetype.startsWith('audio/')) }))
   async uploadRecord(@UploadedFile() file?: { originalname: string; mimetype: string; buffer: Buffer }) {

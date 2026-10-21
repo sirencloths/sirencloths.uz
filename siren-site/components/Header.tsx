@@ -74,15 +74,7 @@ export default function Header() {
       <nav className="nav" aria-label={t("home")}>
 
         {/* LOGO */}
-        <Link className="nav-logo" href="/">
-          <Image
-            src="/icons/logo.svg"
-            alt="SIREN"
-            width={141}
-            height={33}
-            priority
-          />
-        </Link>
+        <Link className="nav-logo brand-wordmark-link" href="/" aria-label="PREVAILEN home"><Image className="brand-wordmark-logo" src="/brand/wordmark-black-transparent.svg" alt="PREVAILEN" width={129} height={37} priority /></Link>
 
         {/* NAVIGATION */}
         <ul className={`nav-menu${navLinks.length ? "" : " nav-menu--loading"}`}>
@@ -119,6 +111,7 @@ export default function Header() {
             const isSearchIcon = item.href === "/search";
             const isShopIcon = item.href === "/shop";
             const isProfileIcon = item.href === "/profile";
+            const requiresAccount = isCartIcon || isProfileIcon || item.href === "/favorites";
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const isOverlayAction = Boolean(item.overlay) || (isCartIcon && isDesktop);
             // An open overlay gets the single close affordance.  The current
@@ -141,6 +134,7 @@ export default function Header() {
                 aria-expanded={isSearchIcon ? isSearchOpen : isCartIcon ? isCartOpen : undefined}
                 className={`nav-icon-link nav-icon-button${isSearchIcon ? " nav-search-link" : ""}${isIconActive ? " nav-icon-link--active" : ""}`}
                 onClick={() => {
+                  if (isCartIcon && !customer) { openAuth(); return; }
                   if (isIconActive && isSearchIcon && isSearchOpen) toggleSearch();
                   else if (isIconActive && isCartIcon && isCartOpen) closeCart();
                   else if (isIconActive) returnHome();
@@ -167,7 +161,7 @@ export default function Header() {
                     returnHome();
                     return;
                   }
-                  if (isProfileIcon && !customer) {
+                  if (requiresAccount && !customer) {
                     event.preventDefault();
                     openAuth();
                     return;

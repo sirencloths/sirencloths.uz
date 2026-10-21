@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { DataSource, In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AuditLog, Customer, CustomerAddress, Order, OrderItem, OrderStatus, Partner, PartnerPromoUsage, PickupLocation, Product, ProductDiscount, ProductVariant } from '../database/entities';
+import { AuditLog, Customer, CustomerAddress, CustomerCartItem, CustomerFavorite, CustomerProductDiscount, Order, OrderItem, OrderStatus, Partner, PartnerPromoUsage, PickupLocation, Product, ProductDiscount, ProductVariant } from '../database/entities';
 import { TelegramService } from '../telegram/telegram.service';
 
 export type CheckoutInput = {
@@ -22,6 +22,19 @@ const customerNotificationCopy = (title: string, fallback: string) => {
   if (value.includes('pul qaytarildi')) return { uz: ['Pul qaytarildi', 'Mablag‘ qaytarildi.'], ru: ['Деньги возвращены', 'Возврат выполнен.'], en: ['Refund completed', 'Your payment was refunded.'] };
   return { uz: [title, fallback], ru: [title, fallback], en: [title, fallback] };
 };
+const personalDiscountNotificationCopy = (title: unknown, body: unknown) => {
+  if (title && typeof title === 'object' && body && typeof body === 'object') return { title: title as Record<string, string>, text: body as Record<string, string> };
+  const rawTitle = String(title ?? ''); const rawBody = String(body ?? '');
+  const product = rawBody.match(/[“"](.+?)[”"]/u)?.[1] ?? 'товар';
+  const percent = rawBody.match(/(\d{1,2})\s*%/u)?.[1] ?? '';
+  const isPersonalDiscount = /maxsus chegirma|individual chegirma/i.test(`${rawTitle} ${rawBody}`);
+  if (!isPersonalDiscount) return { title: { uz: rawTitle, ru: rawTitle, en: rawTitle }, text: { uz: rawBody, ru: rawBody, en: rawBody } };
+  return {
+    title: { uz: 'Sizga maxsus chegirma berildi', ru: 'Вам предоставлена персональная скидка', en: 'You received a personal discount' },
+    text: { uz: `“${product}” mahsulotiga ${percent}% individual chegirma faollashtirildi.`, ru: `На товар «${product}» активирована персональная скидка ${percent}%.`, en: `A personal ${percent}% discount has been activated for “${product}”.` },
+  };
+};
+const personalDiscountProductTitle = (body: unknown) => String(body ?? '').match(/[“"](.+?)[”"]/u)?.[1]?.trim() || null;
 
 @Injectable()
 export class CommerceService implements OnModuleInit, OnModuleDestroy {
@@ -30,6 +43,9 @@ export class CommerceService implements OnModuleInit, OnModuleDestroy {
     private readonly dataSource: DataSource,
     @InjectRepository(Order) private readonly orders: Repository<Order>,
     @InjectRepository(Customer) private readonly customers: Repository<Customer>,
+    @InjectRepository(CustomerCartItem) private readonly cartItems: Repository<CustomerCartItem>,
+    @InjectRepository(CustomerFavorite) private readonly favorites: Repository<CustomerFavorite>,
+    @InjectRepository(CustomerProductDiscount) private readonly customerDiscounts: Repository<CustomerProductDiscount>,
     @InjectRepository(Partner) private readonly partners: Repository<Partner>,
     @InjectRepository(PartnerPromoUsage) private readonly promoUsages: Repository<PartnerPromoUsage>,
     @InjectRepository(PickupLocation) private readonly pickupLocations: Repository<PickupLocation>,
@@ -276,21 +292,30 @@ export class CommerceService implements OnModuleInit, OnModuleDestroy {
       }
 
       let subtotal = 0;
-      const prepared: Array<{ variant: ProductVariant; product: Product; quantity: number; unitPrice: number }> = [];
+      const activeProductDiscounts = (await manager.getRepository(ProductDiscount).find({ where: { isActive: true } })).filter((discount) => !discount.endsAt || discount.endsAt > new Date());
+      const prepared: Array<{ variant: ProductVariant; product: Product; quantity: number; unitPrice: number; hasProductDiscount: boolean }> = [];
       for (const cartItem of input.items) {
         const variant = await this.resolveVariant(variantRepo, cartItem.variantId, true);
         if (cartItem.quantity < 1 || variant.inventoryQuantity < cartItem.quantity) throw new BadRequestException(`Insufficient inventory for ${variant.sku}`);
         const product = await productRepo.findOneByOrFail({ id: variant.productId });
         const unitPrice = Number(variant.price ?? product.price);
-        subtotal += unitPrice * cartItem.quantity;
-        prepared.push({ variant, product, quantity: cartItem.quantity, unitPrice });
+        const matchingProductDiscounts = activeProductDiscounts.filter((discount) => discount.productId === product.id && (!discount.color || discount.color === variant.color) && (!discount.size || discount.size === variant.size));
+        const productDiscount = matchingProductDiscounts.sort((left, right) => ((Number(Boolean(right.color)) + Number(Boolean(right.size))) - (Number(Boolean(left.color)) + Number(Boolean(left.size)))) || right.percent - left.percent)[0];
+        const discountedUnitPrice = productDiscount ? Math.round(unitPrice * (100 - productDiscount.percent) / 100) : unitPrice;
+        const personal = await manager.getRepository(CustomerProductDiscount).findOne({ where: { customerId: customer.id, productId: product.id, isActive: true } });
+        const personalActive = personal && (!personal.expiresAt || personal.expiresAt > new Date());
+        const priced = personalActive ? Math.round(discountedUnitPrice * (100 - personal!.percent) / 100) : discountedUnitPrice;
+        subtotal += priced * cartItem.quantity;
+        prepared.push({ variant, product, quantity: cartItem.quantity, unitPrice: priced, hasProductDiscount: Boolean(productDiscount) });
       }
       const welcomeExpiresAt = customer.welcomeDiscountExpiresAt ?? new Date(customer.createdAt.getTime() + 24 * 60 * 60 * 1000);
       const priorOrderCount = await orderRepo.count({ where: { customerId: customer.id } });
       const welcomeActive = customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt && priorOrderCount === 0 && welcomeExpiresAt > new Date();
       if (!welcomeActive && customer.welcomeDiscountEligible && !customer.welcomeDiscountUsedAt) customer.welcomeDiscountEligible = false;
-      const productDiscountActive = await this.hasActiveProductDiscount(manager.getRepository(ProductDiscount), prepared.map((row) => row.variant));
-      let discount = welcomeActive ? Math.round(subtotal * (customer.welcomeDiscountPercent || 15) / 100) : 0;
+      const productDiscountActive = prepared.some((row) => row.hasProductDiscount);
+      // The welcome offer is a fixed business rule.  Never let old customer
+      // records keep a previous 15% value after the offer has changed.
+      let discount = welcomeActive ? Math.round(subtotal * 10 / 100) : 0;
       let promoPartner: Partner | null = null;
       if (input.promoCode?.trim()) {
         if (welcomeActive) throw new BadRequestException('Welcome bonus faol bo‘lganda promokod qo‘llanmaydi');
@@ -369,15 +394,43 @@ export class CommerceService implements OnModuleInit, OnModuleDestroy {
   }
   async listCustomerNotifications(customerId: string) {
     const orders = await this.listCustomerOrders(customerId);
-    return orders.flatMap((order) => {
+    const customer = await this.customers.findOneBy({ id: customerId });
+    const personalUpdates = Array.isArray(customer?.metadata?.customerUpdates) ? customer!.metadata.customerUpdates : [];
+    const direct = await Promise.all(personalUpdates.filter((update): update is { title: unknown; body: unknown; productId?: string; imageUrl?: string; createdAt: string } => Boolean(update && typeof update === 'object' && typeof (update as { createdAt?: unknown }).createdAt === 'string')).map(async (update) => { const copy = personalDiscountNotificationCopy(update.title, update.body); const product = update.productId ? await this.dataSource.getRepository(Product).findOneBy({ id: update.productId }) : personalDiscountProductTitle(update.body) ? await this.dataSource.getRepository(Product).findOneBy({ title: personalDiscountProductTitle(update.body)! }) : null; return { id: `customer-${customerId}-${update.createdAt}`, kind: 'discount', title: copy.title, text: copy.text, imageUrl: product?.media?.[0]?.url ?? update.imageUrl, href: '/favorites', createdAt: update.createdAt }; }));
+    return [...direct, ...orders.flatMap((order) => {
       const note = this.orderNote(order.note); const updates = Array.isArray(note.customerUpdates) ? note.customerUpdates : [];
       const imageUrl = order.items[0]?.imageUrl ?? null;
       return updates.filter((update): update is { title: string; body: string; createdAt: string } => Boolean(update && typeof update === 'object' && typeof (update as { title?: unknown }).title === 'string' && typeof (update as { body?: unknown }).body === 'string' && typeof (update as { createdAt?: unknown }).createdAt === 'string')).map((update) => {
         const copy = customerNotificationCopy(update.title, update.body);
         return { id: `order-${order.id}-${update.createdAt}`, kind: 'order', title: { uz: copy.uz[0], ru: copy.ru[0], en: copy.en[0] }, text: { uz: copy.uz[1], ru: copy.ru[1], en: copy.en[1] }, imageUrl, href: `/profile/orders`, createdAt: update.createdAt };
       });
-    }).sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    })].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
+  async customerCommerceState(customerId: string) {
+    const [cart, favorites, discounts] = await Promise.all([this.cartItems.find({ where: { customerId }, order: { createdAt: 'DESC' } }), this.favorites.find({ where: { customerId }, order: { createdAt: 'DESC' } }), this.customerDiscounts.find({ where: { customerId, isActive: true } })]);
+    return { cart, favorites, discounts: discounts.filter((item) => !item.expiresAt || item.expiresAt > new Date()).map((item) => ({ productId: item.productId, percent: item.percent })) };
+  }
+  private async revokeDetachedCustomerDiscounts(customerId: string) {
+    const [cart, favorites, discounts] = await Promise.all([
+      this.cartItems.find({ where: { customerId } }),
+      this.favorites.find({ where: { customerId } }),
+      this.customerDiscounts.find({ where: { customerId, isActive: true } }),
+    ]);
+    const variantIds = [...new Set(cart.map((item) => item.variantId).filter(Boolean))];
+    const variants = variantIds.length ? await this.dataSource.getRepository(ProductVariant).findBy({ id: In(variantIds) }) : [];
+    const retainedProductIds = new Set([...favorites.map((item) => item.productId), ...variants.map((item) => item.productId)]);
+    const detached = discounts.filter((item) => !retainedProductIds.has(item.productId));
+    if (!detached.length) return;
+    await this.customerDiscounts.save(detached.map((item) => ({ ...item, isActive: false })));
+  }
+  async saveCustomerCommerceState(customerId: string, input: { cart?: Array<{ variantId: string; quantity: number }>; favorites?: string[] }) {
+    if (input.cart) { await this.cartItems.delete({ customerId }); const rows = input.cart.filter((item) => item.variantId && item.quantity > 0).map((item) => this.cartItems.create({ customerId, variantId: item.variantId, quantity: item.quantity })); if (rows.length) await this.cartItems.save(rows); }
+    if (input.favorites) { await this.favorites.delete({ customerId }); const rows = [...new Set(input.favorites)].map((productId) => this.favorites.create({ customerId, productId })); if (rows.length) await this.favorites.save(rows); }
+    await this.revokeDetachedCustomerDiscounts(customerId);
+    return this.customerCommerceState(customerId);
+  }
+  private async addCustomerUpdate(customerId: string, title: string, body: string) { const customer = await this.customers.findOneBy({ id: customerId }); if (!customer) return; const updates = Array.isArray(customer.metadata?.customerUpdates) ? customer.metadata.customerUpdates : []; customer.metadata = { ...customer.metadata, customerUpdates: [...updates, { title, body, createdAt: new Date().toISOString() }].slice(-30) }; await this.customers.save(customer); }
+  private async addDiscountUpdate(customerId: string, product: Product, percent: number) { const customer = await this.customers.findOneBy({ id: customerId }); if (!customer) return; const name = product.title; const updates = Array.isArray(customer.metadata?.customerUpdates) ? customer.metadata.customerUpdates : []; customer.metadata = { ...customer.metadata, customerUpdates: [...updates, { productId: product.id, title: { uz: 'Sizga maxsus chegirma berildi', ru: 'Вам предоставлена персональная скидка', en: 'You received a personal discount' }, body: { uz: `“${name}” mahsulotiga ${percent}% individual chegirma faollashtirildi.`, ru: `На товар «${name}» активирована персональная скидка ${percent}%.`, en: `A personal ${percent}% discount has been activated for “${name}”.` }, imageUrl: product.media?.[0]?.url ?? null, createdAt: new Date().toISOString() }].slice(-30) }; await this.customers.save(customer); }
   async updateOrder(id: string, input: Partial<Pick<Order, 'status' | 'paymentStatus' | 'fulfillmentStatus' | 'note'>>) {
     const previous = await this.orders.findOneBy({ id });
     if (!previous) throw new NotFoundException('Order not found');
@@ -448,15 +501,26 @@ export class CommerceService implements OnModuleInit, OnModuleDestroy {
         customer.welcomeDiscountEligible = false;
         await this.customers.save(customer);
       }
-      return { ...customer, welcomeDiscountEligible, totalOrders, totalSpent: Number(totals?.spent ?? 0) };
+      await this.revokeDetachedCustomerDiscounts(customer.id);
+      const personalDiscountCount = await this.customerDiscounts.count({ where: { customerId: customer.id, isActive: true } });
+      return { ...customer, welcomeDiscountEligible, totalOrders, totalSpent: Number(totals?.spent ?? 0), personalDiscountCount };
     }));
+  }
+  private async productCostPrice(productId: string | undefined, preferredVariant?: ProductVariant | null) {
+    const preferredCost = Number(preferredVariant?.attributes?.costPrice ?? 0);
+    if (preferredCost > 0) return String(preferredCost);
+    if (!productId) return '0';
+    const variants = await this.dataSource.getRepository(ProductVariant).findBy({ productId });
+    const storedCost = variants.map((variant) => Number(variant.attributes?.costPrice ?? 0)).find((cost) => cost > 0);
+    return String(storedCost ?? 0);
   }
   async customerDetails(id: string) {
     const customer = await this.customers.findOneBy({ id });
     if (!customer) throw new NotFoundException('Mijoz topilmadi');
-    const [orders, addresses] = await Promise.all([
+    const [orders, addresses, cart, favorites, discounts] = await Promise.all([
       this.orders.find({ where: { customerId: id }, relations: { items: true }, order: { createdAt: 'DESC' } }),
       this.dataSource.getRepository(CustomerAddress).find({ where: { customerId: id }, order: { isDefault: 'DESC', updatedAt: 'DESC' } }),
+      this.cartItems.find({ where: { customerId: id }, order: { createdAt: 'DESC' } }), this.favorites.find({ where: { customerId: id }, order: { createdAt: 'DESC' } }), this.customerDiscounts.find({ where: { customerId: id, isActive: true } }),
     ]);
     const paidOrders = orders.filter((order) => order.paymentStatus === 'paid');
     const totalSpent = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
@@ -468,6 +532,8 @@ export class CommerceService implements OnModuleInit, OnModuleDestroy {
       averageOrder: paidOrders.length ? totalSpent / paidOrders.length : 0,
       addresses,
       lastOrderAt: orders[0]?.createdAt ?? null,
+      cart: await Promise.all(cart.map(async (item) => { const variant = await this.dataSource.getRepository(ProductVariant).findOneBy({ id: item.variantId }); const product = variant ? await this.dataSource.getRepository(Product).findOneBy({ id: variant.productId }) : null; const discount = discounts.find((entry) => entry.productId === variant?.productId); return { id: item.id, quantity: item.quantity, createdAt: item.createdAt, productId: variant?.productId, title: product?.title || 'Mahsulot', imageUrl: product?.media?.[0]?.url || null, originalPrice: await this.productCostPrice(variant?.productId, variant), price: variant?.price || product?.price || '0', variant: variant?.sku || '—', discount }; })),
+      favorites: await Promise.all(favorites.map(async (item) => { const product = await this.dataSource.getRepository(Product).findOneBy({ id: item.productId }); const variant = await this.dataSource.getRepository(ProductVariant).findOneBy({ productId: item.productId }); const discount = discounts.find((entry) => entry.productId === item.productId); return { id: item.id, productId: item.productId, createdAt: item.createdAt, title: product?.title || 'Mahsulot', imageUrl: product?.media?.[0]?.url || null, originalPrice: await this.productCostPrice(item.productId, variant), price: variant?.price || product?.price || '0', discount }; })),
       orders: orders.map((order) => ({
         id: order.id, orderNumber: order.orderNumber, status: order.status, paymentStatus: order.paymentStatus,
         fulfillmentStatus: order.fulfillmentStatus, totalAmount: order.totalAmount, currencyCode: order.currencyCode,
@@ -476,6 +542,8 @@ export class CommerceService implements OnModuleInit, OnModuleDestroy {
       })),
     };
   }
+  async issueCustomerDiscount(customerId: string, productId: string, percent: number, createdBy?: string) { if (!Number.isInteger(percent) || percent < 1 || percent > 99) throw new BadRequestException('Chegirma 1–99% oralig‘ida bo‘lishi kerak'); const product = await this.dataSource.getRepository(Product).findOneBy({ id: productId }); if (!product) throw new NotFoundException('Mahsulot topilmadi'); let item = await this.customerDiscounts.findOne({ where: { customerId, productId } }); item = await this.customerDiscounts.save(item ? Object.assign(item, { percent, isActive: true, createdBy: createdBy ?? null }) : this.customerDiscounts.create({ customerId, productId, percent, createdBy: createdBy ?? null })); await this.addDiscountUpdate(customerId, product, percent); return item; }
+  async removeCustomerDiscount(customerId: string, productId: string) { const item = await this.customerDiscounts.findOne({ where: { customerId, productId, isActive: true } }); if (!item) throw new NotFoundException('Faol chegirma topilmadi'); item.isActive = false; await this.customerDiscounts.save(item); return item; }
   async listPickupLocations(includeInactive = false) { return this.pickupLocations.find({ where: includeInactive ? {} : { isActive: true }, order: { city: 'ASC', name: 'ASC' } }); }
   async listPickupOrders() {
     await this.expireOverduePickups();

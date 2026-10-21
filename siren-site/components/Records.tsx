@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Pause, Play } from "lucide-react";
 import { useMemo } from "react";
@@ -14,8 +13,8 @@ const apiOrigin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api
 export default function Records({ records = [] }: { records?: ApiMusicRecord[] }) {
   const { t } = useLanguage();
   const displayRecords = useMemo(() => records.length
-    ? records.map((record, index) => ({ id: record.id, title: record.title, artist: record.artist || "SIREN", genre: record.genre || "—", image: record.coverImageUrl || fallbackRecords[index % fallbackRecords.length].image, tone: recordTones[index % recordTones.length], audioUrl: record.audioUrl.startsWith("http") ? record.audioUrl : `${apiOrigin}${record.audioUrl}` }))
-    : fallbackRecords.map((record, index) => ({ ...record, id: `fallback-${index}`, artist: "SIREN", tone: recordTones[index % recordTones.length], audioUrl: "" })), [records]);
+    ? records.map((record, index) => ({ id: record.id, title: record.title, artist: record.artist || "PREVAILEN", genre: record.genre || "—", image: record.coverImageUrl?.startsWith("/uploads/") ? `${apiOrigin}${record.coverImageUrl}` : record.coverImageUrl || fallbackRecords[index % fallbackRecords.length].image, tone: recordTones[index % recordTones.length], audioUrl: record.audioUrl.startsWith("http") ? record.audioUrl : `${apiOrigin}${record.audioUrl}` }))
+    : fallbackRecords.map((record, index) => ({ ...record, id: `fallback-${index}`, artist: "PREVAILEN", tone: recordTones[index % recordTones.length], audioUrl: "" })), [records]);
   const { activeId, playing, playTrack } = useMusicPlayer();
 
   const compactRecords = displayRecords.slice(0, 10);
@@ -27,7 +26,7 @@ export default function Records({ records = [] }: { records?: ApiMusicRecord[] }
         const isPlaying = record.id === activeId && playing;
         return <article key={record.id} className={`record-card${isPlaying ? " is-playing" : ""}`} style={{ "--record-tone": record.tone } as React.CSSProperties}>
           <button type="button" className="record-cover" aria-label={isPlaying ? "Пауза" : t("playTrack")} aria-pressed={isPlaying} disabled={!record.audioUrl} onClick={() => playTrack(record.id)}>
-            <Image src={record.image} alt={`${record.title} cover`} width={480} height={480} />
+            <img src={record.image} alt={`${record.title} cover`} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = fallbackRecords[0].image; }} />
             <span className="record-control">{isPlaying ? <Pause size={20} fill="currentColor" aria-hidden="true" /> : <Play size={20} fill="currentColor" aria-hidden="true" />}</span>
           </button>
           <div className="record-copy"><small>{record.artist}</small><h3>{record.title}</h3><p>{record.genre}</p></div>

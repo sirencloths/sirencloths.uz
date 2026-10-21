@@ -12,7 +12,7 @@ const AUTO_ADVANCE_MS = 6000;
 const RESUME_DELAY_MS = 3000;
 
 export default function Hero({ banners = [] }: { banners?: ApiBanner[] }) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const resumeAt = useRef(0);
@@ -35,6 +35,7 @@ export default function Hero({ banners = [] }: { banners?: ApiBanner[] }) {
     if (direction === 1) api?.scrollNext(); else api?.scrollPrev();
   };
 
+  const title = activeBanner?.translations?.[locale]?.title?.trim() || activeBanner?.title || t("newCollection");
   return <section className="hero" id="home">
     {banners.length > 0 && <Carousel className="hero-viewport" opts={{ loop: banners.length > 1, align: "start", duration: 28 }} setApi={setApi} onPointerDown={() => { resumeAt.current = Date.now() + RESUME_DELAY_MS; }}>
       <CarouselContent className="hero-slides">
@@ -42,7 +43,7 @@ export default function Hero({ banners = [] }: { banners?: ApiBanner[] }) {
       </CarouselContent>
     </Carousel>}
     {activeBanner?.textShadow !== false && <div className="hero-shade" aria-hidden="true" />}
-    <div className="hero-content"><h1>{activeBanner?.title || t("newCollection")}</h1>{(activeBanner?.targetUrl || "").startsWith("/") ? <Link href={activeBanner?.targetUrl || "/"}>{activeBanner?.linkLabel || t("go")}</Link> : <a href={activeBanner?.targetUrl || "#collections"}>{activeBanner?.linkLabel || t("go")}</a>}</div>
+    <div className="hero-content"><h1>{title}</h1>{(activeBanner?.targetUrl || "").startsWith("/") ? <Link href={activeBanner?.targetUrl || "/"}>{t("go")}</Link> : <a href={activeBanner?.targetUrl || "#collections"}>{t("go")}</a>}</div>
     {banners.length > 1 && <div className="hero-controls"><button type="button" aria-label="Предыдущий баннер" onClick={() => move(-1)}>←</button><button type="button" aria-label="Следующий баннер" onClick={() => move(1)}>→</button></div>}
   </section>;
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://sirencloths.uz").replace(/\/$/, "");
-export const brandName = "SIREN";
+export const brandName = "PREVAILEN";
 
 export function absoluteUrl(path = "/") {
   return path.startsWith("http") ? path : `${siteUrl}${path.startsWith("/") ? path : `/${path}`}`;

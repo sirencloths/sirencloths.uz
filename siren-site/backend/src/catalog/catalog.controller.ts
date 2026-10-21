@@ -43,6 +43,10 @@ class InventoryMoveDto {
   @IsArray() items!: InventoryMoveItemDto[];
   @IsOptional() @IsString() note?: string;
 }
+class ProductRestockDto {
+  @IsArray() items!: InventoryMoveItemDto[];
+  @IsOptional() @IsString() note?: string;
+}
 class DiscountDto {
   @IsUUID() productId!: string;
   @IsOptional() @IsString() color?: string | null;
@@ -54,12 +58,14 @@ class DiscountStatusDto { @IsBoolean() isActive!: boolean; }
 class TaxonomyDto {
   @IsString() slug!: string;
   @IsString() name!: string;
+  @IsOptional() translations?: Record<string, string>;
   @IsOptional() @IsString() description?: string | null;
   @IsOptional() @IsString() imageUrl?: string | null;
   @IsOptional() @IsString() heroImageUrl?: string | null;
   @IsOptional() @IsInt() position?: number;
   @IsOptional() @IsBoolean() isVisible?: boolean;
 }
+class CategoryTranslationDto { @IsString() @MinLength(1) name!: string; }
 class ListingQueryDto {
   @IsOptional() @IsString() category?: string;
   @IsOptional() @IsString() gender?: string;
@@ -81,6 +87,7 @@ export class CatalogController {
   @Get('products') products() { return this.catalog.publicProducts(); }
   @Get('products/listing') listing(@Query() query: ListingQueryDto) { return this.catalog.publicListing(query); }
   @Get('products/random') randomProducts(@Query('limit') limit?: string) { return this.catalog.publicRandomProducts(Number(limit)); }
+  @Post('products/:id/view') view(@Param('id') id: string) { return this.catalog.trackProductView(id); }
   @Post('products/:id/engagement') engagement(@Param('id') id: string, @Body() body: EngagementDto) { return this.catalog.trackEngagement(id, body.kind, body.visitorId, body.active ?? true); }
   @Get('products/:slug') product(@Param('slug') slug: string) { return this.catalog.publicProduct(slug); }
   @Get('categories') categories() { return this.catalog.publicCategories(); }
@@ -88,7 +95,7 @@ export class CatalogController {
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 @Controller('admin/catalog')
 export class AdminCatalogController {
   constructor(private readonly catalog: CatalogService) {}
@@ -96,6 +103,7 @@ export class AdminCatalogController {
   @Post('products') createProduct(@Body() body: ProductDto) { return this.catalog.createProduct({ ...body, scheduledAt: body.scheduledAt ? new Date(body.scheduledAt) : null }); }
   @Patch('products/:id') updateProduct(@Param('id') id: string, @Body() body: Partial<ProductDto>) { const { scheduledAt, ...rest } = body; return this.catalog.updateProduct(id, { ...rest, ...(scheduledAt !== undefined ? { scheduledAt: scheduledAt ? new Date(scheduledAt) : null } : {}) }); }
   @Delete('products/:id') removeProduct(@Param('id') id: string) { return this.catalog.removeProduct(id); }
+  @Post('products/:id/restock') restockProduct(@Param('id') id: string, @Body() body: ProductRestockDto, @CurrentUser() actor: { id: string }) { return this.catalog.restockProduct(id, body.items, actor.id, body.note); }
   @Get('products/:id/variants') variants(@Param('id') id: string) { return this.catalog.variantsFor(id); }
   @Post('products/:id/variants') createVariant(@Param('id') id: string, @Body() body: VariantDto) { return this.catalog.createVariant(id, body); }
   @Patch('variants/:id') updateVariant(@Param('id') id: string, @Body() body: Partial<VariantDto>) { return this.catalog.updateVariant(id, body); }
@@ -110,9 +118,13 @@ export class AdminCatalogController {
   @Post('transfers') transfer(@Body() body: InventoryMoveDto, @CurrentUser() actor: { id: string }) { return this.catalog.transferToOffline(body.items, actor.id, body.note); }
   @Post('transfers/return') returnToOnline(@Body() body: InventoryMoveDto, @CurrentUser() actor: { id: string }) { return this.catalog.returnToOnline(body.items, actor.id, body.note); }
   @Get('categories') categories() { return this.catalog.adminCategories(); }
+  @Post('categories/translate') translateCategory(@Body() body: CategoryTranslationDto) { return this.catalog.translateCategoryName(body.name); }
   @Post('categories') createCategory(@Body() body: TaxonomyDto) { return this.catalog.createCategory(body); }
   @Patch('categories/:id') updateCategory(@Param('id') id: string, @Body() body: Partial<TaxonomyDto>) { return this.catalog.updateCategory(id, body); }
   @Delete('categories/:id') removeCategory(@Param('id') id: string) { return this.catalog.removeCategory(id); }
+  @Post('products/:id/categories/all') addProductToAllCategories(@Param('id') id: string) { return this.catalog.addProductToAllCategories(id); }
+  @Post('products/:id/categories/:categoryId') addProductToCategory(@Param('id') id: string, @Param('categoryId') categoryId: string) { return this.catalog.setProductCategoryMembership(id, categoryId, true); }
+  @Delete('products/:id/categories/:categoryId') removeProductFromCategory(@Param('id') id: string, @Param('categoryId') categoryId: string) { return this.catalog.setProductCategoryMembership(id, categoryId, false); }
   @Get('collections') collections() { return this.catalog.adminCollections(); }
   @Post('collections') createCollection(@Body() body: TaxonomyDto) { return this.catalog.createCollection(body); }
   @Patch('collections/:id') updateCollection(@Param('id') id: string, @Body() body: Partial<TaxonomyDto>) { return this.catalog.updateCollection(id, body); }

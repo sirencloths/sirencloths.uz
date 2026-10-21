@@ -12,7 +12,7 @@ export type ProductInput = {
   scheduledAt?: Date | null; showLaunchCountdown?: boolean; launchCountdownText?: string | null;
 };
 export type VariantInput = { sku: string; name?: string; barcode?: string | null; color?: string | null; size?: string | null; price?: string | null; inventoryQuantity?: number; totalInventoryAdded?: number; isActive?: boolean; attributes?: Record<string, unknown> };
-export type TaxonomyInput = { slug: string; name: string; description?: string | null; imageUrl?: string | null; heroImageUrl?: string | null; position?: number; isVisible?: boolean };
+export type TaxonomyInput = { slug: string; name: string; translations?: Record<string, string>; description?: string | null; imageUrl?: string | null; heroImageUrl?: string | null; seo?: Record<string, unknown>; position?: number; isVisible?: boolean };
 export type DiscountInput = { productId: string; color?: string | null; size?: string | null; percent: number; endsAt?: string | null };
 
 @Injectable()
@@ -102,7 +102,10 @@ export class CatalogService {
     if ((minPrice !== null && (!Number.isFinite(minPrice) || minPrice < 0)) || (maxPrice !== null && (!Number.isFinite(maxPrice) || maxPrice < 0)) || (minPrice !== null && maxPrice !== null && minPrice > maxPrice)) throw new BadRequestException('Invalid price range');
     if (query.sort && !['recommended', 'newest', 'price-asc', 'price-desc', 'best-selling'].includes(query.sort)) throw new BadRequestException('Invalid sort');
     let products = await this.publicProducts();
-    if (query.category) products = products.filter((product) => product.category?.slug === query.category);
+    if (query.category) {
+      const category = await this.categories.findOne({ where: { slug: query.category } });
+      products = category ? products.filter((product) => this.categoryIdsFor(product).includes(category.id)) : [];
+    }
     if (genders.length) products = products.filter((product) => genders.includes(product.gender));
     products = products.map((product) => ({ ...product, variants: product.variants.filter((variant) => variant.isActive && variant.inventoryQuantity > 0) })).filter((product) => product.variants.length);
     if (colors.length) products = products.map((product) => ({ ...product, variants: product.variants.filter((variant) => colors.includes((variant.color || 'default').toLowerCase())) })).filter((product) => product.variants.length);
@@ -220,11 +223,19 @@ export class CatalogService {
     }
     return { ok: true };
   }
+  async trackProductView(productId: string) {
+    const product = await this.products.findOne({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Product not found');
+    const metadata = { ...(product.metadata ?? {}) };
+    metadata.views = Math.max(0, Number(metadata.views ?? 0)) + 1;
+    await this.products.save({ ...product, metadata });
+    return { ok: true, views: metadata.views };
+  }
   async createProduct(input: ProductInput) {
     await this.validateProductAssignment(input, true);
     const product = await this.products.save(this.products.create({ ...this.scheduleProduct(input), media: input.media ?? [], seo: input.seo ?? {}, metadata: input.metadata ?? {} }));
     if (product.status === ProductStatus.ACTIVE) await this.appendProductNotification(product);
-    void this.telegram.control(`#MAHSULOT\n\n➕ YANGI MAHSULOT QO‘SHILDI\n\n${product.title}\nNarx: ${Number(product.price).toLocaleString('en-US')} UZS\nHolat: ${product.status}`);
+    void this.telegram.controlPhoto(this.productImage(product), `🛍️ YANGI MAHSULOT QO‘SHILDI\n\n🏷️ Nomi: ${product.title}\n💳 Narx: ${Number(product.price).toLocaleString('en-US')} ${product.currencyCode}\n🟢 Status: ${product.status}\n🔗 Havola: /products/${product.slug}\n\n🕒 Vaqt: ${new Intl.DateTimeFormat('uz-UZ', { timeZone: 'Asia/Tashkent', dateStyle: 'medium', timeStyle: 'short' }).format(new Date())}`);
     return product;
   }
   async updateProduct(id: string, input: Partial<ProductInput>) {
@@ -233,10 +244,13 @@ export class CatalogService {
     if (!product) throw new NotFoundException('Product not found');
     const saved = await this.products.save(this.scheduleProduct(product));
     if (saved.status === ProductStatus.ACTIVE && before?.status !== ProductStatus.ACTIVE) await this.appendProductNotification(saved);
-    void this.telegram.control(`#MAHSULOT\n\n✏️ MAHSULOT O‘ZGARDI\n\n${saved.title}\nNarx: ${Number(before?.price ?? 0).toLocaleString('en-US')} UZS → ${Number(saved.price).toLocaleString('en-US')} UZS\nHolat: ${saved.status}`);
+    const changes = [before?.title !== saved.title ? `🏷️ Nomi: ${before?.title || '—'} → ${saved.title}` : '', before?.price !== saved.price ? `💳 Narx: ${Number(before?.price ?? 0).toLocaleString('en-US')} ${saved.currencyCode} → ${Number(saved.price).toLocaleString('en-US')} ${saved.currencyCode}` : '', before?.status !== saved.status ? `🔄 Status: ${before?.status || '—'} → ${saved.status}` : '', JSON.stringify(before?.media ?? []) !== JSON.stringify(saved.media ?? []) ? '🖼️ Mahsulot rasmi: yangilandi' : ''].filter(Boolean);
+    void this.telegram.controlPhoto(this.productImage(saved), `🛍️ MAHSULOT YANGILANDI\n\n🏷️ Nomi: ${saved.title}\n🟢 Status: ${saved.status}\n🔗 Havola: /products/${saved.slug}${changes.length ? `\n\n📝 O‘zgarishlar:\n${changes.map((item) => `• ${item}`).join('\n')}` : ''}\n\n🕒 Vaqt: ${new Intl.DateTimeFormat('uz-UZ', { timeZone: 'Asia/Tashkent', dateStyle: 'medium', timeStyle: 'short' }).format(new Date())}`);
     return saved;
   }
   async removeProduct(id: string) { await this.products.delete(id); return { deleted: true }; }
+
+  private productImage(product: Pick<Product, 'media'>) { return product.media?.slice().sort((left, right) => (left.position ?? 0) - (right.position ?? 0))[0]?.url; }
 
   private scheduleProduct<T extends { status?: ProductStatus; scheduledAt?: Date | null }>(product: T): T & { status: ProductStatus; scheduledAt: Date | null } {
     const scheduledAt = product.scheduledAt ? new Date(product.scheduledAt) : null;
@@ -365,6 +379,48 @@ export class CatalogService {
     await this.settings.save(this.settings.create({ ...(setting ?? {}), key: 'site-notifications', value: { items: [item, ...items] } }));
   }
 
+  /** Adds new physical units without overwriting stock already reduced by sales or transfers. */
+  async restockProduct(productId: string, items: Array<{ variantId: string; quantity: number }>, actorId?: string, note?: string) {
+    if (!items.length) throw new BadRequestException('Qayta stock uchun kamida bitta variant tanlang.');
+    const merged = new Map<string, number>();
+    for (const item of items) {
+      const quantity = Number(item.quantity);
+      if (!item.variantId || !Number.isInteger(quantity) || quantity < 1) throw new BadRequestException('Qayta stock miqdori musbat butun son bo‘lishi kerak.');
+      merged.set(item.variantId, (merged.get(item.variantId) ?? 0) + quantity);
+    }
+    const result = await this.dataSource.transaction(async (manager) => {
+      const product = await manager.findOne(Product, { where: { id: productId } });
+      if (!product) throw new NotFoundException('Mahsulot topilmadi.');
+      // Some older products predate baseInventoryQuantity. In that case use
+      // their existing SKU allocations as the floor before adding a restock.
+      const existingVariants = await manager.find(ProductVariant, { where: { productId } });
+      const existingAllocated = existingVariants.reduce((sum, variant) => sum + this.variantAllocation(variant), 0);
+      const changed: Array<{ variant: ProductVariant; quantity: number }> = [];
+      for (const [variantId, quantity] of merged) {
+        const variant = await manager.findOne(ProductVariant, { where: { id: variantId, productId } });
+        if (!variant) throw new BadRequestException('Variant tanlangan mahsulotga tegishli emas.');
+        if (!variant.isActive) throw new BadRequestException(`${variant.sku} faol emas; avval variantni yoqing.`);
+        await manager.createQueryBuilder().update(ProductVariant).set({
+          inventoryQuantity: () => `CAST(inventory_quantity AS INTEGER) + ${quantity}`,
+          totalInventoryAdded: () => `CAST(total_inventory_added AS INTEGER) + ${quantity}`,
+        }).where('id = :variantId', { variantId }).execute();
+        changed.push({ variant, quantity });
+        await manager.insert(AuditLog, {
+          id: randomUUID(), actorId: actorId ?? null, action: 'inventory_restock', entityType: 'product_variant', entityId: variant.id,
+          payload: { productId, variantId: variant.id, sku: variant.sku, color: variant.color ?? undefined, size: variant.size ?? undefined, quantity, note: note?.trim() || undefined },
+        });
+      }
+      const addedUnits = changed.reduce((sum, item) => sum + item.quantity, 0);
+      const currentBase = Number(product.metadata?.baseInventoryQuantity);
+      const baseBeforeRestock = Math.max(existingAllocated, Number.isFinite(currentBase) && currentBase >= 0 ? currentBase : 0);
+      product.metadata = { ...(product.metadata ?? {}), baseInventoryQuantity: baseBeforeRestock + addedUnits };
+      await manager.save(product);
+      return { restockedUnits: addedUnits, restockedVariants: changed.length };
+    });
+    void this.telegram.control(`#QOLDIQ\n\n➕ QAYTA STOCK\n\nMahsulot: ${productId}\nMiqdor: ${result.restockedUnits} ta\nVariantlar: ${result.restockedVariants} ta`);
+    return result;
+  }
+
   private async moveInventory(items: Array<{ variantId: string; quantity: number }>, direction: 'to_offline' | 'to_online', actorId?: string, note?: string) {
     if (!items.length) throw new BadRequestException('Transfer uchun kamida bitta variant tanlang.');
     const merged = new Map<string, number>();
@@ -424,10 +480,73 @@ export class CatalogService {
     return result;
   }
 
-  async adminCategories() { const categories = await this.categories.find({ order: { position: 'ASC', name: 'ASC' } }); return Promise.all(categories.map(async (category) => ({ ...category, productCount: await this.products.count({ where: { categoryId: category.id } }) }))); }
-  createCategory(input: TaxonomyInput) { return this.categories.save(this.categories.create({ slug: input.slug, name: input.name, description: input.description ?? null, imageUrl: input.imageUrl ?? null, position: input.position ?? 0, isVisible: input.isVisible ?? true })); }
-  async updateCategory(id: string, input: Partial<TaxonomyInput>) { const entity = await this.categories.preload({ id, ...input }); if (!entity) throw new NotFoundException('Category not found'); return this.categories.save(entity); }
-  async removeCategory(id: string) { const count = await this.products.count({ where: { categoryId: id } }); if (count) throw new BadRequestException(`Category contains ${count} products. Move products before deleting.`); await this.categories.delete(id); return { deleted: true }; }
+  private categoryIdsFor(product: Pick<Product, 'categoryId' | 'metadata'>) {
+    const stored = Array.isArray(product.metadata?.categoryIds) ? product.metadata.categoryIds.filter((id): id is string => typeof id === 'string') : [];
+    return [...new Set([product.categoryId, ...stored].filter((id): id is string => Boolean(id)))];
+  }
+
+  async adminCategories() {
+    const [categories, products] = await Promise.all([
+      this.categories.find({ order: { position: 'ASC', name: 'ASC' } }),
+      this.products.find({ select: { id: true, categoryId: true, metadata: true } }),
+    ]);
+    return categories.map((category) => ({ ...category, productCount: products.filter((product) => this.categoryIdsFor(product).includes(category.id)).length }));
+  }
+  async translateCategoryName(name: string) {
+    const source = name.trim();
+    if (!source) throw new BadRequestException('Tarjima uchun kategoriya nomini kiriting.');
+    const translate = async (target: 'uz' | 'en' | 'ja') => {
+      const url = new URL('https://translate.googleapis.com/translate_a/single');
+      url.searchParams.set('client', 'gtx'); url.searchParams.set('sl', 'auto'); url.searchParams.set('tl', target); url.searchParams.set('dt', 't'); url.searchParams.set('q', source);
+      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`Tarjima xizmati ${response.status} xatosini qaytardi.`);
+      const payload = await response.json() as unknown;
+      const rows = Array.isArray(payload) && Array.isArray(payload[0]) ? payload[0] : [];
+      const translated = rows.map((row) => Array.isArray(row) && typeof row[0] === 'string' ? row[0] : '').join('').trim();
+      if (!translated) throw new Error('Tarjima javobi bo‘sh.');
+      return translated;
+    };
+    try {
+      const [uz, en, ja] = await Promise.all([translate('uz'), translate('en'), translate('ja')]);
+      return { uz, en, ja };
+    } catch {
+      throw new BadRequestException('Avtomatik tarjima hozir ishlamayapti. Internet aloqasini tekshirib, qayta urinib ko‘ring.');
+    }
+  }
+  createCategory(input: TaxonomyInput) { return this.categories.save(this.categories.create({ slug: input.slug, name: input.name, translations: input.translations ?? {}, description: input.description ?? null, imageUrl: input.imageUrl ?? null, seo: { title: input.name, description: input.description ?? '', image: input.imageUrl ?? '' }, position: input.position ?? 0, isVisible: input.isVisible ?? true })); }
+  async updateCategory(id: string, input: Partial<TaxonomyInput>) { const entity = await this.categories.preload({ id, ...input }); if (!entity) throw new NotFoundException('Category not found'); entity.seo = { title: entity.name, description: entity.description ?? '', image: entity.imageUrl ?? '' }; return this.categories.save(entity); }
+  async setProductCategoryMembership(productId: string, categoryId: string, assigned: boolean) {
+    const [product, category] = await Promise.all([this.products.findOneBy({ id: productId }), this.categories.findOneBy({ id: categoryId })]);
+    if (!product) throw new NotFoundException('Product not found');
+    if (!category) throw new NotFoundException('Category not found');
+    const categoryIds = this.categoryIdsFor(product);
+    const nextIds = assigned ? [...new Set([...categoryIds, categoryId])] : categoryIds.filter((id) => id !== categoryId);
+    product.metadata = { ...(product.metadata ?? {}), categoryIds: nextIds };
+    if (!assigned && product.categoryId === categoryId) product.categoryId = null;
+    await this.products.save(product);
+    return { productId, categoryId, assigned, categoryIds: nextIds };
+  }
+  async addProductToAllCategories(productId: string) {
+    const [product, categories] = await Promise.all([this.products.findOneBy({ id: productId }), this.categories.find()]);
+    if (!product) throw new NotFoundException('Product not found');
+    const categoryIds = [...new Set([...this.categoryIdsFor(product), ...categories.map((category) => category.id)])];
+    product.metadata = { ...(product.metadata ?? {}), categoryIds };
+    await this.products.save(product);
+    return { productId, categoryIds };
+  }
+  async removeCategory(id: string) {
+    const category = await this.categories.findOneBy({ id });
+    if (!category) throw new NotFoundException('Category not found');
+    const products = await this.products.find();
+    for (const product of products) {
+      if (!this.categoryIdsFor(product).includes(id)) continue;
+      product.metadata = { ...(product.metadata ?? {}), categoryIds: this.categoryIdsFor(product).filter((categoryId) => categoryId !== id) };
+      if (product.categoryId === id) product.categoryId = null;
+      await this.products.save(product);
+    }
+    await this.categories.delete(id);
+    return { deleted: true };
+  }
 
   private csv(value?: string) { return (value ?? '').split(',').map((entry) => entry.trim().toLowerCase()).filter(Boolean); }
   private async validateProductAssignment(input: Partial<ProductInput>, required: boolean) { if (required && !input.categoryId) throw new BadRequestException('Please select a category.'); if (required && !input.gender) throw new BadRequestException('Please select a gender.'); if (input.categoryId && !(await this.categories.exists({ where: { id: input.categoryId } }))) throw new BadRequestException('Category not found.'); if (input.gender && !Object.values(ProductGender).includes(input.gender)) throw new BadRequestException('Invalid gender.'); }

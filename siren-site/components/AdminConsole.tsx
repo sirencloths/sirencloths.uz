@@ -160,9 +160,9 @@ type Tab =
   | "offline_inventory"
   | "offline_sales"
   | "offline_reports";
-type ContentSubsection = "main-banner" | "header-quotes" | "custom-pages" | "lookbook" | "blog" | "records" | "collections" | "social";
+type ContentSubsection = "main-banner" | "header-quotes" | "custom-pages" | "lookbook" | "blog" | "records" | "collections" | "social" | "auth-modal";
 const adminTabs: Tab[] = ["dashboard", "products", "catalog", "orders", "refunds", "delivery", "pickup", "customers", "discounts", "partners", "finance", "report_online", "report_offline", "report_combined", "business_cost", "history_cost", "history_sales", "history_units", "payments", "currencies", "analytics", "analytics_sales", "analytics_products", "analytics_drops", "analytics_inventory", "analytics_customers", "analytics_traffic", "analytics_marketing", "analytics_geography", "content", "notifications", "pages", "team", "audit", "settings", "offline_cashier", "offline_inventory", "offline_sales", "offline_reports"];
-const contentSubsections: ContentSubsection[] = ["main-banner", "header-quotes", "custom-pages", "lookbook", "blog", "records", "collections", "social"];
+const contentSubsections: ContentSubsection[] = ["main-banner", "header-quotes", "custom-pages", "lookbook", "blog", "records", "collections", "social", "auth-modal"];
 function adminLocation() {
   if (typeof window === "undefined") return { tab: "dashboard" as Tab, content: "main-banner" as ContentSubsection };
   const query = new URLSearchParams(window.location.search);
@@ -209,14 +209,16 @@ type InventoryTransfer = {
 };
 type CustomerRecord = {
   id: string; email?: string | null; phone?: string | null; firstName: string; lastName: string;
-  createdAt: string; lastLoginAt?: string | null; region?: string | null; isActive?: boolean;
+  createdAt: string; lastLoginAt?: string | null; region?: string | null; isActive?: boolean; metadata?: { presence?: { online?: boolean; lastSeen?: string } };
   emailVerifiedAt?: string | null; welcomeDiscountEligible?: boolean; welcomeDiscountPercent?: number;
-  totalOrders: number; totalSpent: number;
+  totalOrders: number; totalSpent: number; personalDiscountCount?: number;
 };
 type CustomerDetail = CustomerRecord & {
   paidOrders: number; averageOrder: number; lastOrderAt?: string | null;
   addresses: Array<{ id: string; country?: string; city?: string; line1?: string; line2?: string; postalCode?: string; isDefault?: boolean }>;
   orders: Array<{ id: string; orderNumber: string; status: string; paymentStatus: string; fulfillmentStatus?: string; totalAmount: string; currencyCode?: string; paymentMethod?: string | null; shippingAddress?: { country?: string; city?: string; address?: string }; note?: string | null; createdAt: string; items: Array<{ title: string; sku?: string | null; quantity: number; unitPrice: string }> }>;
+  cart: Array<{ id: string; productId?: string; title: string; imageUrl?: string | null; originalPrice?: string; price: string; variant: string; quantity: number; createdAt: string; discount?: { percent: number } }>;
+  favorites: Array<{ id: string; productId: string; title: string; imageUrl?: string | null; originalPrice?: string; price: string; createdAt: string; discount?: { percent: number } }>;
 };
 type Product = {
   id: string;
@@ -233,11 +235,13 @@ type Product = {
   gender?: "male" | "female" | "unisex";
   currencyCode: string;
   media: Array<{ url: string }>;
+  seo?: { title?: string; description?: string; image?: string };
   variants: Variant[];
   soldQuantity?: number;
   favoriteCount?: number;
   cartAddCount?: number;
   metadata?: {
+    categoryIds?: string[];
     baseInventoryQuantity?: number;
     views?: number;
     sizeGuideImageUrl?: string;
@@ -247,13 +251,15 @@ type Product = {
       titleUz?: string;
       titleRu?: string;
       titleEn?: string;
+      titleJa?: string;
       descriptionUz?: string;
       descriptionRu?: string;
       descriptionEn?: string;
+      descriptionJa?: string;
     };
   };
 };
-type Taxonomy = { id: string; name: string; slug: string; isVisible: boolean; productCount?: number };
+type Taxonomy = { id: string; name: string; slug: string; translations?: Record<string, string>; isVisible: boolean; productCount?: number };
 const exportXml = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character] ?? character);
 function downloadAdminFile(name: string, content: BlobPart, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -266,7 +272,7 @@ async function exportInventory(products: Product[], categories: Taxonomy[], form
   if (format === "excel") {
     const ExcelJS = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = "SIREN Admin";
+    workbook.creator = "PREVAILEN Admin";
     workbook.created = new Date();
     const sheet = workbook.addWorksheet("Inventar", { views: [{ state: "frozen", ySplit: 1, xSplit: 2, showGridLines: false }] });
     sheet.columns = [
@@ -284,15 +290,15 @@ async function exportInventory(products: Product[], categories: Taxonomy[], form
     sheet.getColumn("sold").numFmt = "#,##0";
     sheet.getColumn("status").eachCell((cell, row) => { if (row > 1 && cell.value === "Faol") { cell.font = { name: "Arial", size: 10, bold: true, color: { argb: "FF027A48" } }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFECFDF3" } }; cell.alignment = { vertical: "middle", horizontal: "center" }; } });
     const buffer = await workbook.xlsx.writeBuffer();
-    downloadAdminFile(`siren-inventory-${stamp}.xlsx`, buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    downloadAdminFile(`prevailen-inventory-${stamp}.xlsx`, buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     return;
   }
   const clean = (value: unknown) => String(value ?? "").replace(/[\\()]/g, "\\$&").replace(/[^\x20-\x7E]/g, "?");
-  const lines = ["SIREN — INVENTORY EXPORT", `Generated: ${new Date().toLocaleString("en-GB")}`, "", headers.join(" | "), ...rows.map((row) => row.map(clean).join(" | "))].slice(0, 54);
+  const lines = ["PREVAILEN — INVENTORY EXPORT", `Generated: ${new Date().toLocaleString("en-GB")}`, "", headers.join(" | "), ...rows.map((row) => row.map(clean).join(" | "))].slice(0, 54);
   const stream = lines.map((line, index) => `BT /F1 ${index === 0 ? 15 : 8} Tf 42 ${790 - index * 14} Td (${clean(line)}) Tj ET`).join("\n");
   const objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>", `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
   let pdf = "%PDF-1.4\n"; const offsets = [0]; objects.forEach((object, index) => { offsets.push(pdf.length); pdf += `${index + 1} 0 obj\n${object}\nendobj\n`; }); const xref = pdf.length; pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  downloadAdminFile(`siren-inventory-${stamp}.pdf`, pdf, "application/pdf");
+  downloadAdminFile(`prevailen-inventory-${stamp}.pdf`, pdf, "application/pdf");
 }
 type Order = {
   id: string;
@@ -580,12 +586,14 @@ const blankProduct = () => ({
   titleUz: "",
   titleRu: "",
   titleEn: "",
+  titleJa: "",
   article: "",
   slug: "",
   description: "",
   descriptionUz: "",
   descriptionRu: "",
   descriptionEn: "",
+  descriptionJa: "",
   status: "draft" as Product["status"],
   publicationMode: "draft" as "draft" | "active" | "planned" | "archived",
   scheduledAt: "",
@@ -742,12 +750,17 @@ const colorChoices = ["Black", "White", "Gray", "Blue", "Green", "Red", "Brown",
 const namedColors = ["AliceBlue","AntiqueWhite","Aqua","Aquamarine","Azure","Beige","Bisque","Black","BlanchedAlmond","Blue","BlueViolet","Brown","BurlyWood","CadetBlue","Chartreuse","Chocolate","Coral","CornflowerBlue","Cornsilk","Crimson","Cyan","DarkBlue","DarkCyan","DarkGoldenRod","DarkGray","DarkGreen","DarkKhaki","DarkMagenta","DarkOliveGreen","DarkOrange","DarkOrchid","DarkRed","DarkSalmon","DarkSeaGreen","DarkSlateBlue","DarkSlateGray","DarkTurquoise","DarkViolet","DeepPink","DeepSkyBlue","DimGray","DodgerBlue","FireBrick","FloralWhite","ForestGreen","Fuchsia","Gainsboro","GhostWhite","Gold","GoldenRod","Gray","Green","GreenYellow","HoneyDew","HotPink","IndianRed","Indigo","Ivory","Khaki","Lavender","LavenderBlush","LawnGreen","LemonChiffon","LightBlue","LightCoral","LightCyan","LightGoldenRodYellow","LightGray","LightGreen","LightPink","LightSalmon","LightSeaGreen","LightSkyBlue","LightSlateGray","LightSteelBlue","LightYellow","Lime","LimeGreen","Linen","Magenta","Maroon","MediumAquaMarine","MediumBlue","MediumOrchid","MediumPurple","MediumSeaGreen","MediumSlateBlue","MediumSpringGreen","MediumTurquoise","MediumVioletRed","MidnightBlue","MintCream","MistyRose","Moccasin","NavajoWhite","Navy","OldLace","Olive","OliveDrab","Orange","OrangeRed","Orchid","PaleGoldenRod","PaleGreen","PaleTurquoise","PaleVioletRed","PapayaWhip","PeachPuff","Peru","Pink","Plum","PowderBlue","Purple","RebeccaPurple","Red","RosyBrown","RoyalBlue","SaddleBrown","Salmon","SandyBrown","SeaGreen","SeaShell","Sienna","Silver","SkyBlue","SlateBlue","SlateGray","Snow","SpringGreen","SteelBlue","Tan","Teal","Thistle","Tomato","Turquoise","Violet","Wheat","White","WhiteSmoke","Yellow","YellowGreen"];
 const colorHex = (value: string) => (({ black: "#111111", white: "#ffffff", gray: "#8c8c8c", blue: "#1769aa", green: "#0b7a3a", red: "#b91c1c", brown: "#704214", pink: "#db5b82" }[value.toLowerCase()] ?? value.trim()) || "#d6d6d2");
 function ManualColorPicker({ value, onChange, disabled = false }: { value: string; onChange: (value: string) => void; disabled?: boolean }) {
-  const [open, setOpen] = useState(false);
-  return <Field label="Inglizcha nomi"><div className={`variant-color-field${disabled ? " is-locked" : ""}`}><input disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} placeholder="Blue" /><button type="button" disabled={disabled} className="variant-color-trigger" aria-label="Rang tanlash" title={disabled ? "Tahrirlashda rang o‘zgarmaydi" : "100+ rangdan tanlash"} style={{ backgroundColor: colorHex(value) }} onClick={() => setOpen((current) => !current)} /></div>{open && !disabled && <div className="manual-color-picker"><div className="manual-color-picker-head"><b>Rangni tanlang</b><span>{namedColors.length}+ rang</span></div><div className="manual-color-picker-grid">{namedColors.map((color) => <button type="button" key={color} title={color} aria-label={color} className={value.toLowerCase() === color.toLowerCase() ? "is-selected" : ""} style={{ backgroundColor: color }} onClick={() => { onChange(color); setOpen(false); }} />)}</div></div>}</Field>;
+  const [open, setOpen] = useState(false), [adding, setAdding] = useState(false), [hex, setHex] = useState("#000000"), [name, setName] = useState(""), [saved, setSaved] = useState<Array<{ name: string; hex: string }>>([]);
+  useEffect(() => { try { const rows = JSON.parse(localStorage.getItem("siren-admin-colors") ?? "[]"); if (Array.isArray(rows)) setSaved(rows.filter((row): row is { name: string; hex: string } => typeof row?.name === "string" && /^#[0-9a-f]{6}$/i.test(row?.hex))); } catch {} }, []);
+  const save = () => { const nextName = name.trim(), nextHex = /^#[0-9a-f]{6}$/i.test(hex) ? hex.toUpperCase() : ""; if (!nextName || !nextHex) return; const next = [{ name: nextName, hex: nextHex }, ...saved.filter((row) => row.name.toLowerCase() !== nextName.toLowerCase() && row.hex !== nextHex)].slice(0, 80); localStorage.setItem("siren-admin-colors", JSON.stringify(next)); setSaved(next); onChange(nextName); setAdding(false); setOpen(false); };
+  const activeHex = saved.find((row) => row.name.toLowerCase() === value.toLowerCase())?.hex ?? colorHex(value);
+  return <Field label="Inglizcha nomi"><div className={`variant-color-field${disabled ? " is-locked" : ""}`}><input disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} placeholder="Black" /><button type="button" disabled={disabled} className="variant-color-trigger" aria-label="Rang tanlash" title="Rang tanlash" style={{ backgroundColor: activeHex }} onClick={() => setOpen((current) => !current)} /></div>{open && !disabled && <div className="manual-color-picker custom-color-picker"><div className="manual-color-picker-head"><b>Rangni tanlang</b><span>{saved.length} ta rang</span></div>{!adding ? <><div className="custom-color-list">{saved.map((color) => <button type="button" key={`${color.name}-${color.hex}`} onClick={() => { onChange(color.name); setOpen(false); }}><i style={{ backgroundColor: color.hex }} />{color.name}<small>{color.hex}</small></button>)}{!saved.length && <p>Hali rang saqlanmagan.</p>}</div><Button type="button" size="sm" onClick={() => setAdding(true)}>+ Yangi rang qo‘shish</Button></> : <div className="custom-color-add"><Field label="Rang kodi"><input value={hex} onChange={(event) => setHex(event.target.value)} placeholder="#000000" /></Field><Field label="Rang nomi"><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Black" /></Field><div><Button type="button" size="sm" variant="outline" onClick={() => setAdding(false)}>Orqaga</Button><Button type="button" size="sm" onClick={save}>Saqlash</Button></div></div>}</div>}</Field>;
 }
 function ColorField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const [open, setOpen] = useState(false);
-  return <Field label="Rang nomi"><div className="variant-color-field"><input value={value} onChange={(event) => onChange(event.target.value)} placeholder="Blue" /><button type="button" className="variant-color-trigger" aria-label="Rang tanlash" title="Rang tanlash" style={{ backgroundColor: colorHex(value) }} onClick={() => setOpen((current) => !current)} /></div>{open && <div className="variant-color-options">{colorChoices.map((color) => <button type="button" key={color} className={value.toLowerCase() === color.toLowerCase() ? "is-selected" : ""} onClick={() => { onChange(color); setOpen(false); }}><i style={{ backgroundColor: colorHex(color) }} />{color}</button>)}</div>}</Field>;
+  const [open, setOpen] = useState(false); const [hex, setHex] = useState("#000000"); const [name, setName] = useState(""); const [saved, setSaved] = useState<Array<{ name: string; hex: string }>>([]);
+  useEffect(() => { try { const rows = JSON.parse(localStorage.getItem("siren-admin-colors") ?? "[]"); if (Array.isArray(rows)) setSaved(rows.filter((row): row is { name: string; hex: string } => typeof row?.name === "string" && /^#[0-9a-f]{6}$/i.test(row?.hex))); } catch {} }, []);
+  const save = () => { const nextHex = /^#[0-9a-f]{6}$/i.test(hex) ? hex.toUpperCase() : ""; const nextName = name.trim(); if (!nextHex || !nextName) return; const next = [{ name: nextName, hex: nextHex }, ...saved.filter((row) => row.name.toLowerCase() !== nextName.toLowerCase() && row.hex !== nextHex)].slice(0, 80); setSaved(next); localStorage.setItem("siren-admin-colors", JSON.stringify(next)); onChange(nextName); setOpen(false); };
+  return <Field label="Rang nomi"><div className="variant-color-field"><input value={value} onChange={(event) => onChange(event.target.value)} placeholder="Masalan: Black" /><button type="button" className="variant-color-trigger" aria-label="Rang tanlash" title="Rang katalogini ochish" style={{ backgroundColor: saved.find((row) => row.name.toLowerCase() === value.toLowerCase())?.hex ?? colorHex(value) }} onClick={() => setOpen((current) => !current)} /></div>{open && <div className="variant-color-options variant-color-catalog"><b>Rang katalogi</b><div>{saved.map((color) => <button type="button" key={`${color.name}-${color.hex}`} onClick={() => { onChange(color.name); setOpen(false); }}><i style={{ backgroundColor: color.hex }} />{color.name}<small>{color.hex}</small></button>)}</div><label>Yangi rang kodi<input value={hex} onChange={(event) => setHex(event.target.value)} placeholder="#000000" /></label><label>Rang nomi<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Black" /></label><Button type="button" size="sm" onClick={save}>Rangni saqlash</Button></div>}</Field>;
 }
 const amountOf = (value: unknown) => {
   const parsed = Number(String(value ?? "").replace(/[^0-9.,-]/g, "").replace(",", "."));
@@ -805,7 +818,7 @@ function VariantImages({ drafts, onAddImage, onRemoveImage }: { drafts: VariantD
       // to the colour. Variants keep the same image references for reliable
       // storefront reads, so only render each image once in this editor.
       const images = [...new Set(group.indices.flatMap((index) => [drafts[index].imageUrl, ...drafts[index].extraImageUrls]).filter(Boolean))];
-      return <div className="variant-images-group" key={group.key}><div className="variant-images-color"><b>{first.color || "Rang tanlanmagan"}</b><i style={{ backgroundColor: colorHex(first.color) }} /></div><div className="variant-image-list">{images.map((image, index) => <div className="variant-image-item" key={`${image}-${index}`}><img src={image} alt={`${first.color} rasm ${index + 1}`} /><button type="button" className="variant-image-remove" aria-label={`${first.color} rasmini olib tashlash`} title="Rasmni olib tashlash" onClick={() => onRemoveImage(group.indices[0], image)}><Trash2 size={15} /></button></div>)}<button type="button" className="variant-image-add" onClick={() => open(group.indices[0])}><Plus size={17} /> Rasm</button></div></div>;
+      return <div className="variant-images-group" key={group.key}><div className="variant-images-color"><b>{first.color || "Rang tanlanmagan"}</b><i style={{ backgroundColor: colorHex(first.color) }} /></div><div className="variant-image-list">{images.map((image, index) => <div className="variant-image-item" key={`${image}-${index}`}><img src={contentImageUrl(image)} alt={`${first.color} rasm ${index + 1}`} /><button type="button" className="variant-image-remove" aria-label={`${first.color} rasmini olib tashlash`} title="Rasmni olib tashlash" onClick={() => onRemoveImage(group.indices[0], image)}><Trash2 size={15} /></button></div>)}<button type="button" className="variant-image-add" onClick={() => open(group.indices[0])}><Plus size={17} /> Rasm</button></div></div>;
     })}</div>
     {target !== null && <div className="variant-image-modal-backdrop" role="presentation" onMouseDown={() => setTarget(null)}><form className="variant-image-modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); onAddImage(target, url, file); setTarget(null); }}><div><p className="ui-overline">RASM QO‘SHISH</p><h4>Rasm manbasini tanlang</h4></div><Field label="Rasm URL linki"><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://.../image.jpg" /></Field><Field label="Kompyuterdan yuklash"><input type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></Field><div className="variant-image-modal-actions"><Button type="button" variant="outline" onClick={() => setTarget(null)}>Bekor qilish</Button><Button disabled={!url.trim() && !file}><Plus size={16} /> Rasm qo‘shish</Button></div></form></div>}
   </section>;
@@ -854,7 +867,7 @@ function AdminProductImageRotator({ product }: { product: Product }) {
     return () => window.clearInterval(timer);
   }, [images.length]);
   if (!images.length) return <Package size={30} />;
-  return <img className="admin-product-rotating-image" key={`${product.id}-${images[index]}`} src={images[index]} alt={product.title} />;
+  return <img className="admin-product-rotating-image" key={`${product.id}-${images[index]}`} src={contentImageUrl(images[index])} alt={product.title} />;
 }
 function SelectionCheckbox({ checked, indeterminate = false, disabled = false, onChange, label }: { checked: boolean; indeterminate?: boolean; disabled?: boolean; onChange: (checked: boolean) => void; label: string }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -896,7 +909,7 @@ function printThermalLabels(labels: ThermalLabel[]) {
   popup.opener = null;
   const markup = copies.map((label) => `<article class="label"><h1>${labelEscape(label.title)}</h1><p class="variant">${labelEscape(label.color)} · ${labelEscape(label.size)}</p><p class="sku">SKU: ${labelEscape(label.sku)}</p><p class="price">${labelEscape(label.price)}</p>${ean13BarcodeSvg(label.barcode)}</article>`).join("");
   popup.document.open();
-  popup.document.write(`<!doctype html><html><head><title>SIREN yorliqlari</title><style>@page{size:58mm 40mm;margin:0}*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font-family:Arial,sans-serif}.label{width:58mm;height:40mm;padding:3mm;overflow:hidden;page-break-after:always;break-after:page}.label:last-child{page-break-after:auto;break-after:auto}h1{margin:0;overflow:hidden;font-size:11pt;line-height:1.1;white-space:nowrap;text-overflow:ellipsis}.variant,.sku,.price{margin:1.2mm 0 0;font-size:7.5pt;font-weight:700}.sku{font-size:6.5pt}.price{font-size:10pt}.thermal-barcode{display:block;width:50mm;height:15mm;margin:1.5mm auto 0}.thermal-barcode text{font-family:Arial,sans-serif;font-size:8px;letter-spacing:1.2px}@media screen{body{padding:12px;background:#ddd}.label{margin:0 auto 12px;background:#fff;box-shadow:0 1px 5px #999}}</style></head><body>${markup}</body></html>`);
+  popup.document.write(`<!doctype html><html><head><title>PREVAILEN yorliqlari</title><style>@page{size:58mm 40mm;margin:0}*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font-family:Arial,sans-serif}.label{width:58mm;height:40mm;padding:3mm;overflow:hidden;page-break-after:always;break-after:page}.label:last-child{page-break-after:auto;break-after:auto}h1{margin:0;overflow:hidden;font-size:11pt;line-height:1.1;white-space:nowrap;text-overflow:ellipsis}.variant,.sku,.price{margin:1.2mm 0 0;font-size:7.5pt;font-weight:700}.sku{font-size:6.5pt}.price{font-size:10pt}.thermal-barcode{display:block;width:50mm;height:15mm;margin:1.5mm auto 0}.thermal-barcode text{font-family:Arial,sans-serif;font-size:8px;letter-spacing:1.2px}@media screen{body{padding:12px;background:#ddd}.label{margin:0 auto 12px;background:#fff;box-shadow:0 1px 5px #999}}</style></head><body>${markup}</body></html>`);
   popup.document.close();
   window.setTimeout(() => { popup.focus(); popup.print(); }, 250);
   return true;
@@ -1084,14 +1097,38 @@ function OfflineTransferWorkspace({ products, transfers, token, onRefresh, onNot
     {returning && <div className="inventory-confirm-backdrop" role="presentation" onMouseDown={() => setReturning(null)}><section className="inventory-confirm" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><p className="ui-overline">RETURN TO ONLINE</p><h3>Online qoldiqqa qaytarish</h3><p>{returning.product.title} · {returning.variant.color || "Rangsiz"} / {returning.variant.size || "ONE SIZE"}. Offline qoldiq: <b>{offlineOf(returning.variant)}</b>.</p><Field label="Qaytariladigan miqdor"><input type="number" min="1" max={offlineOf(returning.variant)} value={quantity} onChange={(event) => setQuantity(Math.min(offlineOf(returning.variant), Math.max(1, Number(event.target.value) || 1)))} /></Field><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setReturning(null)}>Bekor qilish</Button><Button disabled={submitting} onClick={() => void returnStock()}>{submitting ? "Tekshirilmoqda…" : "Qaytarishni tasdiqlash"}</Button></div></section></div>}
   </section>;
 }
-function ProductInspector({ product, onClose }: { product: Product; onClose: () => void }) {
-  const stock = product.variants.reduce((sum, variant) => sum + variant.inventoryQuantity, 0);
+function ProductRestockButton({ product, token, onComplete }: { product: Product; token: string; onComplete: () => Promise<void> }) {
+  const [step, setStep] = useState<"confirm" | "form" | null>(null);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const variants = product.variants.filter((variant) => variant.isActive);
+  const total = Object.values(quantities).reduce((sum, quantity) => sum + Math.max(0, quantity || 0), 0);
+  const begin = () => { setError(""); setQuantities(Object.fromEntries(variants.map((variant) => [variant.id, 0]))); setNote(""); setStep("confirm"); };
+  const save = async () => {
+    const items = variants.map((variant) => ({ variantId: variant.id, quantity: Math.max(0, Math.floor(quantities[variant.id] || 0)) })).filter((item) => item.quantity > 0);
+    if (!items.length) { setError("Kamida bitta SKU uchun miqdor kiriting."); return; }
+    setSaving(true); setError("");
+    try {
+      await api(`/admin/catalog/products/${product.id}/restock`, token, { method: "POST", body: JSON.stringify({ items, note: note.trim() || undefined }) });
+      await onComplete(); setStep(null);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Qayta stock qilib bo‘lmadi."); } finally { setSaving(false); }
+  };
+  if (!variants.length) return null;
+  return <><Button type="button" variant="outline" onClick={begin}><Plus size={15} /> Qayta stock</Button>{step === "confirm" && <div className="inventory-confirm-backdrop restock-backdrop" role="presentation" onMouseDown={() => !saving && setStep(null)}><section className="inventory-confirm restock-confirm" role="dialog" aria-modal="true" aria-label="Qayta stockni tasdiqlash" onMouseDown={(event) => event.stopPropagation()}><div className="restock-confirm-icon"><Package size={23} /></div><p className="ui-overline">INVENTORY RESTOCK</p><h3>Qayta stock qilasizmi?</h3><p><b>{product.title}</b> uchun yangi birliklar SKU, rang va razmer bo‘yicha kiritiladi. Bu sonlar hozirgi online qoldiq ustiga qo‘shiladi.</p><div className="inventory-confirm-actions"><Button type="button" variant="outline" onClick={() => setStep(null)}>Yo‘q, bekor qilish</Button><Button type="button" onClick={() => setStep("form")}>Ha, davom etish <ChevronRight size={15} /></Button></div></section></div>}{step === "form" && <div className="inventory-confirm-backdrop restock-backdrop" role="presentation" onMouseDown={() => !saving && setStep(null)}><section className="inventory-confirm restock-form" role="dialog" aria-modal="true" aria-label="Qayta stock miqdorlari" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">INVENTORY RESTOCK</p><h3>SKU bo‘yicha miqdor kiriting</h3><span>Joriy qoldiq o‘chmaydi — kiritilgan son uning ustiga qo‘shiladi.</span></div><button type="button" onClick={() => !saving && setStep(null)} aria-label="Yopish">×</button></header><div className="restock-variant-list">{variants.map((variant) => <label key={variant.id}><div><b>{variant.sku}</b><span>{variant.color || "Rangsiz"} · {variant.size || "ONE SIZE"} · Hozir: {variant.inventoryQuantity} ta</span></div><input type="number" min="0" step="1" inputMode="numeric" value={quantities[variant.id] || ""} onChange={(event) => setQuantities((current) => ({ ...current, [variant.id]: Math.max(0, Math.floor(Number(event.target.value) || 0)) }))} placeholder="0" aria-label={`${variant.sku} uchun qo‘shiladigan miqdor`} /></label>)}</div><Field label="Izoh (ixtiyoriy)"><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Masalan: 2-partiya qabul qilindi" /></Field>{error && <p className="restock-error" role="alert">{error}</p>}<footer><div><span>Qo‘shiladigan jami</span><b>+{total} ta</b></div><div className="inventory-confirm-actions"><Button type="button" variant="outline" disabled={saving} onClick={() => setStep("confirm")}>Ortga</Button><Button type="button" disabled={saving || total < 1} onClick={() => void save()}>{saving ? "Saqlanmoqda…" : "Qayta stockni saqlash"}</Button></div></footer></section></div>}</>;
+}
+function ProductInspector({ product, onClose, watch, restock }: { product: Product; onClose: () => void; watch?: Pick<ProductSalesInsight, "units7d" | "stock" | "lastSoldAt" | "daysWithoutSale">; restock?: { token: string; onComplete: () => Promise<void> } }) {
+  const onlineStock = product.variants.reduce((sum, variant) => sum + Math.max(0, variant.inventoryQuantity), 0);
+  const offlineStock = product.variants.reduce((sum, variant) => sum + offlineOf(variant), 0);
+  const stock = onlineStock + offlineStock;
   const cost = product.variants.reduce((sum, variant) => sum + amountOf(variant.attributes?.costPrice) * variant.inventoryQuantity, 0);
   const expense = product.variants.reduce((sum, variant) => sum + amountOf(variant.attributes?.expensePrice) * variant.inventoryQuantity, 0);
   const salePrices = product.variants.map((variant) => amountOf(variant.price)).filter(Boolean);
   const article = product.metadata?.article || "—";
   const totalAdded = Math.max(Number(product.metadata?.baseInventoryQuantity ?? 0), product.variants.reduce((sum, variant) => sum + (variant.totalInventoryAdded ?? variant.inventoryQuantity), 0));
-  return <div className="product-inspector-backdrop" role="presentation" onMouseDown={onClose}><section className="product-inspector" role="dialog" aria-modal="true" aria-label={`${product.title} ma’lumotlari`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">PRODUCT INSPECTOR</p><h3>{product.title}</h3><span>{article} · {product.status}</span></div><button type="button" onClick={onClose} aria-label="Yopish">×</button></header><div className="product-inspector-metrics"><div><span>Sotilgan</span><b>{product.soldQuantity ?? 0}</b></div><div><span>Ko‘rishlar</span><b>{Number(product.metadata?.views ?? 0)}</b></div><div><span>Favoritga qo‘shganlar</span><b>{product.favoriteCount ?? 0}</b></div><div><span>Savatga qo‘shganlar</span><b>{product.cartAddCount ?? 0}</b></div><div><span>Ombordagi qoldiq</span><b>{stock}</b></div><div><span>Jami kiritilgan</span><b>{totalAdded}</b></div><div><span>Yaratilgan sana</span><b>{readableDate(product.createdAt)}</b></div><div><span>Tannarx</span><b>{money(cost, product.currencyCode)}</b></div><div><span>Xarajat</span><b>{money(expense, product.currencyCode)}</b></div><div><span>Sotuv narxi</span><b>{salePrices.length ? `${money(Math.min(...salePrices), product.currencyCode)} — ${money(Math.max(...salePrices), product.currencyCode)}` : money(amountOf(product.price), product.currencyCode)}</b></div></div><div className="product-inspector-table-wrap"><table><thead><tr><th>SKU</th><th>Rang</th><th>Razmer</th><th>Qoldiq</th><th>Tannarx</th><th>Xarajat</th><th>Sotuv narxi</th><th>Holat</th></tr></thead><tbody>{product.variants.length ? product.variants.map((variant) => <tr key={variant.id}><td>{variant.sku}</td><td>{variant.color || "—"}</td><td>{variant.size || "ONE SIZE"}</td><td>{variant.inventoryQuantity}</td><td>{money(amountOf(variant.attributes?.costPrice), product.currencyCode)}</td><td>{money(amountOf(variant.attributes?.expensePrice), product.currencyCode)}</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.isActive ? "Active" : "Off"}</td></tr>) : <tr><td colSpan={8}>Variantlar yo‘q.</td></tr>}</tbody></table></div><footer><Button type="button" variant="outline" onClick={onClose}>Yopish</Button><Link className="ui-button ui-button--primary" href={`/products/${product.slug}`}>Saytda ko‘rish <ChevronRight size={15} /></Link></footer></section></div>;
+  const cover = product.media[0]?.url ? (product.media[0].url.startsWith("http") ? product.media[0].url : `${API.replace(/\/api$/, "")}${product.media[0].url}`) : "/images/p1.jpg";
+  return <div className="product-inspector-backdrop" role="presentation" onMouseDown={onClose}><section className="product-inspector" role="dialog" aria-modal="true" aria-label={`${product.title} ma’lumotlari`} onMouseDown={(event) => event.stopPropagation()}><header><div className="product-inspector-heading"><img src={cover} alt="" /><div><p className="ui-overline">PRODUCT INSPECTOR</p><h3>{product.title}</h3><span>{article} · {product.status}</span></div></div><button type="button" onClick={onClose} aria-label="Yopish">×</button></header><div className="product-inspector-metrics">{watch && <><div><span>So‘nggi 7 kun savdo</span><b>{watch.units7d} ta</b></div><div><span>Online qoldiq</span><b>{watch.stock} ta</b></div><div><span>Oxirgi sotuv</span><b>{watch.lastSoldAt ? readableDate(watch.lastSoldAt) : "Hali sotilmagan"}</b></div><div><span>Sotuvsiz kun</span><b>{watch.daysWithoutSale} kun</b></div></>}<div><span>Sotilgan</span><b>{product.soldQuantity ?? 0}</b></div><div><span>Ko‘rishlar</span><b>{Number(product.metadata?.views ?? 0)}</b></div><div><span>Favoritga qo‘shganlar</span><b>{product.favoriteCount ?? 0}</b></div><div><span>Savatga qo‘shganlar</span><b>{product.cartAddCount ?? 0}</b></div><div><span>Ombordagi qoldiq</span><b>{stock}</b></div><div><span>Jami kiritilgan</span><b>{totalAdded}</b></div><div><span>Yaratilgan sana</span><b>{readableDate(product.createdAt)}</b></div><div><span>Tannarx</span><b>{money(cost, product.currencyCode)}</b></div><div><span>Xarajat</span><b>{money(expense, product.currencyCode)}</b></div><div><span>Sotuv narxi</span><b>{salePrices.length ? `${money(Math.min(...salePrices), product.currencyCode)} — ${money(Math.max(...salePrices), product.currencyCode)}` : money(amountOf(product.price), product.currencyCode)}</b></div></div><div className="product-inspector-table-wrap"><table><thead><tr><th>SKU</th><th>Rang</th><th>Razmer</th><th>Qoldiq</th><th>Tannarx</th><th>Xarajat</th><th>Sotuv narxi</th><th>Holat</th></tr></thead><tbody>{product.variants.length ? product.variants.map((variant) => <tr key={variant.id}><td>{variant.sku}</td><td>{variant.color || "—"}</td><td>{variant.size || "ONE SIZE"}</td><td>{variant.inventoryQuantity}</td><td>{money(amountOf(variant.attributes?.costPrice), product.currencyCode)}</td><td>{money(amountOf(variant.attributes?.expensePrice), product.currencyCode)}</td><td>{money(amountOf(variant.price || product.price), product.currencyCode)}</td><td>{variant.isActive ? "Active" : "Off"}</td></tr>) : <tr><td colSpan={8}>Variantlar yo‘q.</td></tr>}</tbody></table></div><footer>{restock && <ProductRestockButton product={product} token={restock.token} onComplete={restock.onComplete} />}<Button type="button" variant="outline" onClick={onClose}>Yopish</Button><Link className="ui-button ui-button--primary" href={`/products/${product.slug}`}>Saytda ko‘rish <ChevronRight size={15} /></Link></footer></section></div>;
 }
 type AdminModuleConfig = { title: string; description: string; tabs: string[]; columns: string[]; fields: string[]; metrics?: string[]; action: string };
 const adminModules: Record<"delivery" | "customers" | "promos" | "partners" | "finance" | "currencies" | "analytics" | "settings", AdminModuleConfig> = {
@@ -1163,13 +1200,21 @@ function FinanceManager({ token, onNotice }: { token: string; onNotice: (message
 }
 function CustomerManager({ customers, loading, error, token }: { customers: CustomerRecord[]; loading: boolean; error: string; token: string }) {
   const [query, setQuery] = useState("");
-  const [segment, setSegment] = useState<"all" | "vip">("all");
+  const [segment, setSegment] = useState<"all" | "vip" | "discount" | "online">("all");
   const [selected, setSelected] = useState<CustomerDetail | null>(null);
   const [receipt, setReceipt] = useState<CustomerDetail["orders"][number] | null>(null);
   const [detailError, setDetailError] = useState("");
   const [opening, setOpening] = useState(false);
+  const [discountDraft, setDiscountDraft] = useState<{ productId: string; percent: string } | null>(null);
+  const [discountSaving, setDiscountSaving] = useState(false);
+  const [commerceOpen, setCommerceOpen] = useState<"cart" | "favorites" | null>(null);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [discountRemovalCandidate, setDiscountRemovalCandidate] = useState<string | null>(null);
+  const [liveNow, setLiveNow] = useState(() => Date.now());
   const isVip = (customer: Pick<CustomerRecord, "totalSpent">) => Number(customer.totalSpent) >= 10_000_000;
-  const filtered = customers.filter((customer) => `${customer.firstName} ${customer.lastName} ${customer.email ?? ""} ${customer.phone ?? ""}`.toLocaleLowerCase("uz-UZ").includes(query.toLocaleLowerCase("uz-UZ")) && (segment === "all" || isVip(customer)));
+  const isOnline = (customer: Pick<CustomerRecord, "metadata">) => Boolean(customer.metadata?.presence?.online && customer.metadata.presence.lastSeen && liveNow - new Date(customer.metadata.presence.lastSeen).valueOf() < 70_000);
+  useEffect(() => { const timer = window.setInterval(() => setLiveNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
+  const filtered = customers.filter((customer) => `${customer.firstName} ${customer.lastName} ${customer.email ?? ""} ${customer.phone ?? ""}`.toLocaleLowerCase("uz-UZ").includes(query.toLocaleLowerCase("uz-UZ")) && (segment === "all" || segment === "vip" ? segment === "all" || isVip(customer) : segment === "online" ? isOnline(customer) : Boolean(customer.personalDiscountCount)));
   const openCustomer = async (customer: CustomerRecord) => {
     setOpening(true); setDetailError("");
     try { setSelected(await api<CustomerDetail>(`/admin/customers/${customer.id}`, token)); }
@@ -1178,12 +1223,25 @@ function CustomerManager({ customers, loading, error, token }: { customers: Cust
   };
   const customerName = (customer: Pick<CustomerRecord, "firstName" | "lastName">) => `${customer.firstName} ${customer.lastName}`.trim() || "—";
   const closeProfile = () => { setSelected(null); setReceipt(null); };
+  const refreshSelected = async () => { if (selected) setSelected(await api<CustomerDetail>(`/admin/customers/${selected.id}`, token)); };
+  const saveDiscount = async () => { if (!selected || !discountDraft?.productId) return; setDiscountSaving(true); try { await api(`/admin/customers/${selected.id}/personal-discounts`, token, { method: "POST", body: JSON.stringify({ productId: discountDraft.productId, percent: Number(discountDraft.percent) }) }); setDiscountDraft(null); await refreshSelected(); } finally { setDiscountSaving(false); } };
+  const removeDiscount = async (productId: string) => { if (!selected) return; setDiscountSaving(true); try { await api(`/admin/customers/${selected.id}/personal-discounts/${productId}`, token, { method: "DELETE" }); await refreshSelected(); } finally { setDiscountSaving(false); } };
+  const discountTarget = selected && discountDraft ? [...(selected.cart ?? []), ...(selected.favorites ?? [])].find((item) => item.productId === discountDraft.productId) : null;
+  const customerRefunds = selected?.orders.filter((order) => ["refund_requested", "cash_refund_pending", "refunded"].includes(order.paymentStatus) || order.status === "refunded") ?? [];
+  useEffect(() => { if (!selected) return; const metrics = document.querySelector<HTMLElement>(".customer-detail-dialog .customer-detail-metrics"); if (!metrics) return; const button = document.createElement("button"); button.type = "button"; button.className = "customer-refund-metric"; button.innerHTML = `<span>Refundlar</span><b>${customerRefunds.length} ta</b>`; const open = () => setRefundOpen(true); button.addEventListener("click", open); metrics.appendChild(button); return () => { button.removeEventListener("click", open); button.remove(); }; }, [selected?.id, customerRefunds.length]);
+  useEffect(() => { if (!selected) return; document.querySelectorAll<HTMLElement>(".customer-detail-orders article > div > span").forEach((badge) => { const value = badge.textContent?.toLowerCase() || ""; badge.classList.toggle("is-paid", value.includes("paid") && !value.includes("not_paid")); badge.classList.toggle("is-unpaid", value.includes("not_paid")); badge.classList.toggle("is-refund", value.includes("refund")); }); }, [selected]);
+  useEffect(() => { document.querySelectorAll<HTMLButtonElement>(".customer-list-table tbody .customer-name-trigger").forEach((button, index) => { const customer = filtered[index]; button.classList.toggle("is-online", Boolean(customer && isOnline(customer))); button.classList.toggle("has-personal-discount", Boolean(customer?.personalDiscountCount)); }); }, [filtered, liveNow]);
+  useEffect(() => { const intercept = (event: MouseEvent) => { const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>(".customer-commerce-list article button"); if (!button?.textContent?.includes("ni o‘chirish")) return; event.preventDefault(); event.stopImmediatePropagation(); const item = button.closest("article"); const product = [...(selected?.cart ?? []), ...(selected?.favorites ?? [])].find((entry) => entry.title === item?.querySelector("b")?.textContent); if (product?.productId) setDiscountRemovalCandidate(product.productId); }; document.addEventListener("click", intercept, true); return () => document.removeEventListener("click", intercept, true); }, [selected]);
+  useEffect(() => { document.querySelectorAll<HTMLButtonElement>(".customer-commerce-list article button").forEach((button) => button.classList.toggle("is-remove", button.textContent?.includes("ni o‘chirish") ?? false)); }, [commerceOpen, selected]);
   return <section className="tailadmin-customers-page">
     <header className="tailadmin-page-heading"><div><p className="ui-overline">MIJOZLAR</p><h2>Barcha mijozlar</h2><span>Mijoz profili, buyurtmalar va xarid faolligi.</span></div><Badge variant="neutral">{customers.length} ta mijoz</Badge></header>
-    <div className="customer-segments"><button type="button" className={segment === "all" ? "is-active" : ""} onClick={() => setSegment("all")}>Barcha mijozlar <span>{customers.length}</span></button><button type="button" className={segment === "vip" ? "is-active" : ""} onClick={() => setSegment("vip")}>VIP mijozlar <span>{customers.filter(isVip).length}</span></button></div>
+    <div className="customer-segments"><button type="button" className={segment === "all" ? "is-active" : ""} onClick={() => setSegment("all")}>Barcha mijozlar <span>{customers.length}</span></button><button type="button" className={segment === "online" ? "is-active is-online" : ""} onClick={() => setSegment("online")}>● Online <span>{customers.filter(isOnline).length}</span></button><button type="button" className={segment === "vip" ? "is-active" : ""} onClick={() => setSegment("vip")}>VIP mijozlar <span>{customers.filter(isVip).length}</span></button><button type="button" className={segment === "discount" ? "is-active is-discount" : ""} onClick={() => setSegment("discount")}><Tags size={14} /> Chegirmalilar <span>{customers.filter((item) => item.personalDiscountCount).length}</span></button></div>
     <div className="tailadmin-data-card"><div className="tailadmin-data-card-toolbar admin-table-tools"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ism, email yoki telefon qidirish..." aria-label="Mijoz qidirish" /></div>{loading ? <div className="admin-module-state">Yuklanmoqda…</div> : error ? <div className="admin-module-state is-error">{error}</div> : <div className="admin-module-table-wrap"><table className="admin-module-table customer-list-table"><thead><tr><th>Mijoz</th><th>Telefon</th><th>Email</th><th>Buyurtmalar</th><th>Jami savdo</th><th>O‘rtacha chek</th><th>Oxirgi buyurtma</th><th>Holat</th></tr></thead><tbody>{filtered.map((customer) => { const average = customer.totalOrders ? customer.totalSpent / customer.totalOrders : 0; const vip = isVip(customer); return <tr key={customer.id}><td><button type="button" className="customer-name-trigger" onClick={() => void openCustomer(customer)}>{customerName(customer)}<small>Profilni ko‘rish</small></button></td><td>{customer.phone || "—"}</td><td>{customer.email || "—"}{customer.emailVerifiedAt ? <small> ✓</small> : null}</td><td>{customer.totalOrders}</td><td><b>{Math.round(customer.totalSpent).toLocaleString("uz-UZ")} UZS</b></td><td>{Math.round(average).toLocaleString("uz-UZ")} UZS</td><td>—</td><td><span className={`customer-segment${vip ? " is-vip" : customer.welcomeDiscountEligible ? " is-welcome" : ""}`}>{customer.isActive === false ? "Nofaol" : vip ? "VIP" : customer.welcomeDiscountEligible ? `${customer.welcomeDiscountPercent || 15}% welcome` : "Faol"}</span></td></tr>; })}{!filtered.length && <tr><td colSpan={8}><Empty>{query ? "Qidiruv bo‘yicha mijoz topilmadi." : segment === "vip" ? "Hali 10 000 000 UZS dan oshgan VIP mijoz yo‘q." : "Hali customer yozuvi yo‘q."}</Empty></td></tr>}</tbody></table></div>}<div className="admin-table-pagination"><span>{filtered.length} ta natija</span></div></div>
     {opening && <p className="customer-detail-loading">Mijoz profili yuklanmoqda…</p>}{detailError && <p className="admin-module-state is-error">{detailError}</p>}
-    {selected && <div className="inventory-confirm-backdrop customer-detail-backdrop" onMouseDown={closeProfile}><section className="customer-detail-dialog" role="dialog" aria-modal="true" aria-label={`${customerName(selected)} profili`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">MIJOZ PROFILI</p><h3>{customerName(selected)}</h3><span>{selected.email || "Email kiritilmagan"}</span></div><button type="button" onClick={closeProfile} aria-label="Yopish">×</button></header><div className="customer-detail-metrics"><div><span>Buyurtmalar</span><b>{selected.totalOrders} ta</b></div><div><span>To‘langan</span><b>{selected.paidOrders} ta</b></div><div><span>Jami savdo</span><b>{money(selected.totalSpent, "UZS")}</b></div><div><span>O‘rtacha chek</span><b>{money(selected.averageOrder, "UZS")}</b></div></div><div className="customer-detail-columns"><section><h4>Aloqa va joylashuv</h4><dl><div><dt>Telefon</dt><dd>{selected.phone || "—"}</dd></div><div><dt>Hudud</dt><dd>{selected.region || "—"}</dd></div><div><dt>Ro‘yxatdan o‘tgan</dt><dd>{readableDate(selected.createdAt)}</dd></div><div><dt>Oxirgi kirish</dt><dd>{selected.lastLoginAt ? readableDate(selected.lastLoginAt) : "—"}</dd></div></dl>{selected.addresses.length ? <div className="customer-addresses">{selected.addresses.map((address) => <p key={address.id}><b>{address.isDefault ? "Asosiy manzil" : "Manzil"}</b><span>{[address.country, address.city, address.line1, address.line2, address.postalCode].filter(Boolean).join(", ")}</span></p>)}</div> : <p className="customer-detail-empty">Saqlangan manzil yo‘q.</p>}</section><section><h4>Buyurtmalar tarixi</h4><div className="customer-detail-orders">{selected.orders.map((order) => <article key={order.id}><div><button type="button" className="customer-receipt-trigger" onClick={() => setReceipt(order)}>#{order.orderNumber}</button><span>{readableDate(order.createdAt)} · {order.paymentStatus}</span><small>{order.items.map((item) => `${item.title} × ${item.quantity}`).join(", ") || "Mahsulot yo‘q"}</small></div><strong>{money(Number(order.totalAmount), order.currencyCode || "UZS")}</strong></article>)}{!selected.orders.length && <p className="customer-detail-empty">Bu mijozda buyurtma yo‘q.</p>}</div></section></div></section></div>}
+    {selected && <div className="inventory-confirm-backdrop customer-detail-backdrop" onMouseDown={closeProfile}><section className="customer-detail-dialog" role="dialog" aria-modal="true" aria-label={`${customerName(selected)} profili`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">MIJOZ PROFILI</p><h3>{customerName(selected)}</h3><span>{selected.email || "Email kiritilmagan"}</span></div><button type="button" onClick={closeProfile} aria-label="Yopish">×</button></header><div className="customer-detail-metrics"><div><span>Buyurtmalar</span><b>{selected.totalOrders} ta</b></div><div><span>To‘langan</span><b>{selected.paidOrders} ta</b></div><div><span>Jami savdo</span><b>{money(selected.totalSpent, "UZS")}</b></div><div><span>O‘rtacha chek</span><b>{money(selected.averageOrder, "UZS")}</b></div><button type="button" onClick={() => setCommerceOpen("cart")}><span>Savat</span><b>{(selected.cart ?? []).length} ta</b></button><button type="button" onClick={() => setCommerceOpen("favorites")}><span>Sevimlilar</span><b>{(selected.favorites ?? []).length} ta</b></button></div><div className="customer-detail-columns"><section><h4>Aloqa va joylashuv</h4><dl><div><dt>Telefon</dt><dd>{selected.phone || "—"}</dd></div><div><dt>Hudud</dt><dd>{selected.region || "—"}</dd></div><div><dt>Ro‘yxatdan o‘tgan</dt><dd>{readableDate(selected.createdAt)}</dd></div><div><dt>Oxirgi kirish</dt><dd>{selected.lastLoginAt ? readableDate(selected.lastLoginAt) : "—"}</dd></div></dl>{selected.addresses.length ? <div className="customer-addresses">{selected.addresses.map((address) => <p key={address.id}><b>{address.isDefault ? "Asosiy manzil" : "Manzil"}</b><span>{[address.country, address.city, address.line1, address.line2, address.postalCode].filter(Boolean).join(", ")}</span></p>)}</div> : <p className="customer-detail-empty">Saqlangan manzil yo‘q.</p>}</section><section><h4>Buyurtmalar tarixi</h4><div className="customer-detail-orders">{selected.orders.map((order) => <article key={order.id}><div><button type="button" className="customer-receipt-trigger" onClick={() => setReceipt(order)}>#{order.orderNumber}</button><span>{readableDate(order.createdAt)} · {order.paymentStatus}</span><small>{order.items.map((item) => `${item.title} × ${item.quantity}`).join(", ") || "Mahsulot yo‘q"}</small></div><strong>{money(Number(order.totalAmount), order.currencyCode || "UZS")}</strong></article>)}{!selected.orders.length && <p className="customer-detail-empty">Bu mijozda buyurtma yo‘q.</p>}</div></section></div>{commerceOpen && <div className="customer-commerce-list"><header><h4>{commerceOpen === "cart" ? "Savatdagi mahsulotlar" : "Sevimli mahsulotlar"}</h4><button type="button" onClick={() => setCommerceOpen(null)}>×</button></header>{(commerceOpen === "cart" ? selected.cart ?? [] : selected.favorites ?? []).map((item) => <article key={item.id}>{item.imageUrl ? <img src={item.imageUrl.startsWith("/uploads/") ? `${API.replace(/\/api$/, "")}${item.imageUrl}` : item.imageUrl} alt="" /> : <div className="customer-commerce-image-placeholder" />}<div><b>{item.title}</b><small>Sotuv narxi: {money(Number(item.price), "UZS")}{item.discount ? ` · Chegirmali: ${money(Math.round(Number(item.price) * (100 - item.discount.percent) / 100), "UZS")}` : ""} · {readableDate(item.createdAt)}</small><span>{"quantity" in item ? `${item.quantity} ta · ${item.variant}` : "Sevimliga qo‘shilgan"}</span></div>{item.productId && <button type="button" onClick={() => item.discount ? void removeDiscount(item.productId!) : setDiscountDraft({ productId: item.productId!, percent: "10" })}>{item.discount ? `${item.discount.percent}% ni o‘chirish` : "Chegirma berish"}</button>}</article>)}{!(commerceOpen === "cart" ? selected.cart ?? [] : selected.favorites ?? []).length && <p className="customer-detail-empty">Mahsulot yo‘q.</p>}</div>}{discountDraft && <div className="customer-discount-form"><b>Individual chegirma</b><input type="number" min="1" max="99" value={discountDraft.percent} onChange={(event) => setDiscountDraft({ ...discountDraft, percent: event.target.value })} /><button type="button" disabled={discountSaving} onClick={() => void saveDiscount()}>Tasdiqlash va xabar berish</button><button type="button" onClick={() => setDiscountDraft(null)}>Bekor qilish</button></div>}</section></div>}
+    {discountRemovalCandidate && <div className="customer-discount-remove-backdrop"><section className="customer-discount-remove" role="dialog" aria-modal="true"><p className="ui-overline">CHEGIRMANI O‘CHIRISH</p><h3>Individual chegirma o‘chirilsinmi?</h3><p>Bu mijoz uchun ushbu mahsulot chegirmasi darhol bekor qilinadi.</p><footer><button type="button" onClick={() => setDiscountRemovalCandidate(null)}>Bekor qilish</button><button type="button" disabled={discountSaving} onClick={() => void removeDiscount(discountRemovalCandidate).then(() => setDiscountRemovalCandidate(null))}>{discountSaving ? "O‘chirilmoqda…" : "Chegirmani o‘chirish"}</button></footer></section></div>}
+    {refundOpen && <div className="customer-refund-popup-backdrop" onMouseDown={() => setRefundOpen(false)}><section className="customer-refund-popup" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">MIJOZ REFUNDLARI</p><h3>Refund so‘rovlari</h3></div><button type="button" onClick={() => setRefundOpen(false)}>×</button></header>{customerRefunds.map((order) => <article key={order.id}><div><b>Chek #{order.orderNumber}</b><span className={order.paymentStatus === "refunded" || order.status === "refunded" ? "is-complete" : "is-pending"}>{order.paymentStatus === "refunded" || order.status === "refunded" ? "Refund yakunlangan" : "Refund kutilmoqda"}</span><small>{readableDate(order.createdAt)}</small></div><strong>{money(Number(order.totalAmount), order.currencyCode || "UZS")}</strong></article>)}{!customerRefunds.length && <p>Bu mijozda refund so‘rovi yo‘q.</p>}</section></div>}
+    {discountDraft && discountTarget && <div className="customer-discount-popup-backdrop"><section className="customer-discount-popup" role="dialog" aria-modal="true"><header><div><p className="ui-overline">INDIVIDUAL CHEGIRMA</p><h3>{discountTarget.title}</h3></div><button type="button" onClick={() => setDiscountDraft(null)}>×</button></header><p>Chegirma foizini kiriting. Mijozga bildirishnoma yuboriladi.</p><div className="customer-discount-price"><span>Tannarx<b>{money(Number(discountTarget.originalPrice || 0), "UZS")}</b></span><span>Sotuv narxi<b>{money(Number(discountTarget.price), "UZS")}</b></span><span>Chegirmadagi narx<b>{money(Math.round(Number(discountTarget.price) * ((100 - Math.min(99, Math.max(1, Number(discountDraft.percent) || 0))) / 100)), "UZS")}</b></span></div><label>Chegirma foizi<input type="number" min="1" max="99" value={discountDraft.percent} onChange={(event) => setDiscountDraft({ ...discountDraft, percent: event.target.value })} /></label><footer><button type="button" onClick={() => setDiscountDraft(null)}>Bekor qilish</button><button type="button" disabled={discountSaving} onClick={() => void saveDiscount()}>{discountSaving ? "Saqlanmoqda…" : "Tasdiqlash va xabar berish"}</button></footer></section></div>}
     {receipt && <div className="inventory-confirm-backdrop customer-receipt-backdrop" onMouseDown={() => setReceipt(null)}><section className="customer-receipt-dialog" role="dialog" aria-modal="true" aria-label={`Chek #${receipt.orderNumber}`} onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">BUYURTMA CHEKI</p><h3>Chek #{receipt.orderNumber}</h3><span>{readableDate(receipt.createdAt)} · {receipt.paymentStatus}</span></div><button type="button" onClick={() => setReceipt(null)} aria-label="Yopish">×</button></header><div className="customer-receipt-items">{receipt.items.map((item, index) => <article key={`${item.sku || item.title}-${index}`}><div><b>{item.title}</b><span>{item.sku || "SKU yo‘q"} × {item.quantity}</span></div><strong>{money(Number(item.unitPrice) * item.quantity, receipt.currencyCode || "UZS")}</strong></article>)}</div><dl><div><dt>To‘lov turi</dt><dd>{receipt.paymentMethod || "—"}</dd></div><div><dt>Buyurtma holati</dt><dd>{receipt.status}</dd></div><div className="is-total"><dt>Jami</dt><dd>{money(Number(receipt.totalAmount), receipt.currencyCode || "UZS")}</dd></div></dl></section></div>}
   </section>;
 }
@@ -1254,12 +1312,13 @@ function OrderStageBadge({ order }: { order: Pick<Order, "status" | "paymentStat
 type DashboardData = {
   currency?: { code?: string; available?: boolean };
   kpis?: { current?: Record<string, number>; previous?: Record<string, number>; changes?: Record<string, number | null> };
+  lifetime?: { registeredCustomers?: number; onlineCustomers?: number };
   chart?: { metric?: string; granularity?: string; current?: Array<{ label: string; value: number }>; previous?: Array<{ label: string; value: number }>; currentTotal?: number; previousTotal?: number; change?: number | null; financial?: boolean };
   salesProfit?: { sales?: Array<{ label: string; value: number }>; profit?: Array<{ label: string; value: number }> };
   salesAnalysis?: { revenue?: number; refunds?: number; discounts?: number; paymentMethods?: Record<string, { orders: number; revenue: number }>; revenueSeries?: Array<{ label: string; value: number }>; refundSeries?: Array<{ label: string; value: number }> };
   productAnalysis?: { products?: Array<{ label: string; value: number }>; sizes?: Array<{ label: string; value: number }>; colors?: Array<{ label: string; value: number }> };
   dropPerformance?: Array<{ id: string; title: string; launchAt: string; points: Array<{ label: string; revenue: number; orders: number; units: number }> }>;
-  inventoryAnalysis?: { stock?: number; lowStock?: number; deadStock?: number; sellThrough?: number; topStock?: Array<{ label: string; value: number }>; distribution?: Array<{ label: string; value: number }> };
+  inventoryAnalysis?: { stock?: number; onlineStock?: number; offlineStock?: number; totalAdded?: number; lowStock?: number; deadStock?: number; sellThrough?: number; topStock?: Array<{ label: string; value: number }>; distribution?: Array<{ label: string; value: number }> };
   customerAnalysis?: { newCustomers?: number; returningCustomers?: number; repeatPurchase?: number; newSeries?: Array<{ label: string; value: number }>; returningSeries?: Array<{ label: string; value: number }>; topCustomers?: Array<{ label: string; value: number }> };
   trafficAnalysis?: { funnel?: Array<{ label: string; value: number }>; favorites?: number; sources?: Array<{ label: string; value: number }> };
   monthlySales?: Array<{ label: string; value: number }>;
@@ -1378,9 +1437,22 @@ function ProductRankingChart({ title, subtitle, items, tone, onSelect }: { title
   const maximum = Math.max(...items.map((item) => item.value), 1);
   return <Card className={`analytics-ranking-card is-${tone}${onSelect ? " is-interactive" : ""}`}><CardHeader><div><p className="ui-overline">TOP SELLERS</p><CardTitle>{title}</CardTitle><CardDescription>{subtitle}</CardDescription></div></CardHeader><CardContent><div className="analytics-ranking-bars">{items.map((item, index) => <article key={item.label} role={onSelect ? "button" : undefined} tabIndex={onSelect ? 0 : undefined} onClick={() => onSelect?.(item)} onKeyDown={(event) => { if (onSelect && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelect(item); } }}><span>{index + 1}</span><div><b>{item.label}</b><em><i style={{ width: `${Math.max(8, item.value / maximum * 100)}%` }} /></em></div><strong>{item.value}</strong></article>)}{!items.length && <p className="dashboard-empty">Tanlangan davrda savdo ma’lumoti yo‘q.</p>}</div></CardContent></Card>;
 }
-function ProductsAnalyticsSection({ dashboard }: { dashboard: DashboardData | null }) {
+type ProductSalesInsight = { id: string; title: string; slug: string; imageUrl: string | null; stock: number; units7d: number; lastSoldAt: string | null; daysWithoutSale: number };
+type ProductSalesInsights = { generatedAt: string; fastSelling: ProductSalesInsight[]; lowStock: ProductSalesInsight[]; stale: ProductSalesInsight[] };
+function ProductSalesInsightList({ title, subtitle, tone, items, kind, onSelect }: { title: string; subtitle: string; tone: "fast" | "low" | "stale"; items: ProductSalesInsight[]; kind: "fast" | "low" | "stale"; onSelect: (item: ProductSalesInsight) => void }) {
+  const image = (url: string | null) => !url ? "/images/p1.jpg" : url.startsWith("http") ? url : `${API.replace(/\/api$/, "")}${url}`;
+  return <Card className={`product-sales-insight is-${tone}`}><CardHeader><div><p className="ui-overline">AUTO WATCH</p><CardTitle>{title}</CardTitle><CardDescription>{subtitle}</CardDescription></div></CardHeader><CardContent><div className="product-sales-insight-list">{items.map((item) => <button type="button" key={item.id} onClick={() => onSelect(item)} aria-label={`${item.title} ma’lumotlarini ochish`}><img src={image(item.imageUrl)} alt="" /><div><b>{item.title}</b><span>{kind === "fast" ? `So‘nggi 7 kunda ${item.units7d} ta sotildi` : kind === "low" ? item.stock === 0 ? "Qoldiq tugagan" : `Omborda ${item.stock} ta qoldi` : item.lastSoldAt ? `${item.daysWithoutSale} kundan beri sotilmadi` : `${item.daysWithoutSale} kundan beri hali sotilmadi`}</span></div><strong>{kind === "fast" ? `${item.units7d} ta` : kind === "low" ? `${item.stock} ta` : `${item.daysWithoutSale} kun`}</strong></button>)}{!items.length && <div className="product-sales-insight-empty">Hozircha bu holatda mahsulot yo‘q.</div>}</div></CardContent></Card>;
+}
+function ProductSalesIntelligence({ token }: { token: string }) {
+  const [insights, setInsights] = useState<ProductSalesInsights | null>(null); const [failed, setFailed] = useState(false); const [selected, setSelected] = useState<ProductSalesInsight | null>(null); const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); const [detailError, setDetailError] = useState(false);
+  useEffect(() => { if (!token) return; setFailed(false); void api<ProductSalesInsights>("/admin/product-sales-insights", token).then(setInsights).catch(() => setFailed(true)); }, [token]);
+  useEffect(() => { if (!selected) { setSelectedProduct(null); return; } setSelectedProduct(null); setDetailError(false); void api<Product[]>("/admin/catalog/products", token).then((products) => { const product = products.find((entry) => entry.id === selected.id); if (product) setSelectedProduct(product); else setDetailError(true); }).catch(() => setDetailError(true)); }, [selected, token]);
+  if (!insights) return <Card className="product-sales-loading"><CardContent>{failed ? "Mahsulot savdo ma’lumotini yuklab bo‘lmadi." : "Mahsulot savdosi tahlil qilinmoqda…"}</CardContent></Card>;
+  return <><section className="product-sales-intelligence"><header><div><p className="ui-overline">SALES WATCH</p><h3>Avtomatik mahsulot nazorati</h3><span>To‘langan buyurtmalar va real online qoldiq asosida yangilanadi. Mahsulotni bosib to‘liq tafsilotini oching.</span></div><time>{new Intl.DateTimeFormat("uz-UZ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(insights.generatedAt))}</time></header><div><ProductSalesInsightList title="Tez sotilayotgan" subtitle="So‘nggi 7 kunda eng ko‘p sotilgan mahsulotlar" tone="fast" kind="fast" items={insights.fastSelling} onSelect={setSelected} /><ProductSalesInsightList title="Qoldig‘i kam" subtitle="Faol SKUlarning real online qoldig‘i 3 ta yoki kam" tone="low" kind="low" items={insights.lowStock} onSelect={setSelected} /><ProductSalesInsightList title="7 kundan beri sotilmagan" subtitle="Faol va omborda mavjud mahsulotlar" tone="stale" kind="stale" items={insights.stale} onSelect={setSelected} /></div></section>{selected && !selectedProduct && <div className="product-inspector-backdrop" role="presentation" onMouseDown={() => setSelected(null)}><section className="product-inspector product-inspector--loading" role="dialog" aria-modal="true" aria-label="Mahsulot ma’lumotlari" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">PRODUCT INSPECTOR</p><h3>{selected.title}</h3><span>{detailError ? "Mahsulot tafsilotini yuklab bo‘lmadi." : "Mahsulot tafsiloti yuklanmoqda…"}</span></div><button type="button" onClick={() => setSelected(null)} aria-label="Yopish">×</button></header></section></div>}{selectedProduct && selected && <ProductInspector product={selectedProduct} watch={selected} restock={{ token, onComplete: async () => { const next = await api<ProductSalesInsights>("/admin/product-sales-insights", token); setInsights(next); setSelected(null); } }} onClose={() => setSelected(null)} />}</>;
+}
+function ProductsAnalyticsSection({ dashboard, token }: { dashboard: DashboardData | null; token: string }) {
   const analysis = dashboard?.productAnalysis;
-  return <section className="analytics-products-section"><header className="analytics-sales-heading"><div><p className="ui-overline">ANALYTICS / PRODUCTS</p><h2>Products performance</h2><span>Qaysi mahsulot, rang va size ko‘proq sotilayotganini kuzating.</span></div><aside><i /> Live data</aside></header><div className="analytics-ranking-grid"><ProductRankingChart title="Top Products" subtitle="Eng ko‘p sotilgan mahsulotlar" items={analysis?.products ?? []} tone="blue" /><ProductRankingChart title="Top Sizes" subtitle="Eng talabgir size’lar" items={analysis?.sizes ?? []} tone="violet" /><ProductRankingChart title="Top Colors" subtitle="Eng talabgir ranglar" items={analysis?.colors ?? []} tone="orange" /></div></section>;
+  return <section className="analytics-products-section"><header className="analytics-sales-heading"><div><p className="ui-overline">ANALYTICS / PRODUCTS</p><h2>Products performance</h2><span>Qaysi mahsulot, rang va size ko‘proq sotilayotganini kuzating.</span></div><aside><i /> Live data</aside></header><ProductSalesIntelligence token={token} /><div className="analytics-ranking-grid"><ProductRankingChart title="Top Products" subtitle="Eng ko‘p sotilgan mahsulotlar" items={analysis?.products ?? []} tone="blue" /><ProductRankingChart title="Top Sizes" subtitle="Eng talabgir size’lar" items={analysis?.sizes ?? []} tone="violet" /><ProductRankingChart title="Top Colors" subtitle="Eng talabgir ranglar" items={analysis?.colors ?? []} tone="orange" /></div></section>;
 }
 function DropPerformanceSection({ dashboard, currency }: { dashboard: DashboardData | null; currency: string }) {
   const drops = dashboard?.dropPerformance ?? []; const [selectedId, setSelectedId] = useState(""); const selected = drops.find((drop) => drop.id === selectedId) ?? drops[0]; const chartCurrency = dashboard?.currency?.code ?? currency; const points = selected?.points ?? [];
@@ -1388,7 +1460,7 @@ function DropPerformanceSection({ dashboard, currency }: { dashboard: DashboardD
 }
 function InventoryAnalyticsSection({ dashboard }: { dashboard: DashboardData | null }) {
   const analysis = dashboard?.inventoryAnalysis;
-  return <section className="analytics-products-section"><header className="analytics-sales-heading"><div><p className="ui-overline">ANALYTICS / INVENTORY</p><h2>Inventory health</h2><span>Ombor holati, past qoldiq va sotuv tezligini kuzating.</span></div><aside><i /> Live data</aside></header><EcommerceMetrics metrics={[{ label: "Stock", value: new Intl.NumberFormat("uz-UZ").format(analysis?.stock ?? 0), icon: Package }, { label: "Low stock", value: new Intl.NumberFormat("uz-UZ").format(analysis?.lowStock ?? 0), icon: Archive }, { label: "Dead stock", value: new Intl.NumberFormat("uz-UZ").format(analysis?.deadStock ?? 0), icon: Box }, { label: "Sell-through", value: `${(analysis?.sellThrough ?? 0).toFixed(1)}%`, icon: BarChart3 }]} /><div className="analytics-ranking-grid analytics-inventory-grid"><ProductRankingChart title="Stock by product" subtitle="Ombordagi eng katta qoldiqlar" items={analysis?.topStock ?? []} tone="blue" /><ProductRankingChart title="Stock status" subtitle="Qoldiqning holatlar bo‘yicha taqsimoti" items={analysis?.distribution ?? []} tone="orange" /></div></section>;
+  return <section className="analytics-products-section"><header className="analytics-sales-heading"><div><p className="ui-overline">ANALYTICS / INVENTORY</p><h2>Inventory health</h2><span>Jami qoldiq online va offline omborni birga hisoblaydi; past qoldiq esa sotuvga tayyor online birliklar asosida.</span></div><aside><i /> Live data</aside></header><EcommerceMetrics metrics={[{ label: "Jami ombor", value: new Intl.NumberFormat("uz-UZ").format(analysis?.stock ?? 0), icon: Package }, { label: "Online", value: new Intl.NumberFormat("uz-UZ").format(analysis?.onlineStock ?? 0), icon: ShoppingBag }, { label: "Offline", value: new Intl.NumberFormat("uz-UZ").format(analysis?.offlineStock ?? 0), icon: Archive }, { label: "Past qoldiq", value: new Intl.NumberFormat("uz-UZ").format(analysis?.lowStock ?? 0), icon: Box }, { label: "Sell-through", value: `${(analysis?.sellThrough ?? 0).toFixed(1)}%`, icon: BarChart3 }]} /><div className="analytics-ranking-grid analytics-inventory-grid"><ProductRankingChart title="Stock by product" subtitle="Online va offline omborning jami qoldig‘i" items={analysis?.topStock ?? []} tone="blue" /><ProductRankingChart title="Stock status" subtitle="Online, offline va past online qoldiq taqsimoti" items={analysis?.distribution ?? []} tone="orange" /></div></section>;
 }
 function CustomersAnalyticsSection({ dashboard, currency, customers, onOpenCustomer }: { dashboard: DashboardData | null; currency: string; customers: CustomerRecord[]; onOpenCustomer: (id: string) => void }) {
   const analysis = dashboard?.customerAnalysis; const chartCurrency = dashboard?.currency?.code ?? currency; const total = (analysis?.newCustomers ?? 0) + (analysis?.returningCustomers ?? 0); const newShare = total ? (analysis?.newCustomers ?? 0) / total * 100 : 0;
@@ -1407,23 +1479,63 @@ function GeographyAnalyticsSection({ customers, orders, currency }: { customers:
   const regions = regionalMetrics(customers, orders).sort((left, right) => right.revenue - left.revenue);
   return <section className="analytics-products-section"><header className="analytics-sales-heading"><div><p className="ui-overline">ANALYTICS / GEOGRAPHY</p><h2>Geography</h2><span>Toshkent va viloyatlar bo‘yicha savdo hamda mijozlar taqsimoti.</span></div><aside><i /> Uzbekistan</aside></header><div className="analytics-geography-grid"><UzbekistanRegionalMap regions={regions} currency={currency} /><ProductRankingChart title="Top Regions" subtitle="To‘langan savdo bo‘yicha hududlar" items={regions.filter((region) => region.revenue > 0).map((region) => ({ label: region.label, value: region.revenue }))} tone="blue" /></div></section>;
 }
-function DashboardOverview({ dashboard, currency, period, metric, granularity, customFrom, customTo, customers, orders, onCurrency, onPeriod, onMetric, onGranularity, onCustomFrom, onCustomTo, heading = "Overview Analytics" }: { dashboard: DashboardData | null; currency: string; period: string; metric: string; granularity: string; customFrom: string; customTo: string; customers: CustomerRecord[]; orders: Order[]; onCurrency: (value: string) => void; onPeriod: (value: string) => void; onMetric: (value: string) => void; onGranularity: (value: string) => void; onCustomFrom: (value: string) => void; onCustomTo: (value: string) => void; heading?: string }) {
+type TrafficSeries = { visitors: Array<{ label: string; value: number }>; cartConversion: Array<{ label: string; value: number }>; purchaseConversion: Array<{ label: string; value: number }> };
+function TrafficSeriesCharts({ token, period, granularity, customFrom, customTo }: { token: string; period: string; granularity: string; customFrom: string; customTo: string }) {
+  const [series, setSeries] = useState<TrafficSeries | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (!token) return;
+    const params = new URLSearchParams({ period, granularity });
+    if (period === "custom") { params.set("from", customFrom); params.set("to", customTo); }
+    setFailed(false);
+    void api<TrafficSeries>(`/admin/traffic-series?${params.toString()}`, token).then(setSeries).catch(() => setFailed(true));
+  }, [token, period, granularity, customFrom, customTo]);
+  const hasData = Boolean(series?.visitors?.some((point) => point.value > 0));
+  return <section className="analytics-traffic-section">
+    <header className="analytics-traffic-heading"><div><p className="ui-overline">ANALYTICS / TRAFFIC</p><h3>Visitors &amp; Conversion</h3><span>Mehmonlardan savat va xaridgacha bo‘lgan real yo‘l.</span></div><aside><i /> Live tracking</aside></header>
+    <div className="analytics-traffic-grid">
+      <Card className="tailadmin-statistics-card"><CardHeader className="tailadmin-statistics-head"><div><CardTitle>Visitors</CardTitle><CardDescription>Tanlangan davr bo‘yicha noyob tashriflar.</CardDescription></div></CardHeader><CardContent>{series ? <StatisticsChart current={series.visitors} previous={[]} currentLabel="Visitors" previousLabel="" /> : <div className="dashboard-chart-wrap"><p>{failed ? "Visitor ma’lumotini yuklab bo‘lmadi." : "Yuklanmoqda…"}</p></div>}<div className="dashboard-legend"><span><i /> Visitors</span></div></CardContent></Card>
+      <Card className="tailadmin-statistics-card"><CardHeader className="tailadmin-statistics-head"><div><CardTitle>Conversion</CardTitle><CardDescription>Visitor → savatga qo‘shish va Visitor → xarid qilish foizlari.</CardDescription></div></CardHeader><CardContent>{series ? <StatisticsChart current={series.cartConversion} previous={series.purchaseConversion} currentLabel="Savatga qo‘shish" previousLabel="Xarid qilish" /> : <div className="dashboard-chart-wrap"><p>{failed ? "Konversiya ma’lumotini yuklab bo‘lmadi." : "Yuklanmoqda…"}</p></div>}<div className="dashboard-legend"><span><i /> Savatga qo‘shish</span><span><i /> Xarid qilish</span></div></CardContent></Card>
+    </div>
+    {series && !hasData && <p className="analytics-traffic-empty">Ma’lumot to‘planishi uchun storefront sahifalariga tashrif kerak. Keyingi tashriflar shu yerda ko‘rinadi.</p>}
+  </section>;
+}
+function DashboardOverview({ dashboard, token, currency, period, metric, granularity, customFrom, customTo, customers, orders, onCurrency, onPeriod, onMetric, onGranularity, onCustomFrom, onCustomTo, heading = "Overview Analytics" }: { dashboard: DashboardData | null; token: string; currency: string; period: string; metric: string; granularity: string; customFrom: string; customTo: string; customers: CustomerRecord[]; orders: Order[]; onCurrency: (value: string) => void; onPeriod: (value: string) => void; onMetric: (value: string) => void; onGranularity: (value: string) => void; onCustomFrom: (value: string) => void; onCustomTo: (value: string) => void; heading?: string }) {
   const kpis = dashboard?.kpis?.current ?? {}; const changes = dashboard?.kpis?.changes ?? {}; const chart = dashboard?.chart; const chartCurrency = dashboard?.currency?.code ?? currency; const sales = dashboard?.salesProfit?.sales ?? []; const profit = dashboard?.salesProfit?.profit ?? [];
-  const cards: Array<[string, string, typeof Package, boolean]> = [["Revenue", "revenue", BarChart3, true], ["Net Profit", "profit", ArrowUp, true], ["Orders", "orders", ClipboardList, false], ["AOV", "averageOrderValue", CreditCard, true], ["Conversion", "conversion", SlidersHorizontal, false], ["Visitors", "visitors", Users, false]];
+  const cards: Array<[string, string, typeof Package, boolean, boolean?]> = [["Revenue", "revenue", BarChart3, true], ["Net Profit", "profit", ArrowUp, true], ["Orders", "orders", ClipboardList, false], ["AOV", "averageOrderValue", CreditCard, true], ["Conversion", "conversion", SlidersHorizontal, false], ["Visitors", "visitors", Users, false], ["Ro‘yxatdan o‘tgan mijozlar", "registeredCustomers", Users, false, true], ["Onlayn mijozlar", "onlineCustomers", Monitor, false, true]];
   const current = chart?.current ?? []; const previous = chart?.previous ?? []; const labels = Array.from(new Set([...current.map((item) => item.label), ...previous.map((item) => item.label)]));
   const chartFinancial = chart?.financial ?? false;
-  const metricCards = cards.map(([label, key, Icon, financial]) => { const count = new Intl.NumberFormat("uz-UZ").format(kpis[key] ?? 0); return { label, icon: Icon, change: changes[key], value: financial ? dashboardMoney(kpis[key] ?? 0, chartCurrency) : key === "conversion" ? `${(kpis[key] ?? 0).toFixed(1)}%` : count }; });
+  const metricCards = cards.map(([label, key, Icon, financial, lifetime]) => { const value = lifetime ? dashboard?.lifetime?.[key as "registeredCustomers" | "onlineCustomers"] ?? 0 : kpis[key] ?? 0; const count = new Intl.NumberFormat("uz-UZ").format(value); return { label, icon: Icon, change: lifetime ? null : changes[key], value: financial ? dashboardMoney(value, chartCurrency) : key === "conversion" ? `${value.toFixed(1)}%` : count }; });
   return <section className="dashboard-overview">
     <header className="dashboard-controls"><div><p className="ui-overline">{heading === "Dashboard" ? "DASHBOARD" : "ANALYTICS"}</p><h2>{heading}</h2></div><div className="dashboard-control-fields"><label>Valyuta<select value={currency} onChange={(event) => onCurrency(event.target.value)}>{["UZS", "USD", "EUR", "RUB", "KZT"].map((code) => <option key={code} value={code}>{code}</option>)}</select></label></div></header>
     {dashboard?.currency?.available === false && <p className="dashboard-rate-warning">{currency} kursi <b>currency-rates</b> sozlamasida kiritilmagan. Moliyaviy qiymatlar UZSda ko‘rsatilmoqda.</p>}
     <EcommerceMetrics metrics={metricCards} />
     <Card className="dashboard-chart-card tailadmin-statistics-card"><CardHeader className="tailadmin-statistics-head"><div><CardTitle>Sales &amp; Net Profit</CardTitle><CardDescription>Vaqt bo‘yicha savdo va sof foyda dinamikasi.</CardDescription></div><div className="tailadmin-statistics-controls"><label className="tailadmin-statistics-period"><CalendarDays size={18} /><select value={period} onChange={(event) => { const value = event.target.value; onPeriod(value); onGranularity(dashboardGranularityForPeriod(value)); }}>{DASHBOARD_PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div></CardHeader><CardContent>{sales.length || profit.length ? <StatisticsChart current={sales} previous={profit} currentLabel="Sales" previousLabel="Net Profit" /> : <div className="dashboard-chart-wrap"><p>Tanlangan davrda haqiqiy ma’lumot yo‘q.</p></div>}<div className="dashboard-legend"><span><i /> Sales</span><span><i /> Net Profit</span></div></CardContent></Card>
+    {heading !== "Dashboard" && <TrafficSeriesCharts token={token} period={period} granularity={granularity} customFrom={customFrom} customTo={customTo} />}
     <Card className="tailadmin-monthly-sales-card"><CardHeader><div><CardTitle>Oylik savdo</CardTitle><CardDescription>Joriy yildagi faqat to‘langan buyurtmalar.</CardDescription></div><button type="button" className="tailadmin-chart-more" aria-label="Oylik savdo menyusi"><MoreVertical size={20} /></button></CardHeader><CardContent>{dashboard?.monthlySales?.length ? <MonthlySalesChart points={dashboard.monthlySales} /> : <div className="dashboard-chart-wrap"><p>Oylik savdo ma’lumoti yo‘q.</p></div>}</CardContent></Card>
     {heading === "Dashboard" && <><UzbekistanRegionalMap regions={regionalMetrics(customers, orders)} currency={chartCurrency} />
     <div className="dashboard-lower-grid"><Card><CardHeader><div><p className="ui-overline">JAMOA</p><CardTitle>Jamoa faolligi</CardTitle></div></CardHeader><CardContent><div className="dashboard-team">{(dashboard?.team ?? []).map((member) => <article key={member.id}><span className="dashboard-avatar">{`${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}` || member.email[0]?.toUpperCase()}</span><div><b>{`${member.firstName} ${member.lastName}`.trim() || member.email}</b><small>{member.role}</small></div><span className={member.online && member.isActive ? "is-online" : "is-offline"}>{member.online && member.isActive ? "● Online" : `○ ${dashboardTime(member.lastSeen)}`}</span></article>)}{!dashboard?.team?.length && <p className="dashboard-empty">Jamoa ma’lumoti yo‘q.</p>}</div></CardContent></Card><Card><CardHeader><div><p className="ui-overline">AUDIT</p><CardTitle>So‘nggi faollik</CardTitle></div></CardHeader><CardContent><div className="dashboard-activity">{(dashboard?.activity ?? []).map((item) => <article key={item.id}><b>{item.action} · {item.entityType}</b><span>{item.user} · {dashboardTime(item.createdAt)}</span></article>)}{!dashboard?.activity?.length && <p className="dashboard-empty">Audit yozuvlari yo‘q.</p>}</div></CardContent></Card></div></>}
   </section>;
 }
 
+type AuditRecord = { id?: unknown; action?: unknown; entityType?: unknown; entityId?: string | null; actorId?: unknown; payload?: unknown; createdAt?: unknown };
+function AuditLogView({ items }: { items: Record<string, unknown>[] }) {
+  const [query, setQuery] = useState(""); const [type, setType] = useState("all");
+  const records = items as AuditRecord[];
+  const types = [...new Set(records.map((item) => String(item.entityType ?? "system")))].sort();
+  const labels: Record<string, string> = { visit: "Saytga tashrif", product: "Mahsulot", order: "Buyurtma", customer: "Mijoz", user: "Admin foydalanuvchi", category: "Kategoriya", collection: "Kolleksiya", discount: "Chegirma", setting: "Sozlama", banner: "Banner", blog: "Blog", music: "Musiqa", page: "Sahifa", system: "Tizim" };
+  const actionLabel = (value: unknown) => ({ visited: "Ko‘rildi", created: "Yaratildi", updated: "Yangilandi", deleted: "O‘chirildi", removed: "Olib tashlandi", login: "Kirish amalga oshdi", logout: "Chiqildi", published: "Nashr qilindi", enabled: "Yoqildi", disabled: "O‘chirildi" }[String(value)] ?? String(value ?? "Amal"));
+  const icon = (entity: string, action: string) => entity === "visit" ? <Eye size={18} /> : action === "deleted" || action === "removed" ? <Trash2 size={18} /> : entity === "order" ? <ShoppingBag size={18} /> : entity === "product" ? <Package size={18} /> : entity === "user" || entity === "customer" ? <Users size={18} /> : entity === "setting" ? <Settings2 size={18} /> : <FileText size={18} />;
+  const filtered = records.filter((item) => {
+    const entity = String(item.entityType ?? "system"); const haystack = `${entity} ${item.action ?? ""} ${item.entityId ?? ""} ${JSON.stringify(item.payload ?? {})}`.toLocaleLowerCase("uz-UZ");
+    return (type === "all" || entity === type) && haystack.includes(query.trim().toLocaleLowerCase("uz-UZ"));
+  });
+  const visits = records.filter((item) => item.entityType === "visit").length;
+  return <section className="audit-log-view">
+    <div className="audit-log-summary"><article><span>Jami hodisalar</span><b>{records.length}</b></article><article><span>Sayt tashriflari</span><b>{visits}</b></article><article><span>Hodisa turlari</span><b>{types.length}</b></article></div>
+    <Card className="audit-log-card"><CardHeader><div><CardTitle>Hodisalar tarixi</CardTitle><CardDescription>Eng yangi hodisalar yuqorida. Tizim yozuvlari o‘chirilmaydi.</CardDescription></div><div className="audit-log-filters"><label><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Hodisa yoki ID qidirish" /></label><select value={type} onChange={(event) => setType(event.target.value)}><option value="all">Barcha turlar</option>{types.map((item) => <option key={item} value={item}>{labels[item] ?? item}</option>)}</select></div></CardHeader><CardContent><div className="audit-log-list">{filtered.map((item, index) => { const entity = String(item.entityType ?? "system"); const action = String(item.action ?? ""); const payload = item.payload && typeof item.payload === "object" ? item.payload as Record<string, unknown> : {}; const path = typeof payload.path === "string" ? payload.path : ""; const actor = typeof item.actorId === "string" && item.actorId ? `Admin · ${item.actorId.slice(0, 8)}` : "Tizim"; const details = Object.entries(payload).filter(([key, value]) => key !== "path" && key !== "visitorId" && value !== null && value !== "").slice(0, 2); return <article key={String(item.id ?? index)} className={`audit-log-item is-${entity}`}><i className="audit-log-icon">{icon(entity, action)}</i><div className="audit-log-main"><div><b>{labels[entity] ?? entity}</b><span className={`audit-log-action is-${action}`}>{actionLabel(action)}</span></div><p>{entity === "visit" ? `${path || "/"} sahifasi ko‘rildi` : `${labels[entity] ?? entity} bo‘yicha ${actionLabel(action).toLocaleLowerCase("uz-UZ")}`}</p>{details.length > 0 && <small>{details.map(([key, value]) => <span key={key}><b>{key}:</b> {typeof value === "object" ? "Yangilandi" : String(value)}</span>)}</small>}</div><div className="audit-log-meta"><span>{actor}</span><time>{item.createdAt ? readableDate(String(item.createdAt)) : "—"}</time>{item.entityId && entity !== "visit" && <code>#{String(item.entityId).slice(0, 8)}</code>}</div></article>; })}{!filtered.length && <div className="audit-log-empty">Mos hodisa topilmadi.</div>}</div></CardContent></Card>
+  </section>;
+}
 type TeamSection = "overview" | "employees" | "teams" | "roles" | "permissions" | "invitations" | "activity" | "security";
 type TeamEmployee = { id: string; employeeId: string; firstName: string; lastName: string; displayName?: string | null; avatarUrl?: string | null; email?: string | null; phone?: string; jobTitle?: string | null; status: string; employmentType: string; roleIds: string[]; teams: Array<{ id: string; name: string; primary: boolean }> };
 function TeamManagement({ token, audit, onNotice }: { token: string; audit: Record<string, unknown>[]; onNotice: (message: string) => void }) {
@@ -1431,12 +1543,13 @@ function TeamManagement({ token, audit, onNotice }: { token: string; audit: Reco
   const [overview, setOverview] = useState<{ employees: number; teams: number; roles: number; invited: number; suspended: number } | null>(null);
   const [employees, setEmployees] = useState<TeamEmployee[]>([]); const [teams, setTeams] = useState<Array<{ id: string; teamId: string; name: string; description?: string | null; color: string; isActive: boolean; members: Array<{ name: string }> }>>([]);
   const [roles, setRoles] = useState<Array<{ id: string; roleId: string; name: string; description?: string | null; color: string; isSystem: boolean; isProtected: boolean; assignedEmployees: number; permissions: string[] }>>([]); const [permissions, setPermissions] = useState<Array<{ id: string; key: string; module: string; label: string; isSensitive: boolean }>>([]); const [invitations, setInvitations] = useState<Array<{ id: string; email: string; status: string; expiresAt: string }>>([]); const [sessions, setSessions] = useState<Array<{ id: string; email: string; role: string; lastActivity: string; expiresAt: string; revokedAt?: string | null }>>([]);
-  const [showEmployeeForm, setShowEmployeeForm] = useState(false); const [showTeamForm, setShowTeamForm] = useState(false); const [editingEmployee, setEditingEmployee] = useState<TeamEmployee | null>(null); const [employeeDraft, setEmployeeDraft] = useState({ firstName: "", lastName: "", email: "", jobTitle: "" }); const [employeeEditDraft, setEmployeeEditDraft] = useState({ firstName: "", lastName: "", displayName: "", email: "", jobTitle: "", avatarUrl: "" }); const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]); const [teamDraft, setTeamDraft] = useState({ name: "", description: "", color: "#465fff" });
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false); const [showTeamForm, setShowTeamForm] = useState(false); const [editingEmployee, setEditingEmployee] = useState<TeamEmployee | null>(null); const [employeeDraft, setEmployeeDraft] = useState({ firstName: "", lastName: "", email: "", jobTitle: "" }); const [employeeEditDraft, setEmployeeEditDraft] = useState({ firstName: "", lastName: "", displayName: "", email: "", jobTitle: "", avatarUrl: "" }); const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]); const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]); const [teamDraft, setTeamDraft] = useState({ name: "", description: "", color: "#465fff" });
   const load = useCallback(async () => { if (!token) return; setLoading(true); setError(""); try { if (section === "overview") setOverview(await api("/admin/team/overview", token)); if (section === "employees") setEmployees(await api("/admin/team/employees", token)); if (section === "teams") setTeams(await api("/admin/team/teams", token)); if (section === "roles") setRoles(await api("/admin/team/roles", token)); if (section === "permissions") setPermissions(await api("/admin/team/permissions", token)); if (section === "invitations") setInvitations(await api("/admin/team/invitations", token)); if (section === "security") setSessions(await api("/admin/team/security/sessions", token)); } catch (reason) { const message = reason instanceof Error ? reason.message : "Ma’lumotni yuklashga ruxsat yo‘q."; setError(message === "Failed to fetch" ? "Admin serveri bilan aloqa uzildi. Sahifani qayta yuklang yoki server holatini tekshiring." : message); } finally { setLoading(false); } }, [section, token]);
   useEffect(() => { void load(); }, [load]);
   const createEmployee = async (event: FormEvent) => { event.preventDefault(); setLoading(true); try { await api("/admin/team/employees", token, { method: "POST", body: JSON.stringify(employeeDraft) }); setShowEmployeeForm(false); setEmployeeDraft({ firstName: "", lastName: "", email: "", jobTitle: "" }); onNotice("Xodim yaratildi. Endi unga rol va jamoa biriktirishingiz mumkin."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Xodim yaratilmadi."); } finally { setLoading(false); } };
-  const beginEmployeeEdit = async (employee: TeamEmployee) => { setEditingEmployee(employee); setEmployeeEditDraft({ firstName: employee.firstName, lastName: employee.lastName, displayName: employee.displayName ?? "", email: employee.email ?? "", jobTitle: employee.jobTitle ?? "", avatarUrl: employee.avatarUrl ?? "" }); setSelectedTeamIds(employee.teams.map((team) => team.id)); try { if (!teams.length) setTeams(await api("/admin/team/teams", token)); } catch (reason) { setError(reason instanceof Error ? reason.message : "Jamoalar yuklanmadi."); } };
-  const saveEmployeeEdit = async (event: FormEvent) => { event.preventDefault(); if (!editingEmployee) return; setLoading(true); try { await api(`/admin/team/employees/${editingEmployee.id}`, token, { method: "PATCH", body: JSON.stringify(employeeEditDraft) }); await api(`/admin/team/employees/${editingEmployee.id}/teams`, token, { method: "POST", body: JSON.stringify({ teamIds: selectedTeamIds }) }); setEditingEmployee(null); onNotice("Xodim ma’lumotlari va jamoasi saqlandi."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Xodim ma’lumotlari saqlanmadi."); } finally { setLoading(false); } };
+  const beginEmployeeEdit = async (employee: TeamEmployee) => { setEditingEmployee(employee); setEmployeeEditDraft({ firstName: employee.firstName, lastName: employee.lastName, displayName: employee.displayName ?? "", email: employee.email ?? "", jobTitle: employee.jobTitle ?? "", avatarUrl: employee.avatarUrl ?? "" }); setSelectedTeamIds(employee.teams.map((team) => team.id)); setSelectedRoleIds(employee.roleIds); try { const [nextTeams, nextRoles] = await Promise.all([teams.length ? Promise.resolve(teams) : api<typeof teams>("/admin/team/teams", token), roles.length ? Promise.resolve(roles) : api<typeof roles>("/admin/team/roles", token)]); setTeams(nextTeams); setRoles(nextRoles); } catch (reason) { setError(reason instanceof Error ? reason.message : "Jamoa yoki rollar yuklanmadi."); } };
+  const saveEmployeeEdit = async (event: FormEvent) => { event.preventDefault(); if (!editingEmployee) return; setLoading(true); try { await api(`/admin/team/employees/${editingEmployee.id}`, token, { method: "PATCH", body: JSON.stringify(employeeEditDraft) }); await api(`/admin/team/employees/${editingEmployee.id}/teams`, token, { method: "POST", body: JSON.stringify({ teamIds: selectedTeamIds }) }); await api(`/admin/team/employees/${editingEmployee.id}/roles`, token, { method: "POST", body: JSON.stringify({ roleIds: selectedRoleIds }) }); setEditingEmployee(null); onNotice("Xodim ma’lumotlari, jamoasi va roli saqlandi."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Xodim ma’lumotlari saqlanmadi."); } finally { setLoading(false); } };
+  const inviteEmployee = async (employee: TeamEmployee) => { try { const invitation = await api<{ token: string }>(`/admin/team/employees/${employee.id}/invitations`, token, { method: "POST" }); const url = `${window.location.origin}/admin/invite?token=${encodeURIComponent(invitation.token)}`; await navigator.clipboard.writeText(url); onNotice("Taklif linki nusxalandi. Uni xodimga xavfsiz kanal orqali yuboring."); } catch (reason) { setError(reason instanceof Error ? reason.message : "Taklif yaratilmagan."); } };
   const createTeam = async (event: FormEvent) => { event.preventDefault(); setLoading(true); try { await api("/admin/team/teams", token, { method: "POST", body: JSON.stringify(teamDraft) }); setShowTeamForm(false); setTeamDraft({ name: "", description: "", color: "#465fff" }); onNotice("Jamoa yaratildi."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Jamoa yaratilmagan."); } finally { setLoading(false); } };
   const revoke = async (id: string) => { if (!window.confirm("Bu sessiya darhol yakunlansinmi?")) return; try { await api(`/admin/team/security/sessions/${id}/revoke`, token, { method: "POST" }); onNotice("Sessiya bekor qilindi."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Sessiyani bekor qilib bo‘lmadi."); } };
   const tabs: Array<[TeamSection, string]> = [["overview", "Overview"], ["employees", "Xodimlar"], ["teams", "Jamoalar"], ["roles", "Rollar"], ["permissions", "Permissions"], ["invitations", "Takliflar"], ["activity", "Activity log"], ["security", "Xavfsizlik"]];
@@ -1537,7 +1650,7 @@ export default function AdminConsole() {
   const [cancellationPhoto, setCancellationPhoto] = useState<File | null>(null);
   const [cancellationSaving, setCancellationSaving] = useState(false);
   const [deliveryOrder, setDeliveryOrder] = useState<Order | null>(null);
-  const [shipmentDraft, setShipmentDraft] = useState({ provider: "UzPost", senderName: "SIREN", senderPhone: "", weightKg: "1", packageCount: "1", comment: "" });
+  const [shipmentDraft, setShipmentDraft] = useState({ provider: "UzPost", senderName: "PREVAILEN", senderPhone: "", weightKg: "1", packageCount: "1", comment: "" });
   const shipmentDraftRef = useRef(shipmentDraft);
   const [shipmentSaving, setShipmentSaving] = useState(false);
   const [orderCustomer, setOrderCustomer] = useState<CustomerDetail | null>(null);
@@ -1604,6 +1717,7 @@ export default function AdminConsole() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [hasUnsavedProductChanges, tab, contentSubsection]);
   const [form, setForm] = useState(blankProduct());
+  const [productLanguage, setProductLanguage] = useState<"uz" | "ru" | "en" | "ja">("uz");
   const [imageUrl, setImageUrl] = useState("");
   const [sizeGuideFile, setSizeGuideFile] = useState<File | null>(null);
   const [variant, setVariant] = useState(blankVariant());
@@ -1687,7 +1801,7 @@ export default function AdminConsole() {
   };
   const addVariantImage = (index: number, url: string, file: File | null) => {
     const appendUrl = (item: ReturnType<typeof blankVariant>) => {
-      const imageUrl = url.trim();
+      const imageUrl = file ? URL.createObjectURL(file) : url.trim();
       if (!imageUrl) return item;
       return item.imageUrl ? { ...item, extraImageUrls: [...item.extraImageUrls, imageUrl] } : { ...item, imageUrl };
     };
@@ -1840,6 +1954,7 @@ export default function AdminConsole() {
   }, [token]);
   useEffect(() => {
     if (adminProfile?.role === "cashier" && !tab.startsWith("offline_")) setTab("offline_cashier");
+    if (adminProfile?.role === "editor" && tab !== "content") setTab("content");
   }, [adminProfile?.role, tab]);
   useEffect(() => { localStorage.setItem("siren-admin-theme", adminTheme); }, [adminTheme]);
   useEffect(() => { localStorage.setItem("siren-admin-sidebar-compact", String(sidebarCompact)); }, [sidebarCompact]);
@@ -1858,8 +1973,8 @@ export default function AdminConsole() {
     };
   }, []);
   useEffect(() => {
-    if (token) void run(() => refresh());
-  }, [token, refresh]);
+    if (token && adminProfile) void run(() => refresh());
+  }, [token, adminProfile, refresh]);
   const login = async (e: FormEvent) => {
     e.preventDefault();
     await run(async () => {
@@ -1887,12 +2002,14 @@ export default function AdminConsole() {
       titleUz: translations?.titleUz ?? p.title,
       titleRu: translations?.titleRu ?? "",
       titleEn: translations?.titleEn ?? "",
+      titleJa: translations?.titleJa ?? "",
       article: p.metadata?.article ?? "",
       slug: p.slug,
       description: p.description,
       descriptionUz: translations?.descriptionUz ?? p.description,
       descriptionRu: translations?.descriptionRu ?? "",
       descriptionEn: translations?.descriptionEn ?? "",
+      descriptionJa: translations?.descriptionJa ?? "",
       status: p.status,
       publicationMode: p.scheduledAt && new Date(p.scheduledAt).getTime() > Date.now() ? "planned" : p.status,
       scheduledAt: localDateTimeInput(p.scheduledAt),
@@ -2052,6 +2169,7 @@ export default function AdminConsole() {
         media: imageUrl
           ? [{ url: imageUrl, alt: primaryTitle, position: 0 }]
           : [],
+        seo: { title: primaryTitle, description: primaryDescription, image: imageUrl || undefined },
         metadata: {
           baseInventoryQuantity: Number(form.inventoryQuantity) || 0,
           article,
@@ -2062,9 +2180,11 @@ export default function AdminConsole() {
             titleUz: form.titleUz.trim() || undefined,
             titleRu: form.titleRu.trim() || undefined,
             titleEn: form.titleEn.trim() || undefined,
+            titleJa: form.titleJa.trim() || undefined,
             descriptionUz: form.descriptionUz.trim() || undefined,
             descriptionRu: form.descriptionRu.trim() || undefined,
             descriptionEn: form.descriptionEn.trim() || undefined,
+            descriptionJa: form.descriptionJa.trim() || undefined,
           },
         },
       };
@@ -2085,7 +2205,7 @@ export default function AdminConsole() {
         const colorFiles = new Map<string, File[]>();
         variantsForCreation.forEach((draft, index) => {
           const key = draft.characteristicId || `color-${draft.color.trim().toLocaleLowerCase("uz-UZ")}`;
-          const sources = [draft.imageUrl, ...draft.extraImageUrls].map((url) => url.trim()).filter(Boolean);
+          const sources = [draft.imageUrl, ...draft.extraImageUrls].map((url) => url.trim()).filter((url) => Boolean(url) && !url.startsWith("blob:"));
           colorImages.set(key, [...new Set([...(colorImages.get(key) ?? []), ...sources])]);
           const files = index === 0 ? variantImageFiles : additionalVariantFiles[index - 1] ?? [];
           colorFiles.set(key, [...(colorFiles.get(key) ?? []), ...files]);
@@ -2287,8 +2407,8 @@ export default function AdminConsole() {
     playOrderAlertSound();
     nextOrders.forEach((item) => {
       const options = { body: "Yangi buyurtma qabul qilindi. Batafsil ko‘rish uchun bosing.", tag: `siren-order-${item.entityId ?? item.id}`, data: { orderId: item.entityId ?? "" } };
-      if ("serviceWorker" in navigator) void navigator.serviceWorker.ready.then((registration) => registration.showNotification("SIREN · Yangi buyurtma", options));
-      else new Notification("SIREN · Yangi buyurtma", options);
+      if ("serviceWorker" in navigator) void navigator.serviceWorker.ready.then((registration) => registration.showNotification("PREVAILEN · Yangi buyurtma", options));
+      else new Notification("PREVAILEN · Yangi buyurtma", options);
     });
   }, [browserNotificationPermission, orderActivities]);
   const submitCancellation = async (event: FormEvent) => {
@@ -2351,7 +2471,7 @@ export default function AdminConsole() {
         <Card className="tailadmin-auth-card">
           <CardHeader>
             <div className="admin-logo-mark">S</div>
-            <p className="ui-overline">SIREN COMMERCE</p>
+            <p className="ui-overline">PREVAILEN COMMERCE</p>
             <CardTitle>
               Control
               <br />
@@ -2439,6 +2559,7 @@ export default function AdminConsole() {
     ["records", "Records", "Musiqa va audio treklar"],
     ["collections", "Kolleksiyalar", "Mahsulot kolleksiyalari"],
     ["social", "Ijtimoiy tarmoqlar", "Footer va link-in-bio sahifasi"],
+    ["auth-modal", "Kirish va ro‘yxatdan o‘tish", "Kirish oynasi, 10% bonus va rasm"],
   ];
   const contentSidebarNav: Array<[string, string, ElementType]> = [
     ["content-main-banner", "Main banner", Monitor],
@@ -2449,6 +2570,7 @@ export default function AdminConsole() {
     ["content-records", "Records", Music2],
     ["content-collections", "Kolleksiyalar", Tags],
     ["content-social", "Ijtimoiy tarmoqlar", Smartphone],
+    ["content-auth-modal", "Kirish / Register", LockKeyhole],
   ];
   const standardNavGroups: Array<[string, Array<[string, string, ElementType]>]> = [
     ["Asosiy", [nav[0], ...nav.slice(10, 14)]],
@@ -2460,7 +2582,8 @@ export default function AdminConsole() {
     ["Tizim", nav.filter(([id]) => id === "team" || id === "audit")],
   ];
   const offlineNav = nav.filter(([id]) => id.startsWith("offline_"));
-  const navGroups: Array<[string, Array<[string, string, ElementType]>]> = adminProfile?.role === "cashier" ? [["Offline do‘kon", offlineNav]] : standardNavGroups;
+  const contentOnlyNav: Array<[string, Array<[string, string, ElementType]>]> = [["Kontent", contentSidebarNav]];
+  const navGroups: Array<[string, Array<[string, string, ElementType]>]> = adminProfile?.role === "cashier" ? [["Offline do‘kon", offlineNav]] : adminProfile?.role === "editor" ? contentOnlyNav : standardNavGroups;
   const activeSidebarId = tab === "content" ? `content-${contentSubsection}` : tab;
   const activeContentLabel = contentNavigation.find(([id]) => id === contentSubsection)?.[1] ?? "Kontent";
   return (
@@ -2471,17 +2594,17 @@ export default function AdminConsole() {
       }}
       className={`admin-theme--${adminTheme}`}
     >
-      <AdminShell activeId={activeSidebarId} groups={navGroups.map(([label, items]) => ({ label, items: items.map(([id, itemLabel, icon]) => ({ id, label: itemLabel, icon })) }))} onNavigate={(id) => { if (id.startsWith("content-")) { setContentSubsection(id.slice("content-".length) as ContentSubsection); setTab("content"); void run(() => refresh("content")); return; } setTab(id as Tab); void run(() => refresh(id as Tab)); }} compact={sidebarCompact} onCompactChange={setSidebarCompact} title={tab === "content" ? activeContentLabel : nav.find((item) => item[0] === tab)?.[1] ?? "Admin"} theme={adminTheme} onThemeChange={(value) => setAdminTheme(value as "light" | "midnight" | "violet" | "graphite" | "forest")} profile={adminProfile} busy={loading} onRefresh={() => void run(async () => { await refresh(); await refresh("dashboard"); })} notificationCount={unreadActivities.length} notificationContent={<section className="admin-activity-notifications"><header><div><p>YANGI FAOLLIK</p><b>Bildirishnomalar</b></div>{unreadActivities.length > 0 && <button type="button" onClick={() => markActivitiesRead(unreadActivities.map((item) => item.id))}><CheckCheck size={15} /> Barchasini o‘qish</button>}</header><div className="admin-notification-tabs"><button type="button" className={notificationSection === "system" ? "is-active" : ""} onClick={() => setNotificationSection("system")}>Tizim <i>{systemActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button><button type="button" className={notificationSection === "orders" ? "is-active" : ""} onClick={() => setNotificationSection("orders")}>Buyurtmalar <i>{orderActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button></div>{notificationSection === "orders" && <div className="admin-order-notification-permission"><span>{browserNotificationPermission === "granted" ? "Chrome bildirishnomasi yoqilgan" : "Ovozli Chrome bildirishnomalarini yoqing"}</span>{browserNotificationPermission !== "granted" && <button type="button" onClick={() => void enableOrderNotifications()}>Yoqish</button>}</div>}{visibleActivities.length ? <div className="admin-activity-notification-list">{visibleActivities.slice(0, 12).map((item) => { const isRead = readActivityIds.includes(item.id); const isOrder = item.entityType === "order"; return <button type="button" key={item.id} className={`admin-activity-notification${isRead ? " is-read" : ""}${isOrder ? " is-order" : ""}`} onClick={() => { markActivitiesRead([item.id]); if (isOrder) void openOrderNotification(item.entityId); }}><i aria-hidden="true" /><span><b>{dashboardActivityTitle(item.action, item.entityType)}</b><small>{item.user} · {dashboardTime(item.createdAt)}{isOrder ? " · Chekni ochish" : ""}</small></span></button>; })}</div> : <p className="admin-activity-empty">Bu bo‘limda bildirishnoma yo‘q.</p>}</section>} onSignOut={() => { signOutAdmin(); setToken(""); }}>
+      <AdminShell activeId={activeSidebarId} groups={navGroups.map(([label, items]) => ({ label, items: items.map(([id, itemLabel, icon]) => ({ id, label: itemLabel, icon })) }))} onNavigate={(id) => { if (id.startsWith("content-")) { setContentSubsection(id.slice("content-".length) as ContentSubsection); setTab("content"); void run(() => refresh("content")); return; } setTab(id as Tab); void run(() => refresh(id as Tab)); }} compact={sidebarCompact} onCompactChange={setSidebarCompact} title={tab === "content" ? activeContentLabel : nav.find((item) => item[0] === tab)?.[1] ?? "Admin"} theme={adminTheme} onThemeChange={(value) => setAdminTheme(value as "light" | "midnight" | "violet" | "graphite" | "forest")} profile={adminProfile} busy={loading} onRefresh={() => void run(async () => { await refresh(); if (adminProfile?.role !== "editor") await refresh("dashboard"); })} notificationCount={adminProfile?.role === "editor" ? 0 : unreadActivities.length} notificationContent={<section className="admin-activity-notifications"><header><div><p>YANGI FAOLLIK</p><b>Bildirishnomalar</b></div>{unreadActivities.length > 0 && <button type="button" onClick={() => markActivitiesRead(unreadActivities.map((item) => item.id))}><CheckCheck size={15} /> Barchasini o‘qish</button>}</header><div className="admin-notification-tabs"><button type="button" className={notificationSection === "system" ? "is-active" : ""} onClick={() => setNotificationSection("system")}>Tizim <i>{systemActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button><button type="button" className={notificationSection === "orders" ? "is-active" : ""} onClick={() => setNotificationSection("orders")}>Buyurtmalar <i>{orderActivities.filter((item) => !readActivityIds.includes(item.id)).length}</i></button></div>{notificationSection === "orders" && <div className="admin-order-notification-permission"><span>{browserNotificationPermission === "granted" ? "Chrome bildirishnomasi yoqilgan" : "Ovozli Chrome bildirishnomalarini yoqing"}</span>{browserNotificationPermission !== "granted" && <button type="button" onClick={() => void enableOrderNotifications()}>Yoqish</button>}</div>}{visibleActivities.length ? <div className="admin-activity-notification-list">{visibleActivities.slice(0, 12).map((item) => { const isRead = readActivityIds.includes(item.id); const isOrder = item.entityType === "order"; return <button type="button" key={item.id} className={`admin-activity-notification${isRead ? " is-read" : ""}${isOrder ? " is-order" : ""}`} onClick={() => { markActivitiesRead([item.id]); if (isOrder) void openOrderNotification(item.entityId); }}><i aria-hidden="true" /><span><b>{dashboardActivityTitle(item.action, item.entityType)}</b><small>{item.user} · {dashboardTime(item.createdAt)}{isOrder ? " · Chekni ochish" : ""}</small></span></button>; })}</div> : <p className="admin-activity-empty">Bu bo‘limda bildirishnoma yo‘q.</p>}</section>} onSignOut={() => { signOutAdmin(); setToken(""); }}>
         <AdminToast message={notice} />
         <AdminToast message={error} tone="error" />
         <TabsContent value="dashboard">
-          <DashboardOverview dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} period={dashboardPeriod} metric={dashboardMetric} granularity={dashboardGranularity} customFrom={dashboardFrom} customTo={dashboardTo} customers={customers} orders={orders} onCurrency={setDashboardCurrency} onPeriod={setDashboardPeriod} onMetric={setDashboardMetric} onGranularity={setDashboardGranularity} onCustomFrom={setDashboardFrom} onCustomTo={setDashboardTo} heading="Dashboard" />
+          <DashboardOverview dashboard={dashboard as DashboardData | null} token={token} currency={dashboardCurrency} period={dashboardPeriod} metric={dashboardMetric} granularity={dashboardGranularity} customFrom={dashboardFrom} customTo={dashboardTo} customers={customers} orders={orders} onCurrency={setDashboardCurrency} onPeriod={setDashboardPeriod} onMetric={setDashboardMetric} onGranularity={setDashboardGranularity} onCustomFrom={setDashboardFrom} onCustomTo={setDashboardTo} heading="Dashboard" />
         </TabsContent>
         <TabsContent value="analytics">
-          <DashboardOverview dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} period={dashboardPeriod} metric={dashboardMetric} granularity={dashboardGranularity} customFrom={dashboardFrom} customTo={dashboardTo} customers={customers} orders={orders} onCurrency={setDashboardCurrency} onPeriod={setDashboardPeriod} onMetric={setDashboardMetric} onGranularity={setDashboardGranularity} onCustomFrom={setDashboardFrom} onCustomTo={setDashboardTo} />
+          <DashboardOverview dashboard={dashboard as DashboardData | null} token={token} currency={dashboardCurrency} period={dashboardPeriod} metric={dashboardMetric} granularity={dashboardGranularity} customFrom={dashboardFrom} customTo={dashboardTo} customers={customers} orders={orders} onCurrency={setDashboardCurrency} onPeriod={setDashboardPeriod} onMetric={setDashboardMetric} onGranularity={setDashboardGranularity} onCustomFrom={setDashboardFrom} onCustomTo={setDashboardTo} />
         </TabsContent>
         <TabsContent value="analytics_sales"><SalesAnalyticsSection dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} /></TabsContent>
-        <TabsContent value="analytics_products"><ProductsAnalyticsSection dashboard={dashboard as DashboardData | null} /></TabsContent>
+        <TabsContent value="analytics_products"><ProductsAnalyticsSection dashboard={dashboard as DashboardData | null} token={token} /></TabsContent>
         <TabsContent value="analytics_drops"><DropPerformanceSection dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} /></TabsContent>
         <TabsContent value="analytics_inventory"><InventoryAnalyticsSection dashboard={dashboard as DashboardData | null} /></TabsContent>
         <TabsContent value="analytics_customers"><CustomersAnalyticsSection dashboard={dashboard as DashboardData | null} currency={dashboardCurrency} customers={customers} onOpenCustomer={(id) => void openOrderCustomer(id)} /></TabsContent>
@@ -2519,7 +2642,7 @@ export default function AdminConsole() {
                 </div>
                 {productSubsection === "all" ? <ProductInventoryWorkspace products={products} categories={categories} transfers={transfers} token={token} onEdit={pick} onInspect={(product) => setInspectedProductId(product.id)} onRefresh={() => refresh("products")} onNotice={setNotice} /> : <OfflineTransferWorkspace products={products} transfers={transfers} token={token} onRefresh={() => refresh("products")} onNotice={setNotice} />}
               </div>
-              {inspectedProduct && <ProductInspector product={inspectedProduct} onClose={() => setInspectedProductId(null)} />}
+              {inspectedProduct && <ProductInspector product={inspectedProduct} restock={{ token, onComplete: async () => { await refresh("products"); setInspectedProductId(null); } }} onClose={() => setInspectedProductId(null)} />}
             </section>
           ) : (
             <section className="admin-editor-page">
@@ -2593,28 +2716,22 @@ export default function AdminConsole() {
                         <p className="ui-overline">ASOSIY MA’LUMOT</p>
                         <h3>Mahsulot nomi</h3>
                       </div>
-                      <div className="ui-form-grid product-language-grid">
-                        <Field label="O‘zbekcha nomi">
-                          <input value={form.titleUz} onChange={(e) => setForm({ ...form, titleUz: e.target.value })} placeholder="Masalan: Qora futbolka" required />
-                        </Field>
-                        <Field label="Ruscha nomi">
-                          <input value={form.titleRu} onChange={(e) => setForm({ ...form, titleRu: e.target.value })} placeholder="Например: Чёрная футболка" />
-                        </Field>
-                        <Field label="Inglizcha nomi">
-                          <input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} placeholder="Example: Black T-shirt" />
-                        </Field>
-                      </div>
+                      <div className="tailadmin-segmented-tabs product-language-tabs">{([['uz','O‘zbekcha'],['ru','Русский'],['en','English'],['ja','日本語']] as const).map(([key,label]) => <button type="button" key={key} className={productLanguage === key ? "is-active" : ""} onClick={() => setProductLanguage(key)}>{label}</button>)}</div>
+                      {productLanguage === "uz" && <Field label="O‘zbekcha nomi"><input value={form.titleUz} onChange={(e) => setForm({ ...form, titleUz: e.target.value })} placeholder="Masalan: Qora futbolka" required /></Field>}
+                      {productLanguage === "ru" && <Field label="Ruscha nomi"><input value={form.titleRu} onChange={(e) => setForm({ ...form, titleRu: e.target.value })} placeholder="Например: Чёрная футболка" /></Field>}
+                      {productLanguage === "en" && <Field label="Inglizcha nomi"><input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} placeholder="Example: Black T-shirt" /></Field>}
+                      {productLanguage === "ja" && <Field label="日本語の名前"><input value={form.titleJa} onChange={(e) => setForm({ ...form, titleJa: e.target.value })} placeholder="例：黒いTシャツ" /></Field>}
                     </section>
                     <section className="product-form-block">
                       <div>
                         <p className="ui-overline">TAVSIF</p>
                         <h3>Mahsulot haqida</h3>
                       </div>
-                      <div className="ui-form-grid product-language-grid">
-                        <Field label="O‘zbekcha tavsif"><textarea rows={5} value={form.descriptionUz} onChange={(e) => setForm({ ...form, descriptionUz: e.target.value })} /></Field>
-                        <Field label="Ruscha tavsif"><textarea rows={5} value={form.descriptionRu} onChange={(e) => setForm({ ...form, descriptionRu: e.target.value })} /></Field>
-                        <Field label="Inglizcha tavsif"><textarea rows={5} value={form.descriptionEn} onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })} /></Field>
-                      </div>
+                      <div className="tailadmin-segmented-tabs product-language-tabs">{([['uz','O‘zbekcha'],['ru','Русский'],['en','English'],['ja','日本語']] as const).map(([key,label]) => <button type="button" key={key} className={productLanguage === key ? "is-active" : ""} onClick={() => setProductLanguage(key)}>{label}</button>)}</div>
+                      {productLanguage === "uz" && <Field label="O‘zbekcha tavsif"><textarea rows={5} value={form.descriptionUz} onChange={(e) => setForm({ ...form, descriptionUz: e.target.value })} /></Field>}
+                      {productLanguage === "ru" && <Field label="Ruscha tavsif"><textarea rows={5} value={form.descriptionRu} onChange={(e) => setForm({ ...form, descriptionRu: e.target.value })} /></Field>}
+                      {productLanguage === "en" && <Field label="Inglizcha tavsif"><textarea rows={5} value={form.descriptionEn} onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })} /></Field>}
+                      {productLanguage === "ja" && <Field label="日本語の説明"><textarea rows={5} value={form.descriptionJa} onChange={(e) => setForm({ ...form, descriptionJa: e.target.value })} placeholder="商品の説明を入力してください" /></Field>}
                     </section>
                     <section className="product-form-block product-form-block--size-guide">
                       <div>
@@ -3028,6 +3145,7 @@ export default function AdminConsole() {
                 />
               )}
               {contentSubsection === "social" && <SocialLinksManager token={token} onNotice={setNotice} />}
+              {contentSubsection === "auth-modal" && <AuthModalManager token={token} onNotice={setNotice} />}
           </section>
         </TabsContent>
         <TabsContent value="pages">
@@ -3039,7 +3157,7 @@ export default function AdminConsole() {
         </TabsContent>
         <TabsContent value="notifications"><NotificationManager items={storeNotifications} token={token} onChanged={(items) => setStoreNotifications(items)} /></TabsContent>
         <TabsContent value="team"><TeamManagement token={token} audit={audit} onNotice={setNotice} /></TabsContent>
-        <TabsContent value="audit"><section className="tailadmin-products-page"><header className="tailadmin-page-heading"><div><p className="ui-overline">Tizim</p><h2>Audit log</h2><span>Tizimdagi oxirgi hodisalar va amallar.</span></div></header><Card><CardContent><pre className="admin-json">{JSON.stringify(audit, null, 2)}</pre></CardContent></Card></section></TabsContent>
+        <TabsContent value="audit"><section className="tailadmin-products-page"><header className="tailadmin-page-heading"><div><p className="ui-overline">Tizim</p><h2>Audit log</h2><span>Tizimdagi oxirgi hodisalar va amallar.</span></div></header><AuditLogView items={audit} /></section></TabsContent>
       </AdminShell>
       {orderCustomerLoading && <div className="inventory-confirm-backdrop customer-detail-backdrop"><p className="customer-detail-loading customer-detail-loading--overlay">Mijoz profili yuklanmoqda…</p></div>}
       {orderCustomer && <div className="inventory-confirm-backdrop customer-detail-backdrop" onMouseDown={() => setOrderCustomer(null)}><section className="customer-detail-dialog" role="dialog" aria-modal="true" aria-label="Mijoz profili" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="ui-overline">MIJOZ PROFILI</p><h3>{`${orderCustomer.firstName} ${orderCustomer.lastName}`.trim() || "Mijoz"}</h3><span>{orderCustomer.email || "Email kiritilmagan"}</span></div><button type="button" onClick={() => setOrderCustomer(null)} aria-label="Yopish">×</button></header><div className="customer-detail-metrics"><div><span>Buyurtmalar</span><b>{orderCustomer.totalOrders} ta</b></div><div><span>To‘langan</span><b>{orderCustomer.paidOrders} ta</b></div><div><span>Jami savdo</span><b>{money(orderCustomer.totalSpent, "UZS")}</b></div><div><span>O‘rtacha chek</span><b>{money(orderCustomer.averageOrder, "UZS")}</b></div></div><div className="customer-detail-columns"><section><h4>Aloqa va joylashuv</h4><dl><div><dt>Telefon</dt><dd>{orderCustomer.phone || "—"}</dd></div><div><dt>Hudud</dt><dd>{orderCustomer.region || "—"}</dd></div><div><dt>Ro‘yxatdan o‘tgan</dt><dd>{readableDate(orderCustomer.createdAt)}</dd></div><div><dt>Oxirgi kirish</dt><dd>{orderCustomer.lastLoginAt ? readableDate(orderCustomer.lastLoginAt) : "—"}</dd></div></dl>{orderCustomer.addresses.length ? <div className="customer-addresses">{orderCustomer.addresses.map((address) => <p key={address.id}><b>{address.isDefault ? "Asosiy manzil" : "Manzil"}</b><span>{[address.country, address.city, address.line1, address.line2, address.postalCode].filter(Boolean).join(", ")}</span></p>)}</div> : <p className="customer-detail-empty">Saqlangan manzil yo‘q.</p>}</section><section><h4>Buyurtmalar tarixi</h4><div className="customer-detail-orders">{orderCustomer.orders.map((order) => <article key={order.id}><div><b>#{order.orderNumber}</b><span>{readableDate(order.createdAt)} · {order.paymentStatus}</span><small>{order.items.map((item) => `${item.title} × ${item.quantity}`).join(", ") || "Mahsulot yo‘q"}</small></div><strong>{money(Number(order.totalAmount), order.currencyCode || "UZS")}</strong></article>)}{!orderCustomer.orders.length && <p className="customer-detail-empty">Bu mijozda buyurtma yo‘q.</p>}</div></section></div></section></div>}
@@ -3103,33 +3221,39 @@ function Taxonomy({
   );
 }
 function CategoryManager({ categories, products, token, onChanged }: { categories: Taxonomy[]; products: Product[]; token: string; onChanged: () => Promise<void> }) {
-  const [editing, setEditing] = useState<Taxonomy | null>(null); const [query, setQuery] = useState(""); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [view, setView] = useState<"list" | "editor">("list");
-  const [pendingProductAction, setPendingProductAction] = useState<{ kind: "move" | "detach"; product: Product } | null>(null);
+  const [editing, setEditing] = useState<Taxonomy | null>(null); const [query, setQuery] = useState(""); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [view, setView] = useState<"list" | "editor">("list"); const [pendingCategoryDeletion, setPendingCategoryDeletion] = useState(false);
+  const [pendingProductAction, setPendingProductAction] = useState<{ kind: "attach" | "detach" | "all"; product: Product } | null>(null);
   const visible = products.filter((product) => `${product.title} ${product.slug}`.toLocaleLowerCase("uz-UZ").includes(query.toLocaleLowerCase("uz-UZ")));
-  const open = (category?: Taxonomy, productsOnly = false) => { setEditing(category ? { ...category } : { id: "", name: "", slug: "", isVisible: true }); setQuery(""); setMessage(productsOnly ? "Mahsulotlarni boshqaring." : ""); setView("editor"); };
-  const saveCategory = async () => { if (!editing || !editing.name.trim() || !editing.slug.trim()) return setMessage("Nomi va slug majburiy."); setBusy(true); try { await api(editing.id ? `/admin/catalog/categories/${editing.id}` : "/admin/catalog/categories", token, { method: editing.id ? "PATCH" : "POST", body: JSON.stringify({ name: editing.name.trim(), slug: editing.slug.trim(), isVisible: editing.isVisible }) }); await onChanged(); setView("list"); setEditing(null); } catch (error) { setMessage(error instanceof Error ? error.message : "Kategoriya saqlanmadi."); } finally { setBusy(false); } };
-  const move = async (product: Product) => { if (!editing) return; setBusy(true); try { await api(`/admin/catalog/products/${product.id}`, token, { method: "PATCH", body: JSON.stringify({ categoryId: editing.id }) }); await onChanged(); setPendingProductAction(null); } catch (error) { setMessage(error instanceof Error ? error.message : "Mahsulot ko‘chirilmadi."); } finally { setBusy(false); } };
-  const detach = async (product: Product) => { if (!editing) return; setBusy(true); try { await api(`/admin/catalog/products/${product.id}`, token, { method: "PATCH", body: JSON.stringify({ categoryId: null }) }); await onChanged(); setPendingProductAction(null); } catch (error) { setMessage(error instanceof Error ? error.message : "Mahsulot olib tashlanmadi."); } finally { setBusy(false); } };
+  const open = (category?: Taxonomy, productsOnly = false) => { setEditing(category ? { ...category, translations: category.translations ?? {} } : { id: "", name: "", slug: "", translations: {}, isVisible: true }); setQuery(""); setMessage(productsOnly ? "Mahsulotlarni boshqaring." : ""); setView("editor"); };
+  const saveCategory = async () => { if (!editing || !editing.name.trim() || !editing.slug.trim()) return setMessage("Ruscha nom va inglizcha slug majburiy."); setBusy(true); try { const translations = await api<Record<"uz" | "en" | "ja", string>>("/admin/catalog/categories/translate", token, { method: "POST", body: JSON.stringify({ name: editing.name.trim() }) }); await api(editing.id ? `/admin/catalog/categories/${editing.id}` : "/admin/catalog/categories", token, { method: editing.id ? "PATCH" : "POST", body: JSON.stringify({ name: editing.name.trim(), slug: editing.slug.trim(), translations, isVisible: editing.isVisible }) }); await onChanged(); setView("list"); setEditing(null); } catch (error) { setMessage(error instanceof Error ? error.message : "Kategoriya saqlanmadi."); } finally { setBusy(false); } };
+  const setMembership = async (product: Product, assigned: boolean) => { if (!editing) return; setBusy(true); try { await api(`/admin/catalog/products/${product.id}/categories/${editing.id}`, token, { method: assigned ? "POST" : "DELETE" }); await onChanged(); setPendingProductAction(null); } catch (error) { setMessage(error instanceof Error ? error.message : "Mahsulot kategoriyasi yangilanmadi."); } finally { setBusy(false); } };
+  const addToAll = async (product: Product) => { setBusy(true); try { await api(`/admin/catalog/products/${product.id}/categories/all`, token, { method: "POST" }); await onChanged(); setPendingProductAction(null); } catch (error) { setMessage(error instanceof Error ? error.message : "Mahsulot barcha kategoriyaga qo‘shilmadi."); } finally { setBusy(false); } };
+  const deleteCategory = async () => { if (!editing?.id) return; setBusy(true); try { await api(`/admin/catalog/categories/${editing.id}`, token, { method: "DELETE" }); await onChanged(); setEditing(null); setView("list"); } catch (error) { setMessage(error instanceof Error ? error.message : "Kategoriya o‘chirilmadi."); } finally { setBusy(false); } };
   const productColors = (product: Product) => [...new Set(product.variants.map((variant) => variant.color?.trim()).filter((color): color is string => Boolean(color)))];
+  const productPreview = (product: Product) => product.media[0]?.url || product.variants.flatMap((variant) => Array.isArray(variant.attributes?.images) ? variant.attributes.images.filter((image): image is string => typeof image === "string" && Boolean(image.trim())) : [])[0] || "/images/p1.jpg";
   if (view === "list") return <section className="tailadmin-module-page"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-1 text-sm text-gray-500 dark:text-gray-400">Katalog sozlamalari</p><h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">Kategoriyalar</h2></div><Button onClick={() => open()}><Plus size={16} />Yangi kategoriya</Button></div><Card className="category-manager category-manager--list"><CardHeader><div><CardTitle>Kategoriyalar ro‘yxati</CardTitle><CardDescription>Mahsulotlar kategoriyalarini tartiblang va saytda ko‘rinishini boshqaring.</CardDescription></div></CardHeader><CardContent><div className="category-row-list">{categories.map((category) => <article key={category.id}><div><b>{category.name}</b><span>{category.productCount ?? products.filter((product) => product.categoryId === category.id).length} mahsulot</span></div><div className="category-row-actions"><Button size="sm" onClick={() => open(category)}>Tahrirlash</Button><Button size="sm" variant="outline" onClick={() => open(category, true)}>Mahsulotlar</Button></div></article>)}{!categories.length && <Empty>Kategoriya yo‘q.</Empty>}</div></CardContent></Card></section>;
   if (!editing) return null;
   const updateName = (name: string) => {
-    const generatedSlug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const generatedSlug = name.toLowerCase().replace(/[а-яёўқғҳ]/g, (letter) => (({ а: "a", б: "b", в: "v", г: "g", ғ: "g", д: "d", е: "e", ё: "yo", ж: "j", з: "z", и: "i", й: "y", к: "k", қ: "q", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "x", ҳ: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sh", ъ: "", ы: "i", ь: "", э: "e", ю: "yu", я: "ya", ў: "o" } as Record<string, string>)[letter] ?? "")).trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     setEditing({ ...editing, name, slug: editing.id ? editing.slug : generatedSlug });
   };
   return <section className="tailadmin-module-page"><Card className="category-manager category-manager--editor">
     <CardHeader><div><p className="ui-overline">KATEGORIYALAR / {editing.id ? "EDIT" : "YANGI"}</p><CardTitle>{editing.id ? editing.name || "Kategoriyani tahrirlash" : "Yangi kategoriya"}</CardTitle><CardDescription>Saqlangach kategoriya ro‘yxatiga qaytasiz.</CardDescription></div><Button variant="outline" onClick={() => { setView("list"); setEditing(null); }}>← Ro‘yxat</Button></CardHeader>
     <CardContent><section className="category-editor">
-      <header><Button size="sm" onClick={() => void saveCategory()} disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</Button></header>
+      <header><Button size="sm" onClick={() => void saveCategory()} disabled={busy}>{busy ? "Tarjima qilinib saqlanmoqda…" : "Saqlash"}</Button>{editing.id && <Button size="sm" variant="outline" onClick={() => setPendingCategoryDeletion(true)} disabled={busy}>Kategoriyani o‘chirish</Button>}</header>
       <div className="category-editor-form">
-        <Field label="Nomi"><input value={editing.name} onChange={(event) => updateName(event.target.value)} placeholder="Kategoriya nomi" required /></Field>
+        <Field label="Русский"><input value={editing.name} onChange={(event) => updateName(event.target.value)} placeholder="Аксессуары" required /></Field>
+        <Field label="O‘zbekcha"><input value={editing.translations?.uz ?? ""} onChange={(event) => setEditing({ ...editing, translations: { ...editing.translations, uz: event.target.value } })} placeholder="Aksessuarlar" /></Field>
+        <Field label="English"><input value={editing.translations?.en ?? ""} onChange={(event) => setEditing({ ...editing, translations: { ...editing.translations, en: event.target.value } })} placeholder="Accessories" /></Field>
+        <Field label="日本語"><input value={editing.translations?.ja ?? ""} onChange={(event) => setEditing({ ...editing, translations: { ...editing.translations, ja: event.target.value } })} placeholder="アクセサリー" /></Field>
         <div className="category-search-field"><label htmlFor="category-product-search">Qidirish</label><input id="category-product-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="SKU yoki mahsulot nomi" disabled={!editing.id} /></div>
       </div>
       <div className="category-slug-field"><Field label="Slug"><input value={editing.slug} onChange={(event) => setEditing({ ...editing, slug: event.target.value })} required /></Field></div>
       <label className="admin-record-active"><input type="checkbox" checked={editing.isVisible} onChange={(event) => setEditing({ ...editing, isVisible: event.target.checked })} /> Saytda ko‘rsatish</label>
-      {editing.id ? <div className="category-product-list" aria-label="Kategoriya mahsulotlari">{visible.map((product) => { const assigned = product.categoryId === editing.id; const owner = categories.find((category) => category.id === product.categoryId); const colors = productColors(product); const requestAction = () => setPendingProductAction({ kind: assigned ? "detach" : "move", product }); return <article key={product.id} className={assigned ? "is-assigned" : ""}><button type="button" className="category-product-select" aria-label={`${product.title} ${assigned ? "tanlangan" : "tanlanmagan"}`} disabled={busy} onClick={requestAction}>{assigned ? "✓" : ""}</button><img src={contentImageUrl(product.media[0]?.url)} alt="" /><div><b>{product.title}</b><small>{product.metadata?.article || product.slug}</small><span className="category-product-colors">{colors.length ? colors.map((color) => <i key={color} title={color} style={{ backgroundColor: colorHex(color) }} />) : "Rang kiritilmagan"}</span></div><div className="category-product-status"><small>{assigned ? "Shu kategoriya" : owner ? `Hozir: ${owner.name}` : "Kategoriya biriktirilmagan"}</small><Button type="button" size="sm" variant={assigned ? "outline" : "default"} disabled={busy} onClick={requestAction}>{assigned ? "Olib tashlash" : "Biriktirish"}</Button></div></article>; })}{!visible.length && <Empty>Mahsulot topilmadi.</Empty>}</div> : <p className="category-save-note">Mahsulotlarni tanlash uchun avval kategoriyani saqlang.</p>}
+      {editing.id ? <div className="category-product-list" aria-label="Kategoriya mahsulotlari">{visible.map((product) => { const categoryIds = [...new Set([product.categoryId, ...(product.metadata?.categoryIds ?? [])].filter((id): id is string => Boolean(id)))]; const assigned = categoryIds.includes(editing.id); const owner = categories.find((category) => category.id === product.categoryId); const colors = productColors(product); const requestAction = () => setPendingProductAction({ kind: assigned ? "detach" : "attach", product }); return <article key={product.id} className={assigned ? "is-assigned" : ""}><button type="button" className="category-product-select" aria-label={`${product.title} ${assigned ? "tanlangan" : "tanlanmagan"}`} disabled={busy} onClick={requestAction}>{assigned ? "✓" : ""}</button><img src={contentImageUrl(productPreview(product))} alt={`${product.title} rasmi`} onError={(event) => { event.currentTarget.src = "/images/p1.jpg"; }} /><div><b>{product.title}</b><small>{product.metadata?.article || product.slug}</small><span className="category-product-colors">{colors.length ? colors.map((color) => <i key={color} title={color} style={{ backgroundColor: colorHex(color) }} />) : "Rang kiritilmagan"}</span></div><div className="category-product-status"><small>{assigned ? "Shu kategoriya" : owner ? `Asosiy: ${owner.name}` : "Kategoriya biriktirilmagan"}</small><Button type="button" size="sm" variant={assigned ? "outline" : "default"} disabled={busy} onClick={requestAction}>{assigned ? "Olib tashlash" : "Biriktirish"}</Button>{!assigned && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setPendingProductAction({ kind: "all", product })}>Barchasiga qo‘shish</Button>}</div></article>; })}{!visible.length && <Empty>Mahsulot topilmadi.</Empty>}</div> : <p className="category-save-note">Mahsulotlarni tanlash uchun avval kategoriyani saqlang.</p>}
       <AdminToast message={message} />
-      {pendingProductAction && <AdminConfirmDialog title={pendingProductAction.kind === "detach" ? "Mahsulot kategoriyadan olib tashlansinmi?" : "Mahsulot shu kategoriyaga biriktirilsinmi?"} description={`“${pendingProductAction.product.title}” uchun kategoriya bog‘lanishi yangilanadi.`} confirmLabel={pendingProductAction.kind === "detach" ? "Ha, olib tashlash" : "Ha, biriktirish"} busy={busy} onCancel={() => setPendingProductAction(null)} onConfirm={() => void (pendingProductAction.kind === "detach" ? detach(pendingProductAction.product) : move(pendingProductAction.product))} />}
+      {pendingCategoryDeletion && <AdminConfirmDialog title="Kategoriya o‘chirilsinmi?" description="Kategoriya o‘chiriladi va u bilan bog‘langan mahsulotlar bu kategoriyadan chiqariladi." confirmLabel="Ha, o‘chirish" busy={busy} onCancel={() => setPendingCategoryDeletion(false)} onConfirm={() => void deleteCategory()} />}
+      {pendingProductAction && <AdminConfirmDialog title={pendingProductAction.kind === "all" ? "Mahsulot barcha kategoriyaga qo‘shilsinmi?" : pendingProductAction.kind === "detach" ? "Mahsulot kategoriyadan olib tashlansinmi?" : "Mahsulot shu kategoriyaga biriktirilsinmi?"} description={pendingProductAction.kind === "all" ? `“${pendingProductAction.product.title}” barcha mavjud kategoriyalarda ko‘rinadi.` : `“${pendingProductAction.product.title}” uchun kategoriya bog‘lanishi yangilanadi.`} confirmLabel={pendingProductAction.kind === "all" ? "Ha, barchasiga qo‘shish" : pendingProductAction.kind === "detach" ? "Ha, olib tashlash" : "Ha, biriktirish"} busy={busy} onCancel={() => setPendingProductAction(null)} onConfirm={() => void (pendingProductAction.kind === "all" ? addToAll(pendingProductAction.product) : setMembership(pendingProductAction.product, pendingProductAction.kind === "attach"))} />}
     </section></CardContent>
   </Card></section>;
 }
@@ -3382,8 +3506,12 @@ function HeaderQuotesManager({ quotes, token, onChanged }: { quotes: HeaderQuote
     <Card><CardHeader><div><CardTitle>Faol quote’lar</CardTitle><CardDescription>{quotes.filter((quote) => quote.isActive).length} ta faol quote</CardDescription></div></CardHeader><CardContent><div className="header-quote-list">{quotes.map((quote, index) => <article key={quote.id}><span className="header-quote-order">{String(index + 1).padStart(2, "0")}</span><p>{quote.text}</p><label className="ui-checkbox"><input type="checkbox" checked={quote.isActive} disabled={busy} onChange={(event) => void save(quotes.map((item) => item.id === quote.id ? { ...item, isActive: event.target.checked } : item), event.target.checked ? "Quote faollashtirildi." : "Quote yashirildi.")} /> Faol</label><Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void save(quotes.filter((item) => item.id !== quote.id), "Quote o‘chirildi.")}><Trash2 size={15} /> O‘chirish</Button></article>)}{!quotes.length && <Empty><FileText /> Hali header quote yo‘q.</Empty>}</div><AdminToast message={message} /></CardContent></Card>
   </section>;
 }
-const contentImageUrl = (url?: string | null) => !url ? "" : (url.startsWith("http") ? url : `${API.replace(/\/api$/, "")}${url}`);
-const readableDate = (value?: string | null) => value ? new Intl.DateTimeFormat("uz-UZ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
+const contentImageUrl = (url?: string | null) => {
+  if (!url) return "";
+  if (/^(https?:|blob:|data:)/i.test(url)) return url;
+  return url.startsWith("/uploads/") ? `${API.replace(/\/api$/, "")}${url}` : url;
+};
+const readableDate = (value?: string | null) => value ? new Intl.DateTimeFormat("uz-UZ", { dateStyle: "medium", timeStyle: "medium", timeZone: "Asia/Tashkent" }).format(new Date(value)) : "—";
 const localDateTimeInput = (value?: string | null) => {
   if (!value) return "";
   const date = new Date(value);
@@ -3464,7 +3592,7 @@ function BlogManager({ posts, token, onChanged }: { posts: BlogPost[]; token: st
     try {
       const cover = coverFile ? await upload(coverFile) : { url: draft.coverImageUrl.trim() };
       const uploadedGallery = await Promise.all(galleryFiles.map(upload));
-      const seo = { ...(editing?.seo ?? {}), galleryImageUrls: [...draft.gallery, ...uploadedGallery.map((item) => item.url)], textLinkUrl: draft.textLinkUrl.trim(), textLinkLabel: draft.textLinkLabel.trim() };
+      const seo = { ...(editing?.seo ?? {}), galleryImageUrls: [...draft.gallery, ...uploadedGallery.map((item) => item.url)], textLinkUrl: draft.textLinkUrl.trim(), textLinkLabel: draft.textLinkLabel.trim(), title: draft.title.trim(), description: draft.excerpt.trim() || draft.body.trim(), image: cover.url };
       const payload = { title: draft.title.trim(), slug, excerpt: draft.excerpt.trim(), body: draft.body.trim(), coverImageUrl: cover.url, isPublished: draft.isPublished, publishedAt: new Date(draft.publishedAt).toISOString(), seo };
       await api(editing ? `/admin/content/posts/${editing.id}` : "/admin/content/posts", token, { method: editing ? "PATCH" : "POST", body: JSON.stringify(payload) });
       setEditing(null); setDraft(empty); setCoverFile(null); setGalleryFiles([]); setGalleryUrl(""); setView("list"); setMessage(editing ? "Blog tahrirlandi." : "Blog qo‘shildi."); onChanged();
@@ -3890,7 +4018,7 @@ function PageBannerEditor({
           <Card className="custom-section-registry">
             <CardHeader><CardTitle>Mavjud sectionlar</CardTitle><CardDescription>Yangi section qo‘shilmaydi. Tahrirlash, holatini boshqarish yoki dublikat qilish mumkin.</CardDescription></CardHeader>
             <CardContent>
-              {orderedBanners.length ? <div className="custom-section-registry-list">{orderedBanners.map((banner, index) => { const active = banner.isActive !== false; const duplicate = isDuplicateSection(banner); return <article className="custom-section-registry-row custom-section-registry-row--default" key={banner.id}><span className="custom-section-number">{String(index + 1).padStart(2, "0")}</span><div><strong><ScrollingName>{banner.name}</ScrollingName></strong><small>{banner.cartEnabled ? "Banner + Cart · Desktop/Mobil" : "Banner · Desktop/Mobil"}</small></div><span className={active ? "custom-section-status" : "custom-section-status is-paused"}>{active ? "Faol" : "Vaqtincha o‘chirilgan"}</span><Button type="button" size="sm" onClick={() => openExisting(banner)}>Tahrirlash</Button><Button type="button" size="sm" variant={active ? "outline" : "default"} disabled={busy} onClick={() => void toggleDefaultSection(banner.id)}>{active ? "Vaqtincha o‘chirish" : "Aktivlashtirish"}</Button><Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => void duplicateDefaultSection(banner)}><Plus size={14} /> Dublikat</Button>{duplicate && <Button type="button" size="sm" variant="destructive" disabled={busy} onClick={() => setPendingDuplicateDelete(banner)}>O‘chirish</Button>}</article>; })}</div> : <Empty><FileText /> Default sectionlar hali yuklanmadi.</Empty>}
+              {orderedBanners.length ? <div className="tailadmin-section-table-wrap"><table className="tailadmin-section-table"><thead><tr><th>#</th><th>Section</th><th>Ko‘rinish</th><th>Holat</th><th className="tailadmin-section-table-actions">Amallar</th></tr></thead><tbody>{orderedBanners.map((banner, index) => { const active = banner.isActive !== false; const duplicate = isDuplicateSection(banner); return <tr key={banner.id}><td><span className="custom-section-number">{String(index + 1).padStart(2, "0")}</span></td><td><div className="tailadmin-section-name"><strong><ScrollingName>{banner.name}</ScrollingName></strong><small>{duplicate ? "Dublikat section" : "Asosiy section"}</small></div></td><td><span className="tailadmin-section-layout">{banner.cartEnabled ? "Banner + Cart" : "Banner"}<small>Desktop / Mobile</small></span></td><td><span className={active ? "tailadmin-section-status" : "tailadmin-section-status is-paused"}><i />{active ? "Faol" : "Nofaol"}</span></td><td><div className="tailadmin-section-actions"><Button type="button" size="sm" onClick={() => openExisting(banner)}>Tahrirlash</Button><Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void toggleDefaultSection(banner.id)}>{active ? "O‘chirish" : "Faollashtirish"}</Button><Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => void duplicateDefaultSection(banner)}><Plus size={14} /> Dublikat</Button>{duplicate && <Button type="button" size="sm" variant="destructive" disabled={busy} onClick={() => setPendingDuplicateDelete(banner)}>O‘chirish</Button>}</div></td></tr>; })}</tbody></table></div> : <Empty><FileText /> Default sectionlar hali yuklanmadi.</Empty>}
               <AdminToast message={message} />
             </CardContent>
           </Card>
@@ -3907,7 +4035,7 @@ function PageBannerEditor({
       <header className="simple-section-editor-head"><div><p className="ui-overline">{draft.sectionKind === "banner-cart" ? "BANNER + CART" : "BANNER"}</p><h2>{draft.sectionKind === "banner-cart" ? "Banner + Cart" : "Banner"}</h2><span>Section nomi faqat admin panel uchun.</span></div><div className="simple-section-editor-actions"><Button type="button" variant="outline" disabled={busy} onClick={backToTemplateSelection}>Orqaga</Button><Button type="button" disabled={busy} onClick={() => void save()}>{busy ? "Saqlanmoqda..." : "Saqlash"}</Button></div></header>
       <Field label="Section nomi (admin uchun)"><input value={draft.name} onChange={(event) => update("name", event.target.value)} /></Field>
       <div className="simple-section-columns">
-        <section><h3>Desktop</h3><div className="simple-section-form">{Array.from({ length: bannerSlotsFor("desktop") }, (_, index) => <ResponsiveBannerSlotForm key={index} title={bannerSlotsFor("desktop") > 1 ? `Banner ${index + 1}` : undefined} slot={bannerSlotAt("desktop", index)} mode="desktop" onChange={(key, value) => updateBannerSlot("desktop", index, key, value)} onFile={(file) => { if (index === 0) setDesktopFile(file); else { const id = bannerSlotAt("desktop", index).id; setDesktopSlotFiles((current) => { const next = { ...current }; if (file) next[id] = file; else delete next[id]; return next; }); } }} />)}{draft.sectionKind === "banner-cart" && <div className="simple-section-carts">{Array.from({ length: desktopCartSlots }, (_, index) => <Field label={`Mahsulot SKU — Cart ${index + 1}`} key={index}><select value={draft.desktopCartItems?.[index] ?? ""} onChange={(event) => updateCartSlot("desktopCartItems", index, event.target.value)}><option value="">Mavjud SKU ni tanlang</option>{skuProducts.flatMap((product) => product.variants.map((variant) => <option key={variant.id} value={variant.sku}>{variant.sku} — {product.title}{variant.color ? ` / ${variant.color}` : ""}{variant.size ? ` / ${variant.size}` : ""}</option>))}</select></Field>)}</div>}</div></section>
+        <section><h3>Desktop</h3><div className="simple-section-form">{Array.from({ length: bannerSlotsFor("desktop") }, (_, index) => <ResponsiveBannerSlotForm key={index} title={bannerSlotsFor("desktop") > 1 ? `Banner ${index + 1}` : undefined} sizeHint={draft.sectionKind === "banner" ? "1600 × 1600 px · 1:1" : "1920 × 1293 px · 1336:900"} slot={bannerSlotAt("desktop", index)} mode="desktop" onChange={(key, value) => updateBannerSlot("desktop", index, key, value)} onFile={(file) => { if (index === 0) setDesktopFile(file); else { const id = bannerSlotAt("desktop", index).id; setDesktopSlotFiles((current) => { const next = { ...current }; if (file) next[id] = file; else delete next[id]; return next; }); } }} />)}{draft.sectionKind === "banner-cart" && <div className="simple-section-carts">{Array.from({ length: desktopCartSlots }, (_, index) => <Field label={`Mahsulot SKU — Cart ${index + 1}`} key={index}><select value={draft.desktopCartItems?.[index] ?? ""} onChange={(event) => updateCartSlot("desktopCartItems", index, event.target.value)}><option value="">Mavjud SKU ni tanlang</option>{skuProducts.flatMap((product) => product.variants.map((variant) => <option key={variant.id} value={variant.sku}>{variant.sku} — {product.title}{variant.color ? ` / ${variant.color}` : ""}{variant.size ? ` / ${variant.size}` : ""}</option>))}</select></Field>)}</div>}</div></section>
         <section><h3>Mobile</h3><div className="simple-section-form">{Array.from({ length: bannerSlotsFor("mobile") }, (_, index) => <ResponsiveBannerSlotForm key={index} title={bannerSlotsFor("mobile") > 1 ? `Banner ${index + 1}` : undefined} slot={bannerSlotAt("mobile", index)} mode="mobile" onChange={(key, value) => updateBannerSlot("mobile", index, key, value)} onFile={(file) => { if (index === 0) setMobileFile(file); else { const id = bannerSlotAt("mobile", index).id; setMobileSlotFiles((current) => { const next = { ...current }; if (file) next[id] = file; else delete next[id]; return next; }); } }} />)}{draft.sectionKind === "banner-cart" && <div className="simple-section-carts">{Array.from({ length: mobileCartSlots }, (_, index) => <Field label={`Mahsulot SKU — Cart ${index + 1}`} key={index}><select value={draft.mobileCartItems?.[index] ?? ""} onChange={(event) => updateCartSlot("mobileCartItems", index, event.target.value)}><option value="">Mavjud SKU ni tanlang</option>{skuProducts.flatMap((product) => product.variants.map((variant) => <option key={variant.id} value={variant.sku}>{variant.sku} — {product.title}{variant.color ? ` / ${variant.color}` : ""}{variant.size ? ` / ${variant.size}` : ""}</option>))}</select></Field>)}</div>}{draft.sectionKind === "banner-cart" && <Button type="button" variant="outline" size="sm" onClick={() => addCartSlot("mobileCartItems")}>+ Cart</Button>}</div></section>
       </div>
       <AdminToast message={message} />
@@ -3970,12 +4098,14 @@ function PageBannerEditor({
 }
 function ResponsiveBannerSlotForm({
   title,
+  sizeHint,
   slot,
   mode,
   onChange,
   onFile,
 }: {
   title?: string;
+  sizeHint?: string;
   slot: SectionBannerSlot;
   mode: "desktop" | "mobile";
   onChange: (key: "name" | "link" | "linkLabel" | "image" | "shadow", value: string | boolean) => void;
@@ -3986,7 +4116,7 @@ function ResponsiveBannerSlotForm({
   const shadow = mode === "desktop" ? slot.desktopShadow ?? true : slot.mobileShadow ?? true;
   const link = mode === "desktop" ? slot.desktopLink ?? slot.targetUrl : slot.mobileLink ?? slot.targetUrl;
   const linkLabel = mode === "desktop" ? slot.desktopLinkLabel ?? slot.linkLabel : slot.mobileLinkLabel ?? slot.linkLabel;
-  return <fieldset className="simple-banner-slot"><legend>{title}</legend><Field label="Name"><input value={name} onChange={(event) => onChange("name", event.target.value)} /></Field><Field label="Link"><input value={link} onChange={(event) => onChange("link", event.target.value)} placeholder="/shop yoki https://..." /></Field><Field label="Link Name"><input value={linkLabel} onChange={(event) => onChange("linkLabel", event.target.value)} /></Field><Field label="URL Image"><input value={image} onChange={(event) => onChange("image", event.target.value)} placeholder="https://..." /></Field><Field label="Upload Image"><input type="file" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" onChange={(event) => onFile(event.target.files?.[0] ?? null)} /></Field><label className="simple-section-shadow"><input checked={shadow} type="checkbox" onChange={(event) => onChange("shadow", event.target.checked)} /> Shadow</label></fieldset>;
+  return <fieldset className="simple-banner-slot"><legend>{title}</legend><Field label="Name"><input value={name} onChange={(event) => onChange("name", event.target.value)} /></Field><Field label="Link"><input value={link} onChange={(event) => onChange("link", event.target.value)} placeholder="/shop yoki https://..." /></Field><Field label="Link Name"><input value={linkLabel} onChange={(event) => onChange("linkLabel", event.target.value)} /></Field><Field label="URL Image"><input value={image} onChange={(event) => onChange("image", event.target.value)} placeholder="https://..." /></Field><Field label="Upload Image"><input type="file" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" onChange={(event) => onFile(event.target.files?.[0] ?? null)} />{sizeHint && <small className="simple-banner-slot-size">Tavsiya etilgan o‘lcham: {sizeHint}</small>}</Field><label className="simple-section-shadow"><input checked={shadow} type="checkbox" onChange={(event) => onChange("shadow", event.target.checked)} /> Shadow</label></fieldset>;
 }
 function ScrollingName({ children }: { children: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -4520,6 +4650,29 @@ function BannerManager({
     </section>
   );
 }
+function AuthModalManager({ token, onNotice }: { token: string; onNotice: (message: string) => void }) {
+  const [draft, setDraft] = useState({ desktopImageUrl: "", mobileImageUrl: "" });
+  const [desktopFile, setDesktopFile] = useState<File | null>(null);
+  const [mobileFile, setMobileFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { void api<Array<{ key: string; value: Record<string, unknown> }>>("/admin/content/settings", token).then((settings) => {
+    const value = settings.find((setting) => setting.key === "auth-modal")?.value ?? {};
+    setDraft({ desktopImageUrl: typeof value.desktopImageUrl === "string" ? value.desktopImageUrl : "", mobileImageUrl: typeof value.mobileImageUrl === "string" ? value.mobileImageUrl : "" });
+  }).catch(() => undefined); }, [token]);
+  const upload = async (file: File) => { const data = new FormData(); data.append("file", file); return api<{ url: string }>("/admin/content/banners/upload", token, { method: "POST", body: data }); };
+  const save = async (event: FormEvent) => {
+    event.preventDefault(); setSaving(true);
+    try {
+      const [desktop, mobile] = await Promise.all([desktopFile ? upload(desktopFile) : Promise.resolve(null), mobileFile ? upload(mobileFile) : Promise.resolve(null)]);
+      const value = { desktopImageUrl: desktop?.url ?? draft.desktopImageUrl.trim(), mobileImageUrl: mobile?.url ?? draft.mobileImageUrl.trim() };
+      await api("/admin/content/settings/auth-modal", token, { method: "PUT", body: JSON.stringify({ value }) });
+      setDraft(value); setDesktopFile(null); setMobileFile(null); onNotice("Kirish oynasi saqlandi.");
+    } catch (error) { onNotice(error instanceof Error ? error.message : "Saqlab bo‘lmadi."); } finally { setSaving(false); }
+  };
+  const preview = (url: string) => url.startsWith("/uploads/") ? `${API.replace(/\/api$/, "")}${url}` : url;
+  return <section className="tailadmin-products-page auth-modal-manager"><header className="tailadmin-page-heading"><div><p className="ui-overline">CUSTOMER AUTH</p><h2>Kirish va Register oynasi</h2><span>Matn sayt tiliga avtomatik moslashadi. Welcome bonus 10% va 24 soat davomida avtomatik ishlaydi.</span></div><aside><i /> Saytda faol</aside></header><div className="auth-modal-manager__layout"><Card className="auth-modal-manager__form"><CardHeader><div><CardTitle>Modal rasmlari</CardTitle><CardDescription>Logo ishlatilmaydi. Rasm formaning yonida, mobileda yuqorida chiqadi.</CardDescription></div></CardHeader><CardContent><form className="ui-form" onSubmit={(event) => void save(event)}><div className="auth-modal-manager__upload-grid"><Field label="Desktop rasmi"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setDesktopFile(event.target.files?.[0] ?? null)} /><small>Tavsiya: 900 × 1200 px · 3:4 · JPG, PNG yoki WEBP</small><em>{desktopFile?.name || (draft.desktopImageUrl ? "Hozirgi rasm saqlangan" : "Rasm tanlanmagan")}</em></Field><Field label="Mobile rasmi"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setMobileFile(event.target.files?.[0] ?? null)} /><small>Tavsiya: 1200 × 600 px · 2:1 · JPG, PNG yoki WEBP</small><em>{mobileFile?.name || (draft.mobileImageUrl ? "Hozirgi rasm saqlangan" : "Desktop rasmi fallback bo‘ladi")}</em></Field></div><div className="auth-modal-manager__url-grid"><Field label="Desktop rasm URL"><input type="url" value={draft.desktopImageUrl} onChange={(event) => setDraft({ ...draft, desktopImageUrl: event.target.value })} placeholder="https://... yoki /uploads/..." /></Field><Field label="Mobile rasm URL"><input type="url" value={draft.mobileImageUrl} onChange={(event) => setDraft({ ...draft, mobileImageUrl: event.target.value })} placeholder="https://... yoki /uploads/..." /></Field></div><div className="auth-modal-manager__guide"><b>Ko‘rinish qoidasi</b><span>Desktopda modal 50/50 rasm va forma bo‘ladi. Mobileda rasm yuqorida, forma pastda chiqadi. Rasm markazdan crop qilinadi.</span></div><Button disabled={saving}>{saving ? "Saqlanmoqda…" : "O‘zgarishlarni saqlash"}</Button></form></CardContent></Card><Card className="auth-modal-manager__preview"><CardHeader><div><CardTitle>Live preview</CardTitle><CardDescription>Saqlangandan keyin storefrontda shu rasmlar chiqadi.</CardDescription></div></CardHeader><CardContent><div className="auth-modal-preview__devices"><figure><div className="auth-modal-preview__desktop">{draft.desktopImageUrl ? <img src={preview(draft.desktopImageUrl)} alt="Desktop preview" /> : <span>Desktop rasmi</span>}</div><figcaption>Desktop · 3:4</figcaption></figure><figure><div className="auth-modal-preview__mobile">{(draft.mobileImageUrl || draft.desktopImageUrl) ? <img src={preview(draft.mobileImageUrl || draft.desktopImageUrl)} alt="Mobile preview" /> : <span>Mobile rasmi</span>}</div><figcaption>Mobile · 2:1</figcaption></figure></div></CardContent></Card></div></section>;
+}
+
 function RecordsManager({
   records,
   token,
@@ -4533,6 +4686,7 @@ function RecordsManager({
   const [artist, setArtist] = useState("");
   const [genre, setGenre] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [position, setPosition] = useState("0");
   const [file, setFile] = useState<File | null>(null);
@@ -4540,11 +4694,12 @@ function RecordsManager({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [view, setView] = useState<"list" | "editor">("list");
+  const [editing, setEditing] = useState<MusicRecord | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<MusicRecord | null>(null);
 
   const upload = async (event: FormEvent) => {
     event.preventDefault();
-    if (!file && !isSpotifyUrl(spotifyUrl)) {
+    if (!editing && !file && !isSpotifyUrl(spotifyUrl)) {
       setMessage("MP3 fayl yuklang yoki Spotify track/playlist/album URL kiriting.");
       return;
     }
@@ -4555,15 +4710,20 @@ function RecordsManager({
         const data = new FormData();
         data.append("file", file);
         return api<{ url: string }>("/admin/content/records/upload", token, { method: "POST", body: data });
-      })() : { url: spotifyUrl.trim() };
-      await api<MusicRecord>("/admin/content/records", token, {
-        method: "POST",
+      })() : { url: spotifyUrl.trim() || editing?.audioUrl || "" };
+      const cover = coverFile ? await (async () => {
+        const data = new FormData();
+        data.append("file", coverFile);
+        return api<{ url: string }>("/admin/content/records/upload-cover", token, { method: "POST", body: data });
+      })() : { url: coverImageUrl.trim() || null };
+      await api<MusicRecord>(editing ? `/admin/content/records/${editing.id}` : "/admin/content/records", token, {
+        method: editing ? "PATCH" : "POST",
         body: JSON.stringify({
-          title: title.trim() || file?.name.replace(/\.[^.]+$/, "") || "Spotify trek",
+          title: title.trim() || file?.name.replace(/\.[^.]+$/, "") || editing?.title || "Spotify trek",
           artist: artist.trim(),
           genre: genre.trim(),
           audioUrl: uploaded.url,
-          coverImageUrl: coverImageUrl.trim() || null,
+          coverImageUrl: cover.url,
           position: Number(position) || 0,
           isActive,
         }),
@@ -4572,17 +4732,33 @@ function RecordsManager({
       setArtist("");
       setGenre("");
       setCoverImageUrl("");
+      setCoverFile(null);
       setSpotifyUrl("");
       setPosition("0");
       setFile(null);
       setIsActive(true);
+      setEditing(null);
       await onChanged(); setView("list");
-      setMessage(file ? "Trek yuklandi va Records ro‘yxatiga qo‘shildi." : "Spotify trek Records ro‘yxatiga qo‘shildi.");
+      setMessage(editing ? "Trek tahrirlandi." : file ? "Trek yuklandi va Records ro‘yxatiga qo‘shildi." : "Spotify trek Records ro‘yxatiga qo‘shildi.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Audio yuklanmadi.");
     } finally {
       setBusy(false);
     }
+  };
+  const edit = (record: MusicRecord) => {
+    setEditing(record);
+    setTitle(record.title);
+    setArtist(record.artist || "");
+    setGenre(record.genre || "");
+    setCoverImageUrl(record.coverImageUrl || "");
+    setCoverFile(null);
+    setSpotifyUrl(isSpotifyUrl(record.audioUrl) ? record.audioUrl : "");
+    setPosition(String(record.position || 0));
+    setFile(null);
+    setIsActive(record.isActive);
+    setMessage("");
+    setView("editor");
   };
   const remove = async (id: string) => {
     setBusy(true);
@@ -4601,9 +4777,9 @@ function RecordsManager({
   const editor = <Card>
         <CardHeader>
           <div>
-            <CardTitle>Records — musiqa yuklash</CardTitle>
+            <CardTitle>{editing ? "Recordni tahrirlash" : "Records — musiqa yuklash"}</CardTitle>
             <CardDescription>
-              Audio faylni yuklang yoki Spotify track, playlist yoxud album URL kiriting.
+              {editing ? "Barcha ma’lumotlarni yangilang. Audio tanlanmasa, avvalgi audio saqlanib qoladi." : "Audio faylni yuklang yoki Spotify track, playlist yoxud album URL kiriting."}
             </CardDescription>
           </div>
         </CardHeader>
@@ -4611,16 +4787,20 @@ function RecordsManager({
           <form className="ui-form" onSubmit={upload}>
             <div className="ui-form-grid">
               <Field label="Trek nomi">
-                <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Masalan, SIREN Radio 001" />
+                <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Masalan, PREVAILEN Radio 001" />
               </Field>
               <Field label="Ijrochi / artist">
-                <input value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="SIREN" />
+                <input value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="PREVAILEN" />
               </Field>
               <Field label="Janr">
                 <input value={genre} onChange={(event) => setGenre(event.target.value)} placeholder="Masalan, Hip-hop" />
               </Field>
               <Field label="Cover rasm URL (ixtiyoriy)">
                 <input value={coverImageUrl} onChange={(event) => setCoverImageUrl(event.target.value)} placeholder="https://..." />
+              </Field>
+              <Field label="Yoki cover rasm yuklash">
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} />
+                <small>{coverFile ? coverFile.name : "JPG, PNG, WEBP yoki GIF · 10 MB gacha"}</small>
               </Field>
               <Field label="Tartib raqami">
                 <input type="number" value={position} onChange={(event) => setPosition(event.target.value)} />
@@ -4637,15 +4817,15 @@ function RecordsManager({
               Saytda ko‘rsatish
             </label>
             <Button disabled={busy}>
-              <Upload size={15} /> {busy ? "Yuklanmoqda..." : file ? "Audio yuklash" : "Spotify trek qo‘shish"}
+              <Upload size={15} /> {busy ? "Yuklanmoqda..." : editing ? "O‘zgarishlarni saqlash" : file ? "Audio yuklash" : "Spotify trek qo‘shish"}
             </Button>
           </form>
           <AdminToast message={message} />
         </CardContent>
       </Card>;
-  if (view === "editor") return <section className="admin-records-layout admin-records-layout--editor"><button type="button" className="admin-back-button" onClick={() => setView("list")}>← Records ro‘yxatiga qaytish</button>{editor}</section>;
+  if (view === "editor") return <section className="admin-records-layout admin-records-layout--editor"><button type="button" className="admin-back-button" onClick={() => { setEditing(null); setView("list"); }}>← Records ro‘yxatiga qaytish</button>{editor}</section>;
   return <section className="admin-records-layout">
-    <Card className="admin-list-card"><CardHeader><div><p className="ui-overline">RECORDS</p><CardTitle>Yuklangan treklar</CardTitle><CardDescription>Musiqa, artist, janr, holat va boshqaruv bir joyda.</CardDescription></div><div className="admin-record-list-head-actions"><Badge variant="neutral">{records.length} ta</Badge><Button type="button" onClick={() => setView("editor")}><Plus size={16} /> Yaratish</Button></div></CardHeader><CardContent>{records.length ? <div className="admin-record-list">{records.map((record) => <article key={record.id}><div className="admin-record-cover">{record.coverImageUrl ? <img src={recordAssetUrl(record.coverImageUrl)} alt="" /> : <Music2 size={18} />}</div><div><strong>{record.title}</strong><span>{record.artist || "Artist ko‘rsatilmagan"}</span>{record.genre && <small>{record.genre}</small>}{isSpotifyUrl(record.audioUrl) ? <a className="admin-spotify-link" href={record.audioUrl} target="_blank" rel="noreferrer">Spotify’da ochish</a> : <audio controls preload="none" src={recordAssetUrl(record.audioUrl)} />}</div><div className="admin-record-actions"><Badge variant={record.isActive ? "success" : "warning"}>{record.isActive ? "Faol" : "Yashirilgan"}</Badge><Button type="button" variant="destructive" size="sm" disabled={busy} onClick={() => setDeleteCandidate(record)}>O‘chirish</Button></div></article>)}</div> : <Empty><Music2 /> Hali trek yuklanmagan.</Empty>}<AdminToast message={message} /></CardContent></Card>
+    <Card className="admin-list-card"><CardHeader><div><p className="ui-overline">RECORDS</p><CardTitle>Yuklangan treklar</CardTitle><CardDescription>Musiqa, artist, janr, holat va boshqaruv bir joyda.</CardDescription></div><div className="admin-record-list-head-actions"><Badge variant="neutral">{records.length} ta</Badge><Button type="button" onClick={() => { setEditing(null); setView("editor"); }}><Plus size={16} /> Yaratish</Button></div></CardHeader><CardContent>{records.length ? <div className="admin-record-list">{records.map((record) => <article key={record.id}><div className="admin-record-cover">{record.coverImageUrl ? <img src={recordAssetUrl(record.coverImageUrl)} alt="" /> : <Music2 size={18} />}</div><div><strong>{record.title}</strong><span>{record.artist || "Artist ko‘rsatilmagan"}</span>{record.genre && <small>{record.genre}</small>}{isSpotifyUrl(record.audioUrl) ? <a className="admin-spotify-link" href={record.audioUrl} target="_blank" rel="noreferrer">Spotify’da ochish</a> : <audio controls preload="none" src={recordAssetUrl(record.audioUrl)} />}</div><div className="admin-record-actions"><Badge variant={record.isActive ? "success" : "warning"}>{record.isActive ? "Faol" : "Yashirilgan"}</Badge><Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => edit(record)}>Tahrirlash</Button><Button type="button" variant="destructive" size="sm" disabled={busy} onClick={() => setDeleteCandidate(record)}>O‘chirish</Button></div></article>)}</div> : <Empty><Music2 /> Hali trek yuklanmagan.</Empty>}<AdminToast message={message} /></CardContent></Card>
     {deleteCandidate && <AdminConfirmDialog title="Trek o‘chirilsinmi?" description={`“${deleteCandidate.title}” Records ro‘yxatidan butunlay olib tashlanadi.`} busy={busy} onCancel={() => setDeleteCandidate(null)} onConfirm={() => void remove(deleteCandidate.id)} />}
   </section>;
 }

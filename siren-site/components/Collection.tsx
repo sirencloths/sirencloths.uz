@@ -20,7 +20,7 @@ export default function Collection() {
       <Link className="collection-banner" href="/collections">
         <Image
           src="/images/collection-banner.jpg"
-          alt="Новая коллекция SIREN"
+          alt="Новая коллекция PREVAILEN"
           width={1336}
           height={900}
         />

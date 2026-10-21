@@ -32,6 +32,13 @@ export class AdminController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) { return this.admin.dashboard({ period, metric, granularity, currency, from, to }); }
+  @Get('traffic-series') trafficSeries(
+    @Query('period') period?: 'today' | '7d' | '30d' | 'month' | 'year' | 'custom',
+    @Query('granularity') granularity?: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly',
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) { return this.admin.trafficSeries({ period, granularity, from, to }); }
+  @Get('product-sales-insights') productSalesInsights() { return this.admin.productSalesInsights(); }
   @Get('currencies') currencies() { return this.admin.currencyRates(); }
   @Post('currencies/refresh') refreshCurrencies() { return this.admin.currencyRates(true); }
   @Get('audit-logs') logs() { return this.admin.logs(); }

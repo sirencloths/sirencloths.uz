@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { randomUUID } from 'node:crypto';
-import { Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, Product, ProductStatus, SiteSetting } from '../database/entities';
+import { AuditLog, Banner, BlogPost, LookbookEntry, MusicRecord, Page, PageSection, Product, ProductStatus, SiteSetting, SiteVisit } from '../database/entities';
 import { TelegramService } from '../telegram/telegram.service';
 
 const DEFAULT_NAVIGATION = [
@@ -23,9 +23,20 @@ export class CmsService {
     @InjectRepository(MusicRecord) private readonly records: Repository<MusicRecord>,
     @InjectRepository(Product) private readonly products: Repository<Product>,
     @InjectRepository(SiteSetting) private readonly settings: Repository<SiteSetting>,
+    @InjectRepository(SiteVisit) private readonly visits: Repository<SiteVisit>,
+    @InjectRepository(AuditLog) private readonly auditLogs: Repository<AuditLog>,
     private readonly telegram: TelegramService,
   ) {}
   bannersForStorefront() { return this.banners.find({ where: { isActive: true }, order: { position: 'ASC' } }); }
+  async recordVisit(visitorId: string, path = '/') {
+    const cleanVisitorId = visitorId.trim().slice(0, 80);
+    if (!cleanVisitorId) return { recorded: false };
+    const visitDate = new Date().toISOString().slice(0, 10);
+    await this.visits.createQueryBuilder().insert().into(SiteVisit).values({ visitorId: cleanVisitorId, visitDate, path: path.slice(0, 500) || '/' }).orIgnore().execute();
+    const existing = await this.auditLogs.findOne({ where: { entityType: 'visit', entityId: `${visitDate}:${cleanVisitorId}` } });
+    if (!existing) await this.auditLogs.save(this.auditLogs.create({ actorId: null, action: 'visited', entityType: 'visit', entityId: `${visitDate}:${cleanVisitorId}`, payload: { path: path.slice(0, 500) || '/' } }));
+    return { recorded: true };
+  }
   postsForStorefront() { return this.posts.find({ where: { isPublished: true }, order: { publishedAt: 'DESC' } }); }
   lookbookForStorefront() { return this.lookbook.find({ where: { isPublished: true }, order: { position: 'ASC' } }); }
   async customSectionsForStorefront() {
@@ -59,6 +70,14 @@ export class CmsService {
     const value = setting?.value ?? {};
     const items = Array.isArray(value.items) ? value.items.filter((item) => item && typeof item === 'object' && (item as { isActive?: boolean }).isActive !== false) : [];
     return { profile: value.profile && typeof value.profile === 'object' ? value.profile : {}, items };
+  }
+  async authModalForStorefront() {
+    const setting = await this.settings.findOneBy({ key: 'auth-modal' });
+    const value = setting?.value ?? {};
+    return {
+      desktopImageUrl: typeof value.desktopImageUrl === 'string' ? value.desktopImageUrl : '',
+      mobileImageUrl: typeof value.mobileImageUrl === 'string' ? value.mobileImageUrl : '',
+    };
   }
   async headerMessageForStorefront() {
     // Resolve overdue launches first.  The endpoint is polled by the header,
@@ -108,8 +127,21 @@ export class CmsService {
     return { ...page, sections: await this.sections.find({ where: { pageId: page.id, isVisible: true }, order: { position: 'ASC' } }) };
   }
   adminBanners() { return this.banners.find({ order: { position: 'ASC' } }); }
-  async createBanner(input: Partial<Banner>) { const saved = await this.banners.save(this.banners.create(input)); void this.telegram.control(`#BANNER\n\n🖼 BANNER QO‘SHILDI\n\nNomi: ${saved.title}\nHolat: ${saved.isActive ? 'Faol' : 'Nofaol'}`); return saved; }
-  async updateBanner(id: string, input: Partial<Banner>) { const entity = await this.banners.preload({ id, ...input }); if (!entity) throw new NotFoundException('Banner not found'); const saved = await this.banners.save(entity); void this.telegram.control(`#BANNER\n\n✏️ BANNER O‘ZGARDI\n\nNomi: ${saved.title}\nHolat: ${saved.isActive ? 'Faol' : 'Nofaol'}`); return saved; }
+  private bannerStatus(isActive: boolean) { return isActive ? '🟢 Faol' : '⚪ Nofaol'; }
+  private bannerMessage(title: string, banner: Banner, before?: Banner | null) {
+    const changes: string[] = [];
+    if (before) {
+      if (before.title !== banner.title) changes.push(`🏷️ Nomi: ${before.title} → ${banner.title}`);
+      if (before.imageUrl !== banner.imageUrl) changes.push('🖥️ Desktop rasmi: yangilandi');
+      if (before.mobileImageUrl !== banner.mobileImageUrl) changes.push('📱 Mobil rasmi: yangilandi');
+      if (before.targetUrl !== banner.targetUrl) changes.push(`🔗 Havola: ${before.targetUrl || '—'} → ${banner.targetUrl || '—'}`);
+      if (before.position !== banner.position) changes.push(`📍 Joylashuv: ${before.position + 1}-o‘rin → ${banner.position + 1}-o‘rin`);
+      if (before.isActive !== banner.isActive) changes.push(`🔄 Status: ${this.bannerStatus(before.isActive)} → ${this.bannerStatus(banner.isActive)}`);
+    }
+    return `${title}\n\n🏷️ Nomi: ${banner.title}\n${this.bannerStatus(banner.isActive)}\n📍 Joylashuv: Bosh sahifa · ${banner.position + 1}-o‘rin\n${banner.targetUrl ? `🔗 Havola: ${banner.targetUrl}\n` : ''}${changes.length ? `\n📝 O‘zgarishlar:\n${changes.map((item) => `• ${item}`).join('\n')}\n` : ''}\n🕒 Vaqt: ${new Intl.DateTimeFormat('uz-UZ', { timeZone: 'Asia/Tashkent', dateStyle: 'medium', timeStyle: 'short' }).format(new Date())}`;
+  }
+  async createBanner(input: Partial<Banner>) { const saved = await this.banners.save(this.banners.create(input)); void this.telegram.controlPhoto(saved.imageUrl, this.bannerMessage('🖼️ YANGI BANNER QO‘SHILDI', saved)); return saved; }
+  async updateBanner(id: string, input: Partial<Banner>) { const before = await this.banners.findOneBy({ id }); const entity = await this.banners.preload({ id, ...input }); if (!entity) throw new NotFoundException('Banner not found'); const saved = await this.banners.save(entity); void this.telegram.controlPhoto(saved.imageUrl, this.bannerMessage('🖼️ BANNER YANGILANDI', saved, before)); return saved; }
   async removeBanner(id: string) { await this.banners.delete(id); void this.telegram.control(`#BANNER\n\n🗑 BANNER O‘CHIRILDI`); return { deleted: true }; }
   adminPosts() { return this.posts.find({ order: { updatedAt: 'DESC' } }); }
   async createPost(input: Partial<BlogPost>) {

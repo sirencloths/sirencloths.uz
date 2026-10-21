@@ -15,6 +15,7 @@ import { MusicPlayerProvider } from "@/components/MusicPlayer";
 import { OverlayHistoryProvider } from "@/components/OverlayHistoryProvider";
 import SiteChrome from "@/components/SiteChrome";
 import SiteTestNotice from "@/components/SiteTestNotice";
+import VisitorTracker from "@/components/VisitorTracker";
 import { absoluteUrl, siteUrl } from "@/lib/seo";
 
 const gilroy = localFont({
@@ -27,11 +28,11 @@ const gilroy = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: "SIREN — Streetwear from Tashkent", template: "%s | SIREN" },
-  description: "SIREN is a Tashkent streetwear store for clothing, accessories and new drops.",
+  title: { default: "PREVAILEN — Streetwear from Tashkent", template: "%s | PREVAILEN" },
+  description: "PREVAILEN is a Tashkent streetwear store for clothing, accessories and new drops.",
   alternates: { canonical: absoluteUrl("/") },
-  openGraph: { type: "website", url: absoluteUrl("/"), siteName: "SIREN", title: "SIREN — Streetwear from Tashkent", description: "Clothing, accessories and new drops from SIREN." },
-  twitter: { card: "summary", title: "SIREN — Streetwear from Tashkent", description: "Clothing, accessories and new drops from SIREN." },
+  openGraph: { type: "website", url: absoluteUrl("/"), siteName: "PREVAILEN", title: "PREVAILEN — Streetwear from Tashkent", description: "Clothing, accessories and new drops from PREVAILEN." },
+  twitter: { card: "summary", title: "PREVAILEN — Streetwear from Tashkent", description: "Clothing, accessories and new drops from PREVAILEN." },
 };
 
 export default function RootLayout({
@@ -41,7 +42,7 @@ export default function RootLayout({
     <html lang="ru" className={gilroy.variable}>
       <body>
         <LanguageProvider>
-          <FavoriteProvider><OverlayHistoryProvider><CustomerAuthProvider><SearchProvider><CartProvider><MusicPlayerProvider><SiteChrome />{children}<CartDrawer /><MobileBottomNav /><SiteTestNotice /></MusicPlayerProvider></CartProvider></SearchProvider></CustomerAuthProvider></OverlayHistoryProvider></FavoriteProvider>
+          <OverlayHistoryProvider><CustomerAuthProvider><FavoriteProvider><SearchProvider><CartProvider><MusicPlayerProvider><VisitorTracker /><SiteChrome />{children}<CartDrawer /><MobileBottomNav /><SiteTestNotice /></MusicPlayerProvider></CartProvider></SearchProvider></FavoriteProvider></CustomerAuthProvider></OverlayHistoryProvider>
         </LanguageProvider>
       </body>
     </html>

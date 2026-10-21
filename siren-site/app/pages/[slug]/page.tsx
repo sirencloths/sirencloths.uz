@@ -21,7 +21,7 @@ export default function ManagedPage() {
   return (
     <>
       <main className="managed-page">
-        <p className="ui-overline">SIREN</p>
+        <p className="ui-overline">PREVAILEN</p>
         <h1>{page?.title ?? (missing ? "SAHIFA TOPILMADI" : "YUKLANMOQDA")}</h1>
         {page?.sections?.map((section) => (
           <section key={section.id} className="managed-page-section">

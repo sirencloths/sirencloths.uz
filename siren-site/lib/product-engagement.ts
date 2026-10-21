@@ -25,3 +25,10 @@ export function trackProductEngagement(productId: string | undefined, kind: Enga
     keepalive: true,
   }).catch(() => undefined);
 }
+
+/** Product detail views feed the admin traffic funnel without blocking the page. */
+export function trackProductView(productId: string | undefined) {
+  if (!productId || typeof window === "undefined") return;
+  const api = process.env.NEXT_PUBLIC_API_URL ?? `${window.location.protocol}//${window.location.hostname}:4000/api`;
+  void fetch(`${api}/catalog/products/${encodeURIComponent(productId)}/view`, { method: "POST", keepalive: true }).catch(() => undefined);
+}

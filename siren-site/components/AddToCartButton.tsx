@@ -4,12 +4,16 @@ import { useCart } from "./CartContext";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
+import { useCustomerAuth } from "./CustomerAuthProvider";
 
 type Props = {
   id: string;
   productId: string;
   title: string;
   price: string;
+  originalPrice?: string;
+  discountPercent?: number;
+  personalDiscount?: boolean;
   image: string;
   color: string;
   size: string;
@@ -22,6 +26,9 @@ export default function AddToCartButton({
   productId,
   title,
   price,
+  originalPrice,
+  discountPercent,
+  personalDiscount,
   image,
   color,
   size,
@@ -31,6 +38,7 @@ export default function AddToCartButton({
   const { addToCart, cart, openCart } = useCart();
   const router = useRouter();
   const { t } = useLanguage();
+  const { customer, openAuth } = useCustomerAuth();
 
   // Never keep this state locally: the same variant can be removed from the
   // drawer while this product page stays open.
@@ -42,6 +50,7 @@ export default function AddToCartButton({
   };
 
   const handleClick = () => {
+    if (!customer) { openAuth(); return; }
     if (added) {
       goToCart();
       return;
@@ -52,6 +61,9 @@ export default function AddToCartButton({
       productId,
       title,
       price,
+      originalPrice,
+      discountPercent,
+      personalDiscount,
       image,
       color,
       size,
@@ -59,7 +71,7 @@ export default function AddToCartButton({
       inventoryQuantity,
     });
 
-    goToCart();
+    if (window.matchMedia("(min-width: 761px)").matches) goToCart();
   };
 
   return (

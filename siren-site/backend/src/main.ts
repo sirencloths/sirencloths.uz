@@ -1,3 +1,8 @@
+// Database timestamps are stored as UTC wall-clock values.  Force the Node
+// PostgreSQL parser to read timestamp-without-time-zone columns as UTC too;
+// otherwise a machine in Asia/Tashkent subtracts five hours on every read.
+process.env.TZ = 'UTC';
+
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -22,8 +27,8 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
   const swagger = new DocumentBuilder()
-    .setTitle('SIREN API')
-    .setDescription('SIREN commerce and admin API')
+    .setTitle('PREVAILEN API')
+    .setDescription('PREVAILEN commerce and admin API')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

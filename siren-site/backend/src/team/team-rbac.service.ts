@@ -12,6 +12,7 @@ const PERMISSIONS: PermissionSeed[] = [
   ['orders.view', 'orders', 'Buyurtmalarni ko‘rish'], ['orders.edit', 'orders', 'Buyurtma tahrirlash'], ['orders.cancel', 'orders', 'Buyurtmani bekor qilish'], ['orders.refund', 'orders', 'Refund qilish', true], ['orders.export', 'orders', 'Buyurtmalarni eksport qilish'],
   ['customers.view', 'customers', 'Mijozlarni ko‘rish'], ['customers.edit', 'customers', 'Mijozni tahrirlash'], ['customers.delete', 'customers', 'Mijozni o‘chirish'], ['customers.export', 'customers', 'Mijozlarni eksport qilish', true],
   ['analytics.view', 'analytics', 'Analitikani ko‘rish'], ['analytics.export', 'analytics', 'Analitikani eksport qilish'], ['finance.view', 'finance', 'Moliyani ko‘rish', true], ['finance.edit', 'finance', 'Moliyani tahrirlash', true], ['finance.export', 'finance', 'Moliyani eksport qilish', true],
+  ['content.view', 'content', 'Kontentni ko‘rish'], ['content.edit', 'content', 'Banner, blog va sahifalarni tahrirlash'],
   ['team.view', 'team', 'Jamoalarni ko‘rish'], ['team.create', 'team', 'Jamoa yaratish'], ['team.edit', 'team', 'Jamoa tahrirlash'], ['team.delete', 'team', 'Jamoa o‘chirish'], ['employees.view', 'employees', 'Xodimlarni ko‘rish'], ['employees.create', 'employees', 'Xodim yaratish'], ['employees.edit', 'employees', 'Xodim tahrirlash'], ['employees.deactivate', 'employees', 'Xodimni faolsizlantirish'], ['employees.personal_data.view', 'employees', 'Shaxsiy HR ma’lumotlarini ko‘rish', true],
   ['roles.view', 'roles', 'Rollarni ko‘rish'], ['roles.create', 'roles', 'Rol yaratish'], ['roles.edit', 'roles', 'Rol tahrirlash'], ['roles.delete', 'roles', 'Rol o‘chirish', true], ['roles.assign', 'roles', 'Rol biriktirish', true], ['permissions.view', 'permissions', 'Huquqlarni ko‘rish'], ['permissions.assign', 'permissions', 'Huquqlarni biriktirish', true], ['audit.view', 'audit', 'Audit tarixini ko‘rish', true], ['settings.view', 'settings', 'Sozlamalarni ko‘rish'], ['settings.edit', 'settings', 'Sozlamalarni tahrirlash', true], ['security.view', 'security', 'Xavfsizlikni ko‘rish', true], ['security.edit', 'security', 'Xavfsizlikni tahrirlash', true],
 ].map(([key, module, label, sensitive]) => ({ key: key as string, module: module as string, label: label as string, sensitive: Boolean(sensitive) }));
@@ -78,6 +79,15 @@ export class TeamRbacService implements OnModuleInit {
     if (permissionIds.length) (await this.permissions.findBy({ id: In(permissionIds) })).forEach((item) => effective.add(item.key));
     return effective;
   }
+  private async legacyRoleFor(roleIds: string[]): Promise<UserRole | null> {
+    if (!roleIds.length) return null;
+    const roles = await this.roles.findBy({ id: In(roleIds) });
+    if (roles.some((role) => role.name === 'SUPER ADMIN')) return UserRole.SUPER_ADMIN;
+    if (roles.some((role) => role.name === 'ADMIN')) return UserRole.ADMIN;
+    const links = await this.rolePermissions.findBy({ roleId: In(roleIds) });
+    const permissions = links.length ? await this.permissions.findBy({ id: In(links.map((link) => link.permissionId)) }) : [];
+    return permissions.some((permission) => permission.key.startsWith('content.')) ? UserRole.EDITOR : null;
+  }
   async assert(actor: Actor, permission: string) { const permissions = await this.effectivePermissions(actor); if (!permissions.has('*') && !permissions.has(permission)) throw new ForbiddenException('Bu amal uchun ruxsatingiz yo‘q.'); }
   private async employeeForUser(userId: string) { return this.employees.findOneBy({ userId }); }
   private async assertCanManageTarget(actor: Actor, employee: Employee) {
@@ -103,9 +113,34 @@ export class TeamRbacService implements OnModuleInit {
   async listPermissions(actor: Actor) { await this.assert(actor, 'permissions.view'); return this.permissions.find({ order: { module: 'ASC', key: 'ASC' } }); }
   async createRole(actor: Actor, input: { name: string; description?: string; color?: string; permissionKeys: string[] }) { await this.assert(actor, 'roles.create'); if (!input.name?.trim()) throw new BadRequestException('Rol nomi majburiy.'); const actorPermissions = await this.effectivePermissions(actor); const permissions = await this.permissions.findBy({ key: In(input.permissionKeys ?? []) }); if (permissions.length !== new Set(input.permissionKeys ?? []).size) throw new BadRequestException('Noma’lum ruxsat tanlangan.'); if (!actorPermissions.has('*') && permissions.some((permission) => !actorPermissions.has(permission.key))) throw new ForbiddenException('O‘zingizda bo‘lmagan ruxsatni rolga bera olmaysiz.'); const role = await this.roles.save(this.roles.create({ roleId: await this.nextId('role_internal_id_seq', 'ROLE'), name: input.name.trim(), description: input.description ?? null, color: input.color || '#465fff', createdBy: actor.id })); if (permissions.length) await this.rolePermissions.save(permissions.map((permission) => this.rolePermissions.create({ roleId: role.id, permissionId: permission.id, scope: PermissionScope.ALL }))); return role; }
   async assignRoles(actor: Actor, employeeId: string, roleIds: string[]) { await this.assert(actor, 'roles.assign'); const employee = await this.employees.findOneBy({ id: employeeId }); if (!employee) throw new NotFoundException('Xodim topilmadi.'); await this.assertCanManageTarget(actor, employee); const roles = await this.roles.findBy({ id: In(roleIds) }); if (roles.length !== new Set(roleIds).size || roles.some((role) => role.isProtected && actor.role !== UserRole.SUPER_ADMIN)) throw new ForbiddenException('Himoyalangan rolni biriktirish mumkin emas.'); const actorPermissions = await this.effectivePermissions(actor); if (!actorPermissions.has('*')) { const links = await this.rolePermissions.findBy({ roleId: In(roleIds) }); const permissions = links.length ? await this.permissions.findBy({ id: In(links.map((link) => link.permissionId)) }) : []; if (permissions.some((permission) => !actorPermissions.has(permission.key))) throw new ForbiddenException('O‘zingizda bo‘lmagan ruxsatli rolni bera olmaysiz.'); }
-    await this.employeeRoles.delete({ employeeId }); return this.employeeRoles.save(roleIds.map((roleId) => this.employeeRoles.create({ employeeId, roleId, assignedBy: actor.id })));
+    await this.employeeRoles.delete({ employeeId }); const assignments = await this.employeeRoles.save(roleIds.map((roleId) => this.employeeRoles.create({ employeeId, roleId, assignedBy: actor.id })));
+    if (employee.userId) {
+      const legacyRole = await this.legacyRoleFor(roleIds);
+      await this.users.update({ id: employee.userId }, { role: legacyRole ?? UserRole.EDITOR, isActive: Boolean(legacyRole) });
+      if (!legacyRole) await this.sessions.update({ userId: employee.userId, revokedAt: IsNull() }, { revokedAt: new Date() });
+    }
+    return assignments;
   }
   async invite(actor: Actor, employeeId: string) { await this.assert(actor, 'employees.create'); const employee = await this.employees.findOneBy({ id: employeeId }); if (!employee?.email) throw new BadRequestException('Xodim e-maili kiritilmagan.'); const token = crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', ''); const invitation = await this.invitations.save(this.invitations.create({ employeeId, email: employee.email, tokenHash: await bcrypt.hash(token, 12), expiresAt: new Date(Date.now() + 7 * 86_400_000), createdBy: actor.id })); return { id: invitation.id, expiresAt: invitation.expiresAt, token }; }
+  async acceptInvitation(token: string, password: string) {
+    if (password.length < 12) throw new BadRequestException('Parol kamida 12 belgidan iborat bo‘lishi kerak.');
+    const candidates = await this.invitations.find({ where: { acceptedAt: IsNull(), cancelledAt: IsNull() }, order: { createdAt: 'DESC' } });
+    const invitation = (await Promise.all(candidates.map(async (item) => (item.expiresAt > new Date() && await bcrypt.compare(token, item.tokenHash)) ? item : null))).find((item): item is EmployeeInvitation => Boolean(item));
+    if (!invitation) throw new ForbiddenException('Taklif havolasi noto‘g‘ri yoki muddati tugagan.');
+    const employee = await this.employees.findOneBy({ id: invitation.employeeId });
+    if (!employee) throw new NotFoundException('Xodim topilmadi.');
+    if (employee.userId) throw new BadRequestException('Bu taklif avval qabul qilingan.');
+    const roleIds = (await this.employeeRoles.findBy({ employeeId: employee.id })).map((item) => item.roleId);
+    const legacyRole = await this.legacyRoleFor(roleIds);
+    if (!legacyRole) throw new ForbiddenException('Taklif qabul qilinishidan oldin xodimga ruxsatli rol biriktirilishi kerak.');
+    const email = invitation.email.trim().toLowerCase();
+    if (await this.users.exists({ where: { email } })) throw new BadRequestException('Bu e-mail bilan login allaqachon mavjud.');
+    const user = await this.users.save(this.users.create({ email, passwordHash: await bcrypt.hash(password, 12), role: legacyRole, firstName: employee.firstName, lastName: employee.lastName, isActive: true }));
+    invitation.acceptedAt = new Date();
+    employee.userId = user.id; employee.status = EmploymentStatus.ACTIVE;
+    await this.dataSource.transaction(async (manager) => { await manager.getRepository(EmployeeInvitation).save(invitation); await manager.getRepository(Employee).save(employee); });
+    return { accepted: true, email };
+  }
   async listInvitations(actor: Actor) { await this.assert(actor, 'employees.view'); const now = new Date(); return (await this.invitations.find({ order: { createdAt: 'DESC' } })).map((item) => ({ id: item.id, employeeId: item.employeeId, email: item.email, createdAt: item.createdAt, expiresAt: item.expiresAt, status: item.cancelledAt ? 'cancelled' : item.acceptedAt ? 'accepted' : item.expiresAt < now ? 'expired' : 'pending' })); }
   async listSessions(actor: Actor) { await this.assert(actor, 'security.view'); const sessions = await this.sessions.find({ where: { kind: 'admin' }, order: { updatedAt: 'DESC' } }); const users = await this.users.findBy({ id: In(sessions.map((session) => session.userId).filter(Boolean) as string[]) }); return sessions.map((session) => ({ id: session.id, userId: session.userId, email: users.find((user) => user.id === session.userId)?.email ?? '—', role: users.find((user) => user.id === session.userId)?.role ?? '—', createdAt: session.createdAt, lastActivity: session.updatedAt, expiresAt: session.expiresAt, revokedAt: session.revokedAt })); }
   async revokeSession(actor: Actor, id: string) { await this.assert(actor, 'security.edit'); const session = await this.sessions.findOneBy({ id }); if (!session) throw new NotFoundException('Sessiya topilmadi.'); const target = session.userId ? await this.users.findOneBy({ id: session.userId }) : null; if (target?.role === UserRole.SUPER_ADMIN && actor.role !== UserRole.SUPER_ADMIN) throw new ForbiddenException('Super Admin sessiyasini bekor qila olmaysiz.'); await this.sessions.update({ id }, { revokedAt: new Date() }); return { revoked: true }; }

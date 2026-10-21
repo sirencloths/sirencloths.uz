@@ -60,10 +60,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const playTrack = (id: string) => {
     if (id === activeId && playerVisible) { toggle(); return; }
     setPlayerVisible(true);
-    setPlayerOpen(false);
+    setPlayerOpen(window.matchMedia("(min-width: 761px)").matches);
     autoPlayRef.current = true;
     setActiveId(id);
   };
+  useEffect(() => { if (playerVisible && window.matchMedia("(min-width: 761px)").matches) setPlayerOpen(true); }, [playerVisible]);
   const jump = (direction: -1 | 1) => {
     if (!tracks.length) return;
     const current = Math.max(0, tracks.findIndex((track) => track.id === activeId));
@@ -86,10 +87,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     {activeTrack && playerVisible && <>
       {!playerOpen && <button type="button" className={`global-player-fab${playing ? " is-playing" : ""}`} aria-label="Pleyerni ochish" onClick={() => setPlayerOpen(true)}><Music2 size={23} /><i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" /></button>}
       {playerOpen && <aside className="global-player" aria-label="Musiqa pleyeri">
-      <div className="global-player__track"><img src={asset(activeTrack.coverImageUrl)} alt="" onError={fallbackCover} /><div><b>{activeTrack.title}</b><span>{activeTrack.artist || "SIREN"}</span></div><div className="global-player__header-actions"><button type="button" className="global-player__menu" aria-label="Treklar ro‘yxati" aria-expanded={open} onClick={() => setOpen((value) => !value)}><ListMusic size={20} strokeWidth={2} /></button><button type="button" className="global-player__close" aria-label="Pleyerni yopish" onClick={closePlayer}><X size={18} strokeWidth={2.5} /></button></div></div>
+      <div className="global-player__track"><img src={asset(activeTrack.coverImageUrl)} alt="" onError={fallbackCover} /><div><b>{activeTrack.title}</b><span>{activeTrack.artist || "PREVAILEN"}</span></div><div className="global-player__header-actions"><button type="button" className="global-player__menu" aria-label="Treklar ro‘yxati" aria-expanded={open} onClick={() => setOpen((value) => !value)}><ListMusic size={20} strokeWidth={2} /></button><button type="button" className="global-player__close" aria-label="Pleyerni yopish" onClick={closePlayer}><X size={18} strokeWidth={2.5} /></button></div></div>
       <div className="global-player__timeline"><span>{formatTime(progress)}</span><input aria-label="Trek holati" type="range" min="0" max={duration || 0} value={Math.min(progress, duration || 0)} onChange={(event) => seek(Number(event.target.value))} /><span>{duration ? `-${formatTime(Math.max(duration - progress, 0))}` : "--:--"}</span></div>
       <div className="global-player__controls"><button type="button" aria-label="Oldingi trek" onClick={() => jump(-1)}><SkipBack size={28} fill="currentColor" /></button><button type="button" className="global-player__toggle" aria-label={playing ? "Pauza" : "Play"} aria-pressed={playing} onClick={toggle}>{playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}</button><button type="button" aria-label="Keyingi trek" onClick={() => jump(1)}><SkipForward size={28} fill="currentColor" /></button></div>
-      {open && <div className="global-player__list">{tracks.map((track) => { const isActive = track.id === activeId; const isPlaying = isActive && playing; return <button type="button" key={track.id} className={`${isActive ? "is-active" : ""}${isPlaying ? " is-playing" : ""}`} onClick={() => { playTrack(track.id); setOpen(false); }}><img src={asset(track.coverImageUrl)} alt="" onError={fallbackCover} /><span><b>{track.title}</b><small>{track.artist || "SIREN"}{track.genre ? ` · ${track.genre}` : ""}</small></span>{isPlaying && <i className="global-player__equalizer" aria-label="Ijro etilmoqda"><i /><i /><i /></i>}</button>; })}</div>}
+      {open && <div className="global-player__list">{tracks.map((track) => { const isActive = track.id === activeId; const isPlaying = isActive && playing; return <button type="button" key={track.id} className={`${isActive ? "is-active" : ""}${isPlaying ? " is-playing" : ""}`} onClick={() => { playTrack(track.id); setOpen(false); }}><img src={asset(track.coverImageUrl)} alt="" onError={fallbackCover} /><span><b>{track.title}</b><small>{track.artist || "PREVAILEN"}{track.genre ? ` · ${track.genre}` : ""}</small></span>{isPlaying && <i className="global-player__equalizer" aria-label="Ijro etilmoqda"><i /><i /><i /></i>}</button>; })}</div>}
       </aside>}
       <audio ref={audioRef} src={audioSource(activeTrack.audioUrl)} onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)} onCanPlay={() => { if (autoPlayRef.current) { autoPlayRef.current = false; void audioRef.current?.play().then(() => setPlaying(true)).catch(() => setPlaying(false)); } }} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => jump(1)} />
     </>}

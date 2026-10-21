@@ -56,4 +56,6 @@ export class AuthController {
   @Get('customer/me') customerMe(@CurrentUser() customer: { id: string }) { return this.auth.customerMe(customer.id); }
   @UseGuards(CustomerJwtGuard)
   @Patch('customer/me') updateCustomer(@CurrentUser() customer: { id: string }, @Body() body: CustomerUpdateDto) { return this.auth.updateCustomer(customer.id, body); }
+  @UseGuards(CustomerJwtGuard)
+  @Post('customer/presence') customerPresence(@CurrentUser() customer: { id: string }, @Body() body: { online?: boolean }) { return this.auth.setCustomerPresence(customer.id, body.online !== false); }
 }

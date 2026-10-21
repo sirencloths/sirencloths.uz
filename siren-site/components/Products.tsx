@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Product } from "@/lib/data";
 import { getStorefrontProducts, toStorefrontColorCards } from "@/lib/api";
 import ProductCard from "./ProductCard";
+import { useLanguage } from "./LanguageProvider";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import Link from "next/link";
 
@@ -13,6 +14,7 @@ const AUTO_ADVANCE_MS = 9000;
 const RESUME_DELAY_MS = 3000;
 
 export default function Products({ products, id, ariaLabel, more = false, slider = false, heading }: Props) {
+  const { locale, t } = useLanguage();
   const [remoteProducts, setRemoteProducts] = useState<Product[] | null>(null);
   const [api, setApi] = useState<CarouselApi>();
   const [viewport, setViewport] = useState<"pending" | "mobile" | "desktop">("pending");
@@ -26,10 +28,10 @@ export default function Products({ products, id, ariaLabel, more = false, slider
   useEffect(() => {
     let mounted = true;
     void getStorefrontProducts().then((apiProducts) => {
-      if (mounted && apiProducts.length) setRemoteProducts(toStorefrontColorCards(apiProducts));
+      if (mounted && apiProducts.length) setRemoteProducts(toStorefrontColorCards(apiProducts, locale));
     }).catch(() => undefined);
     return () => { mounted = false; };
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 760px)");
@@ -48,13 +50,13 @@ export default function Products({ products, id, ariaLabel, more = false, slider
   }, [api, activeSlider]);
 
   return <section className={`products${more ? " products--more" : ""}${activeSlider ? " products--slider" : ""}${slider && !activeSlider ? " products--short" : ""}`} id={id} aria-label={ariaLabel}>
-    {activeSlider && <button className="slider-btn slider-btn--left" type="button" aria-label="Назад" onClick={() => api?.scrollPrev()}><Image src="/icons/arrow-right.svg" alt="" width={6} height={12} /></button>}
+    {activeSlider && <button className="slider-btn slider-btn--left" type="button" aria-label={t("back")} onClick={() => api?.scrollPrev()}><Image src="/icons/arrow-right.svg" alt="" width={6} height={12} /></button>}
     {heading && <div className="section-heading recommendation-heading"><h2 style={{ fontSize: "40px" }}>{heading.title}</h2><Link href={heading.href}>{heading.linkLabel}</Link></div>}
     {activeSlider ? <Carousel key={viewport} className="products-slider" style={{ visibility: viewport === "pending" ? "hidden" : undefined }} opts={{ loop: true, align: viewport === "mobile" ? "center" : "start", duration: 28 }} setApi={setApi} onPointerDown={() => { resumeAt.current = Date.now() + RESUME_DELAY_MS; }}>
       <CarouselContent className="products-track">
         {displayProducts.map((product) => <CarouselItem className="products-slide" key={product.cardId ?? product.id}><ProductCard product={product} /></CarouselItem>)}
       </CarouselContent>
     </Carousel> : <div className="products-slider"><div className="products-track">{displayProducts.map((product) => <div className="products-slide" key={product.cardId ?? product.id}><ProductCard product={product} /></div>)}</div></div>}
-    {activeSlider && <button className="slider-btn slider-btn--right" type="button" aria-label="Вперёд" onClick={() => api?.scrollNext()}><Image src="/icons/arrow-left.svg" alt="" width={6} height={12} /></button>}
+    {activeSlider && <button className="slider-btn slider-btn--right" type="button" aria-label={t("next")} onClick={() => api?.scrollNext()}><Image src="/icons/arrow-left.svg" alt="" width={6} height={12} /></button>}
   </section>;
 }
